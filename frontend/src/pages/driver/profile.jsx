@@ -21,7 +21,9 @@ export default function DriverProfilePage() {
   const navigate = useNavigate();
   const [driver, setDriver] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || localStorage.getItem("driverTheme") || "dark");
+  // Read the driver portal key first so the theme matches the dashboard.
+  // Reading the global "theme" key here caused a dark/light flash on navigation.
+  const [theme, setTheme] = useState(() => localStorage.getItem("driverTheme") || localStorage.getItem("theme") || "light");
 
   const [activeTab, setActiveTab] = useState("OVERVIEW"); // OVERVIEW | VEHICLE | PERFORMANCE | SETTINGS
 
@@ -63,16 +65,20 @@ export default function DriverProfilePage() {
   });
 
   useEffect(() => {
-    // Theme sync
+    // Theme sync — only persist to the driver portal key. Writing the global
+    // "theme" key here overwrote the customer portal's preference.
     if (theme === "dark") {
       document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
+      document.body.style.backgroundColor = "#09090b";
       localStorage.setItem("driverTheme", "dark");
     } else {
       document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
+      document.body.style.backgroundColor = "#f8fafc";
       localStorage.setItem("driverTheme", "light");
     }
+    return () => {
+      document.body.style.backgroundColor = "";
+    };
   }, [theme]);
 
   useEffect(() => {
@@ -275,10 +281,11 @@ export default function DriverProfilePage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link 
             to="/driver/dashboard" 
-            className="flex items-center gap-2 text-xs sm:text-sm font-bold text-foreground/80 hover:text-primary transition-colors uppercase tracking-wider"
+            aria-label="Back to Dashboard"
+            className="flex size-9 items-center justify-center rounded-full text-foreground/80 transition-all hover:bg-secondary/70 hover:text-primary active:scale-95 sm:ml-0 sm:size-auto sm:gap-2 sm:text-xs sm:font-bold sm:uppercase sm:tracking-wider sm:hover:bg-transparent"
           >
             <ArrowLeft className="size-4 stroke-[2.5]" />
-            Back to Dashboard
+            <span className="hidden sm:inline">Back to Dashboard</span>
           </Link>
           
           <div className="flex items-center gap-2">
@@ -449,15 +456,18 @@ export default function DriverProfilePage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
+                aria-label={tab.label}
+                aria-current={isActive}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all whitespace-nowrap cursor-pointer flex-1 justify-center",
+                  "flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-2.5 py-2.5 text-xs font-bold transition-all duration-200 cursor-pointer active:scale-[0.97] sm:px-4 sm:text-sm",
                   isActive
                     ? "bg-card text-foreground shadow-md border border-border/60"
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
                 )}
               >
-                <Icon className={cn("size-4", isActive ? "text-primary" : "")} />
-                <span>{tab.label}</span>
+                <Icon className={cn("size-4 shrink-0", isActive ? "text-primary" : "")} />
+                {/* Icon-only on phones — the full labels overflowed 360px screens */}
+                <span className="hidden sm:inline">{tab.label}</span>
               </button>
             );
           })}

@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   LogOut, MapPin, PhoneCall, CheckCircle2, Package, RefreshCw, Navigation, 
   Wifi, WifiOff, User, Bike, Clock, AlertCircle, Check, ChevronRight, 
@@ -57,7 +58,7 @@ function DriverHeader({ driver, locationActive, theme, toggleTheme, onRefresh, r
               <h1 className="font-black text-sm sm:text-lg text-slate-950 dark:text-white tracking-tight leading-none truncate whitespace-nowrap">
                 Flame & Crust
               </h1>
-              <span className="text-[9px] sm:text-[10px] font-black uppercase px-1.5 py-0.5 bg-red-500/15 text-red-600 dark:text-red-400 rounded-md border border-red-500/30 shrink-0 whitespace-nowrap">
+              <span className="hidden sm:inline-block text-[9px] sm:text-[10px] font-black uppercase px-1.5 py-0.5 bg-red-500/15 text-red-600 dark:text-red-400 rounded-md border border-red-500/30 shrink-0 whitespace-nowrap">
                 Rider Hub
               </span>
             </div>
@@ -837,6 +838,12 @@ function EmptyState({ tab, onRefresh }) {
 }
 
 // ----------------- MAIN COMPONENT -----------------
+// Memoized wrappers — the dashboard re-renders on GPS/chat/order polling,
+// so cards & tabs must only re-render when their own props actually change.
+const MemoOrderTabs = memo(OrderTabs);
+const MemoNewDeliveryRequestCard = memo(NewDeliveryRequestCard);
+const MemoActiveDeliveryCard = memo(ActiveDeliveryCard);
+
 export default function DriverDashboardPage() {
   const navigate = useNavigate();
   const [theme, setTheme] = useState(localStorage.getItem("driverTheme") || "light");
@@ -885,11 +892,18 @@ export default function DriverDashboardPage() {
   const [driverChatHead, setDriverChatHead] = useState(null);
   const [unreadMap, setUnreadMap] = useState({});
   const lastKnownDriverMsgsRef = useRef({});
+  const chatInFlightRef = useRef(false);
+  const ordersInFlightRef = useRef(false);
 
   // Background monitoring for incoming customer messages
   useEffect(() => {
     if (!driver || myOrders.length === 0) return;
     const checkDriverIncomingMessages = async () => {
+      // Skip when the tab is hidden or a previous poll is still running —
+      // stacking polls is what made the dashboard feel laggy.
+      if (chatInFlightRef.current || document.visibilityState === "hidden") return;
+      chatInFlightRef.current = true;
+      try {
       for (const ord of myOrders) {
         try {
           const msgs = await getOrderMessages(ord.id);
@@ -924,10 +938,13 @@ export default function DriverDashboardPage() {
           }
         } catch (e) {}
       }
+      } finally {
+        chatInFlightRef.current = false;
+      }
     };
 
     checkDriverIncomingMessages();
-    const chatInterval = setInterval(checkDriverIncomingMessages, 2000);
+    const chatInterval = setInterval(checkDriverIncomingMessages, 5000);
     return () => clearInterval(chatInterval);
   }, [driver, myOrders, selectedChatOrder]);
 
@@ -938,6 +955,7 @@ export default function DriverDashboardPage() {
   const [lastLocation, setLastLocation] = useState(null);
   const watchIdRef = useRef(null);
   const locationTimerRef = useRef(null);
+  const lastSentLocRef = useRef(null);
 
   // ── Auth Check ──
   useEffect(() => {
@@ -965,8 +983,18 @@ export default function DriverDashboardPage() {
 
   // ── Real-Time Location Tracking ──
   const sendLocation = useCallback((lat, lng) => {
+    // Keep the backend heartbeat, but only trigger a React re-render when the
+    // driver actually moved (~3m). Re-rendering the Leaflet map every 5s while
+    // stationary is what made taps feel sluggish.
     updateDriverLocation(lat, lng).catch(() => {});
-    setLastLocation({ lat, lng, time: new Date() });
+    const prev = lastSentLocRef.current;
+    const moved = !prev
+      || Math.abs(prev.lat - lat) > 0.00003
+      || Math.abs(prev.lng - lng) > 0.00003;
+    if (moved) {
+      lastSentLocRef.current = { lat, lng };
+      setLastLocation({ lat, lng, time: new Date() });
+    }
   }, []);
 
   useEffect(() => {
@@ -1010,6 +1038,8 @@ export default function DriverDashboardPage() {
   // ── Fetch Orders & Real Customer / Product Details ──
   const fetchAllData = async () => {
     if (!driver) return;
+    if (ordersInFlightRef.current) return;
+    ordersInFlightRef.current = true;
     try {
       const allOrders = await list("orders");
       
@@ -1058,6 +1088,7 @@ export default function DriverDashboardPage() {
     } catch (err) {
       toast.error("Failed to load delivery orders");
     } finally {
+      ordersInFlightRef.current = false;
       setLoading(false);
       setRefreshing(false);
     }
@@ -1066,7 +1097,8 @@ export default function DriverDashboardPage() {
   useEffect(() => {
     if (driver) fetchAllData();
     const interval = setInterval(() => {
-      if (driver) fetchAllData();
+      // Pause background polling while the tab is hidden to save CPU & battery
+      if (driver && document.visibilityState === "visible") fetchAllData();
     }, 10000);
     return () => clearInterval(interval);
   }, [driver]);
@@ -1075,6 +1107,8 @@ export default function DriverDashboardPage() {
     if (refreshing) return;
     setRefreshing(true);
     await fetchAllData();
+    // Guaranteed reset — fetchAllData can bail early via the in-flight guard
+    setRefreshing(false);
   };
 
   const updateOrderStatus = async (orderId, newStatus) => {
@@ -1141,6 +1175,21 @@ export default function DriverDashboardPage() {
     }
   };
 
+  // Stable handler identities — inline arrow props would defeat the memoized
+  // cards and re-render every card on each 5s/10s poll.
+  const acceptOrderRef = useRef(acceptOrder);
+  acceptOrderRef.current = acceptOrder;
+  const updateStatusRef = useRef(updateOrderStatus);
+  updateStatusRef.current = updateOrderStatus;
+
+  const stableAcceptOrder = useCallback((id) => acceptOrderRef.current(id), []);
+  const stableUpdateStatus = useCallback((id, status) => updateStatusRef.current(id, status), []);
+  const handleSelectDetails = useCallback((o) => setSelectedOrderDetails(o), []);
+  const handleOpenChat = useCallback((o) => {
+    setSelectedChatOrder(o);
+    setUnreadMap(prev => ({ ...prev, [o.id]: 0 }));
+  }, []);
+
   if (!driver) return null;
 
   const currentDisplayOrders = activeTab === "available" ? availableOrders : myOrders;
@@ -1167,7 +1216,7 @@ export default function DriverDashboardPage() {
           mobileView === "map" && "hidden lg:flex"
         )}>
           
-          <OrderTabs 
+          <MemoOrderTabs 
             activeTab={activeTab} 
             setActiveTab={setActiveTab} 
             availableCount={availableOrders.length}
@@ -1176,39 +1225,46 @@ export default function DriverDashboardPage() {
 
           <div className="flex-1 overflow-y-auto p-4 sm:p-5 custom-scrollbar relative">
             {loading ? (
-              <div className="animate-pulse space-y-4">
-                <div className="h-64 bg-white dark:bg-zinc-900 rounded-[28px] border border-slate-200/50 dark:border-white/5" />
-                <div className="h-64 bg-white dark:bg-zinc-900 rounded-[28px] border border-slate-200/50 dark:border-white/5" />
+              <div className="space-y-4">
+                {[0, 1].map(i => (
+                  <div key={i} className="h-64 rounded-[28px] border border-slate-200/50 dark:border-white/5 bg-gradient-to-r from-slate-100 via-slate-200/70 to-slate-100 dark:from-zinc-900 dark:via-zinc-800/60 dark:to-zinc-900 bg-[length:200%_100%] animate-[shimmer_1.6s_ease-in-out_infinite]" />
+                ))}
               </div>
             ) : currentDisplayOrders.length === 0 ? (
               <EmptyState tab={activeTab} onRefresh={handleRefresh} />
             ) : (
-              <div className="space-y-4 pb-24 lg:pb-6">
-                {currentDisplayOrders.map(order => (
-                  activeTab === "available" ? (
-                    <NewDeliveryRequestCard 
-                      key={order.id} 
-                      order={order} 
-                      onAccept={acceptOrder}
-                      onSelectDetails={(o) => setSelectedOrderDetails(o)}
-                      isActionLoading={actionLoadingId === order.id}
-                    />
-                  ) : (
-                    <ActiveDeliveryCard 
-                      key={order.id} 
-                      order={order} 
-                      onUpdateStatus={updateOrderStatus}
-                      onSelectDetails={(o) => setSelectedOrderDetails(o)}
-                      onOpenChat={(o) => {
-                        setSelectedChatOrder(o);
-                        setUnreadMap(prev => ({ ...prev, [o.id]: 0 }));
-                      }}
-                      unreadCount={unreadMap[order.id] || 0}
-                      isActionLoading={actionLoadingId === order.id}
-                    />
-                  )
-                ))}
-              </div>
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  className="space-y-4 pb-28 lg:pb-6"
+                >
+                  {currentDisplayOrders.map(order => (
+                    activeTab === "available" ? (
+                      <MemoNewDeliveryRequestCard 
+                        key={order.id} 
+                        order={order} 
+                        onAccept={stableAcceptOrder}
+                        onSelectDetails={handleSelectDetails}
+                        isActionLoading={actionLoadingId === order.id}
+                      />
+                    ) : (
+                      <MemoActiveDeliveryCard 
+                        key={order.id} 
+                        order={order} 
+                        onUpdateStatus={stableUpdateStatus}
+                        onSelectDetails={handleSelectDetails}
+                        onOpenChat={handleOpenChat}
+                        unreadCount={unreadMap[order.id] || 0}
+                        isActionLoading={actionLoadingId === order.id}
+                      />
+                    )
+                  ))}
+                </motion.div>
+              </AnimatePresence>
             )}
           </div>
         </div>
@@ -1242,13 +1298,18 @@ export default function DriverDashboardPage() {
           </div>
 
           <MapContainer 
-            key={theme} 
             center={lastLocation ? [lastLocation.lat, lastLocation.lng] : STORE_COORDS} 
             zoom={14} 
             className="w-full h-full z-0" 
             zoomControl={false}
           >
-            <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+            {/* Swap tiles instead of remounting the whole map (key={theme} forced
+                a full Leaflet teardown + re-init, which froze the UI on toggle) */}
+            <TileLayer
+              url={theme === "dark"
+                ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"}
+            />
             
             {/* Store Central Kitchen Marker */}
             <Marker position={STORE_COORDS}>
@@ -1288,34 +1349,93 @@ export default function DriverDashboardPage() {
         </div>
       </main>
 
-      {/* Floating Bottom Nav for Mobile */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 lg:hidden">
-        <div className="flex items-center gap-1 bg-black/90 dark:bg-white text-white dark:text-black p-1.5 rounded-full shadow-2xl backdrop-blur-md border border-white/10 dark:border-black/10">
-          <button 
+      {/* Floating Bottom Dock for Mobile */}
+      <div
+        className="fixed bottom-0 inset-x-0 z-50 lg:hidden px-3 pt-3 pointer-events-none"
+        style={{
+          paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0.75rem))",
+          background: "linear-gradient(to top, rgba(2,6,23,0.22) 0%, rgba(2,6,23,0.08) 55%, transparent 100%)",
+        }}
+      >
+        <nav className="pointer-events-auto mx-auto flex w-full max-w-md items-stretch gap-1 rounded-[26px] border border-slate-200/80 dark:border-white/10 bg-white/92 dark:bg-zinc-900/92 p-1.5 shadow-[0_16px_44px_-14px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+          {/* Orders */}
+          <button
             onClick={() => setMobileView("list")}
+            aria-current={mobileView === "list"}
             className={cn(
-              "flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs uppercase tracking-wider transition-all",
-              mobileView === "list" 
-                ? "bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md shadow-red-600/30" 
-                : "text-slate-400 dark:text-zinc-600 hover:text-white dark:hover:text-black"
+              "relative flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-2 transition-colors duration-200 active:scale-[0.97]",
+              mobileView === "list"
+                ? "text-white"
+                : "text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-100"
             )}
           >
-            <Menu className="size-4 stroke-[2.5]" />
-            Orders ({currentDisplayOrders.length})
+            {mobileView === "list" && (
+              <motion.span
+                layoutId="driverDockPill"
+                className="absolute inset-0 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 shadow-md shadow-red-600/30"
+                transition={{ type: "spring", stiffness: 420, damping: 34 }}
+              />
+            )}
+            <span className="relative flex items-center gap-1.5">
+              <Menu className="size-[18px] stroke-[2.5]" />
+              {currentDisplayOrders.length > 0 && (
+                <span className={cn(
+                  "min-w-[18px] rounded-full px-1 text-[10px] font-black leading-[18px] tabular-nums",
+                  mobileView === "list" ? "bg-white/25 text-white" : "bg-red-500/15 text-red-600 dark:text-red-400"
+                )}>
+                  {currentDisplayOrders.length}
+                </span>
+              )}
+            </span>
+            <span className="relative text-[10px] font-black uppercase tracking-wide">Orders</span>
           </button>
-          <button 
+
+          {/* Live Map */}
+          <button
             onClick={() => setMobileView("map")}
+            aria-current={mobileView === "map"}
             className={cn(
-              "flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs uppercase tracking-wider transition-all",
-              mobileView === "map" 
-                ? "bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md shadow-red-600/30" 
-                : "text-slate-400 dark:text-zinc-600 hover:text-white dark:hover:text-black"
+              "relative flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-2 transition-colors duration-200 active:scale-[0.97]",
+              mobileView === "map"
+                ? "text-white"
+                : "text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-100"
             )}
           >
-            <Map className="size-4 stroke-[2.5]" />
-            Live Map
+            {mobileView === "map" && (
+              <motion.span
+                layoutId="driverDockPill"
+                className="absolute inset-0 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 shadow-md shadow-red-600/30"
+                transition={{ type: "spring", stiffness: 420, damping: 34 }}
+              />
+            )}
+            <span className="relative flex items-center gap-1.5">
+              <Map className="size-[18px] stroke-[2.5]" />
+              {locationActive && (
+                <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              )}
+            </span>
+            <span className="relative text-[10px] font-black uppercase tracking-wide">Live Map</span>
           </button>
-        </div>
+
+          {/* Profile */}
+          <Link
+            to="/driver/profile"
+            className="relative flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-2 text-slate-500 transition-colors duration-200 hover:text-slate-800 active:scale-[0.97] dark:text-zinc-400 dark:hover:text-zinc-100"
+          >
+            <span className="relative">
+              {driver?.profile_photo ? (
+                <img
+                  src={driver.profile_photo}
+                  alt={driver.name}
+                  className="size-[18px] rounded-full object-cover ring-2 ring-red-500/70"
+                />
+              ) : (
+                <User className="size-[18px] stroke-[2.5]" />
+              )}
+            </span>
+            <span className="relative text-[10px] font-black uppercase tracking-wide">Profile</span>
+          </Link>
+        </nav>
       </div>
 
       {/* Full Screen / Sheet Details Modal */}

@@ -216,6 +216,12 @@ input[type="number"] {
   animation: flicker 3s ease-in-out infinite;
 }
 
+/* Skeleton shimmer sweep */
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 /* Text gradient */
 .text-gradient-warm {
   background: linear-gradient(135deg, oklch(0.55 0.22 28) 0%, oklch(0.75 0.18 60) 50%, oklch(0.8 0.16 75) 100%);
