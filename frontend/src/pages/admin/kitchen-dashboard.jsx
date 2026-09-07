@@ -21,6 +21,7 @@ export default function KitchenDashboard() {
   const [products, setProducts] = useState(() => cachedKitchenProducts);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [mobileTab, setMobileTab] = useState("all");
 
   const fetchData = async (isInitial = false) => {
     try {
@@ -197,25 +198,73 @@ export default function KitchenDashboard() {
             LIVE ORDER PREPARATION QUEUE
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Button 
             variant="outline" 
-            onClick={() => window.open("/kitchen/login", "_blank")}
-            className="rounded-xl shrink-0 h-11 border-border/50 hover:bg-primary/5 text-foreground hover:text-primary font-bold shadow-sm transition-all"
+            onClick={() => window.open("/kitchen/dashboard", "_blank")}
+            className="rounded-xl shrink-0 h-10 sm:h-11 px-3 sm:px-4 border-border/50 hover:bg-primary/5 text-foreground hover:text-primary font-bold shadow-sm transition-all text-xs sm:text-sm"
           >
-            <ChefHat className="size-4 mr-2 opacity-70" />
+            <ChefHat className="size-4 mr-1.5 sm:mr-2 opacity-70" />
             Standalone KDS
           </Button>
           <Button 
             variant="outline" 
             onClick={handleRefresh}
             disabled={refreshing}
-            className="rounded-xl shrink-0 h-11 font-bold border-border/50 bg-secondary/30 hover:bg-secondary/80 transition-all"
+            className="rounded-xl shrink-0 h-10 sm:h-11 px-3 sm:px-4 font-bold border-border/50 bg-secondary/30 hover:bg-secondary/80 transition-all text-xs sm:text-sm"
           >
-            <RefreshCw className={cn("size-4 mr-2 opacity-70", refreshing && "animate-spin text-primary opacity-100")} />
+            <RefreshCw className={cn("size-4 mr-1.5 sm:mr-2 opacity-70", refreshing && "animate-spin text-primary opacity-100")} />
             Sync
           </Button>
         </div>
+      </div>
+
+      {/* Mobile Column Tab Switcher */}
+      <div className="md:hidden flex items-center gap-1 p-1 bg-secondary/40 rounded-2xl shrink-0">
+        <button
+          onClick={() => setMobileTab('all')}
+          className={cn(
+            "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all text-center",
+            mobileTab === 'all'
+              ? "bg-card text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          All ({pendingOrders.length + preparingOrders.length + readyOrders.length})
+        </button>
+        <button
+          onClick={() => setMobileTab('pending')}
+          className={cn(
+            "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all text-center",
+            mobileTab === 'pending'
+              ? "bg-card text-blue-600 dark:text-blue-400 shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          To Prepare ({pendingOrders.length})
+        </button>
+        <button
+          onClick={() => setMobileTab('preparing')}
+          className={cn(
+            "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all text-center",
+            mobileTab === 'preparing'
+              ? "bg-card text-orange-600 dark:text-orange-400 shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Cooking ({preparingOrders.length})
+        </button>
+        <button
+          onClick={() => setMobileTab('ready')}
+          className={cn(
+            "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all text-center",
+            mobileTab === 'ready'
+              ? "bg-card text-green-600 dark:text-green-400 shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Ready ({readyOrders.length})
+        </button>
       </div>
 
       {loading ? (
@@ -223,24 +272,31 @@ export default function KitchenDashboard() {
           <div className="size-10 rounded-full border-4 border-primary/30 border-t-primary animate-spin" />
         </div>
       ) : (
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 overflow-hidden pb-4">
+        <div className={cn(
+          "flex-1 overflow-hidden pb-4",
+          "md:grid md:grid-cols-3 md:gap-6",
+          mobileTab === 'all' ? "flex flex-col gap-4 overflow-y-auto" : "flex flex-col"
+        )}>
           
           {/* New / Confirmed Column */}
-          <div className="flex flex-col bg-card/40 backdrop-blur-3xl rounded-[32px] border border-border/40 overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.04)] relative">
+          <div className={cn(
+            "flex flex-col bg-card/40 backdrop-blur-3xl rounded-[32px] border border-border/40 overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.04)] relative h-full min-h-[260px]",
+            mobileTab !== 'all' && mobileTab !== 'pending' && "hidden md:flex"
+          )}>
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 to-indigo-500 opacity-80" />
-            <div className="px-6 py-5 border-b border-border/50 bg-secondary/20 flex items-center justify-between backdrop-blur-md">
-              <h2 className="font-black text-lg text-foreground flex items-center gap-2.5">
-                <Clock className="size-5 text-blue-500" /> To Prepare
+            <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-border/50 bg-secondary/20 flex items-center justify-between backdrop-blur-md shrink-0">
+              <h2 className="font-black text-base sm:text-lg text-foreground flex items-center gap-2.5">
+                <Clock className="size-4 sm:size-5 text-blue-500" /> To Prepare
               </h2>
-              <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-sm font-black px-3.5 py-1 rounded-full shadow-sm">
+              <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-xs sm:text-sm font-black px-3 py-0.5 sm:py-1 rounded-full shadow-sm">
                 {pendingOrders.length}
               </span>
             </div>
-            <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-5 custom-scrollbar">
               {pendingOrders.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-muted-foreground/60 space-y-3">
-                  <Clock className="size-10 opacity-20" />
-                  <p className="text-sm font-bold tracking-wide">Queue is empty</p>
+                <div className="h-full min-h-[140px] flex flex-col items-center justify-center text-muted-foreground/60 space-y-3">
+                  <Clock className="size-8 sm:size-10 opacity-20" />
+                  <p className="text-xs sm:text-sm font-bold tracking-wide">Queue is empty</p>
                 </div>
               ) : (
                 pendingOrders.map(order => <OrderCard key={order.id} order={order} />)
@@ -249,21 +305,24 @@ export default function KitchenDashboard() {
           </div>
 
           {/* Preparing Column */}
-          <div className="flex flex-col bg-card/40 backdrop-blur-3xl rounded-[32px] border border-border/40 overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.04)] relative">
+          <div className={cn(
+            "flex flex-col bg-card/40 backdrop-blur-3xl rounded-[32px] border border-border/40 overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.04)] relative h-full min-h-[260px]",
+            mobileTab !== 'all' && mobileTab !== 'preparing' && "hidden md:flex"
+          )}>
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-400 to-amber-500 opacity-80" />
-            <div className="px-6 py-5 border-b border-border/50 bg-secondary/20 flex items-center justify-between backdrop-blur-md">
-              <h2 className="font-black text-lg text-foreground flex items-center gap-2.5">
-                <Flame className="size-5 text-orange-500" /> Preparing
+            <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-border/50 bg-secondary/20 flex items-center justify-between backdrop-blur-md shrink-0">
+              <h2 className="font-black text-base sm:text-lg text-foreground flex items-center gap-2.5">
+                <Flame className="size-4 sm:size-5 text-orange-500" /> Preparing
               </h2>
-              <span className="bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20 text-sm font-black px-3.5 py-1 rounded-full shadow-sm">
+              <span className="bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20 text-xs sm:text-sm font-black px-3 py-0.5 sm:py-1 rounded-full shadow-sm">
                 {preparingOrders.length}
               </span>
             </div>
-            <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-5 custom-scrollbar">
               {preparingOrders.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-muted-foreground/60 space-y-3">
-                  <Flame className="size-10 opacity-20" />
-                  <p className="text-sm font-bold tracking-wide">No active fires</p>
+                <div className="h-full min-h-[140px] flex flex-col items-center justify-center text-muted-foreground/60 space-y-3">
+                  <Flame className="size-8 sm:size-10 opacity-20" />
+                  <p className="text-xs sm:text-sm font-bold tracking-wide">No active fires</p>
                 </div>
               ) : (
                 preparingOrders.map(order => <OrderCard key={order.id} order={order} />)
@@ -272,21 +331,24 @@ export default function KitchenDashboard() {
           </div>
 
           {/* Ready Column */}
-          <div className="flex flex-col bg-card/40 backdrop-blur-3xl rounded-[32px] border border-border/40 overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.04)] relative">
+          <div className={cn(
+            "flex flex-col bg-card/40 backdrop-blur-3xl rounded-[32px] border border-border/40 overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.04)] relative h-full min-h-[260px]",
+            mobileTab !== 'all' && mobileTab !== 'ready' && "hidden md:flex"
+          )}>
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-teal-500 opacity-80" />
-            <div className="px-6 py-5 border-b border-border/50 bg-secondary/20 flex items-center justify-between backdrop-blur-md">
-              <h2 className="font-black text-lg text-foreground flex items-center gap-2.5">
-                <CheckCircle2 className="size-5 text-emerald-500" /> Ready
+            <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-border/50 bg-secondary/20 flex items-center justify-between backdrop-blur-md shrink-0">
+              <h2 className="font-black text-base sm:text-lg text-foreground flex items-center gap-2.5">
+                <CheckCircle2 className="size-4 sm:size-5 text-emerald-500" /> Ready
               </h2>
-              <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-sm font-black px-3.5 py-1 rounded-full shadow-sm">
+              <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs sm:text-sm font-black px-3 py-0.5 sm:py-1 rounded-full shadow-sm">
                 {readyOrders.length}
               </span>
             </div>
-            <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-5 custom-scrollbar">
               {readyOrders.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-muted-foreground/60 space-y-3">
-                  <CheckCircle2 className="size-10 opacity-20" />
-                  <p className="text-sm font-bold tracking-wide">All clear</p>
+                <div className="h-full min-h-[140px] flex flex-col items-center justify-center text-muted-foreground/60 space-y-3">
+                  <CheckCircle2 className="size-8 sm:size-10 opacity-20" />
+                  <p className="text-xs sm:text-sm font-bold tracking-wide">All clear</p>
                 </div>
               ) : (
                 readyOrders.map(order => <OrderCard key={order.id} order={order} />)

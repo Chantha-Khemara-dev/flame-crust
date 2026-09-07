@@ -903,16 +903,6 @@ export default function DriverDashboardPage() {
             lastKnownDriverMsgsRef.current[ord.id] = lastMsg.id;
           }
         } catch (e) {}
-
-        // Check for incoming voice call
-        try {
-          const callRes = await getActiveCall(ord.id);
-          if (callRes.active && callRes.call?.status === "RINGING" && callRes.call?.receiver_type === "DRIVER") {
-            if (!selectedChatOrder || String(selectedChatOrder.id) !== String(ord.id)) {
-              setSelectedChatOrder(ord);
-            }
-          }
-        } catch (e) {}
       }
     };
 

@@ -71,6 +71,46 @@ export const uploadImageToCloudinary = async (file) => {
   return compressedBase64;
 };
 
+export const uploadAudioToCloudinary = async (audioBlob) => {
+  const cloudName = (import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "gdkctwwo").trim();
+  const uploadPreset = (import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "flameimg").trim();
+
+  // Try uploading to Cloudinary video/upload (Cloudinary stores audio files under video resource type)
+  if (audioBlob && cloudName && uploadPreset) {
+    try {
+      const formData = new FormData();
+      formData.append("file", audioBlob, "voice-message.webm");
+      formData.append("upload_preset", uploadPreset);
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.secure_url) {
+          return data.secure_url;
+        }
+      }
+    } catch (error) {
+      console.warn("Cloudinary audio upload failed, falling back to base64 data URI:", error);
+    }
+  }
+
+  // Reliable fallback: convert audio blob to base64 data URI
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(audioBlob);
+  });
+};
+
+
 // Helper to optimize existing Cloudinary URLs on the fly (for old images)
 export const getOptimizedImageUrl = (url, width = 1200) => {
   if (!url || !url.includes("res.cloudinary.com")) return url;

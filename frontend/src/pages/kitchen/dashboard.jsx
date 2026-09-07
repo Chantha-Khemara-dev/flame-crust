@@ -2,11 +2,21 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { list, update } from "@/lib/api";
 import { toast } from "sonner";
-import { RefreshCw, LogOut, Sun, Moon } from "lucide-react";
+import { 
+  RefreshCw, 
+  LogOut, 
+  Sun, 
+  Moon, 
+  Menu, 
+  LayoutDashboard, 
+  Clock, 
+  Flame, 
+  CheckCircle2 
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-// Import new components
+// Import components
 import { KitchenSidebar } from "./components/Sidebar";
 import { DashboardView } from "./components/DashboardView";
 import { CustomersView } from "./components/CustomersView";
@@ -29,6 +39,7 @@ export default function KitchenDashboard() {
   const [theme, setTheme] = useState(localStorage.getItem("kitchenTheme") || "light");
   const [activeView, setActiveView] = useState('dashboard');
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const toggleTheme = () => setTheme(t => t === 'light' ? 'dark' : 'light');
 
@@ -48,9 +59,9 @@ export default function KitchenDashboard() {
   }, [theme]);
 
   useEffect(() => {
-    const auth = localStorage.getItem("kitchenAuth");
+    const auth = localStorage.getItem("kitchenAuth") || localStorage.getItem("adminAuth");
     if (!auth) {
-      navigate("/kitchen/login", { replace: true });
+      navigate("/login?redirect=/kitchen/dashboard", { replace: true });
       return;
     }
     try {
@@ -58,7 +69,7 @@ export default function KitchenDashboard() {
       if (!parsed.token) throw new Error("No token");
       setUser(parsed);
     } catch {
-      navigate("/kitchen/login", { replace: true });
+      navigate("/login?redirect=/kitchen/dashboard", { replace: true });
     }
   }, [navigate]);
 
@@ -102,7 +113,9 @@ export default function KitchenDashboard() {
 
   const handleSignOut = () => {
     localStorage.removeItem("kitchenAuth");
-    navigate("/kitchen/login");
+    localStorage.removeItem("adminAuth");
+    window.dispatchEvent(new Event("authChanged"));
+    navigate("/login");
   };
 
   const updateOrderStatus = async (orderId, newStatus) => {
@@ -111,7 +124,7 @@ export default function KitchenDashboard() {
       toast.success(`Order #${orderId} moved to ${newStatus.replace(/_/g, " ")}`);
       fetchData();
       
-      // If we have an order selected and we updated it, we should update the selected order too
+      // If we have an order selected and we updated it, update the selected order too
       if (selectedOrder && String(selectedOrder.id) === String(orderId)) {
         setSelectedOrder(prev => ({...prev, status: newStatus}));
       }
@@ -148,7 +161,6 @@ export default function KitchenDashboard() {
     ['READY', 'COMPLETED', 'DELIVERED'].includes(o.status)
   );
   const totalOrdersToday = todaysCompletedOrders.length;
-  
   const todayRevenue = todaysCompletedOrders.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
 
   if (!user) return null;
@@ -156,43 +168,60 @@ export default function KitchenDashboard() {
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 font-sans selection:bg-orange-100 dark:selection:bg-orange-500/30">
       
-      <KitchenSidebar activeView={activeView} setActiveView={setActiveView} user={user} />
+      <KitchenSidebar 
+        activeView={activeView} 
+        setActiveView={setActiveView} 
+        user={user} 
+        mobileOpen={mobileMenuOpen}
+        onCloseMobile={() => setMobileMenuOpen(false)}
+      />
       
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         {/* Top Header */}
-        <header className="h-[calc(env(safe-area-inset-top)+4.5rem)] pt-[env(safe-area-inset-top)] border-b border-slate-200/60 dark:border-white/10 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md flex items-center justify-between px-8 shrink-0 z-10 transition-colors">
-          <div>
-            <h1 className="text-xl font-black text-slate-900 dark:text-zinc-100 tracking-tight capitalize">
-              {activeView.replace('-', ' ')}
-            </h1>
-            <p className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-widest mt-0.5">
-              Live Kitchen Status
-            </p>
+        <header className="h-[calc(env(safe-area-inset-top)+4.25rem)] pt-[env(safe-area-inset-top)] border-b border-slate-200/60 dark:border-white/10 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md flex items-center justify-between px-3 sm:px-6 md:px-8 shrink-0 z-20 transition-colors">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="lg:hidden p-2 rounded-xl bg-white dark:bg-zinc-800 shadow-sm border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 transition-colors"
+              aria-label="Open kitchen menu"
+            >
+              <Menu className="size-5" />
+            </button>
+            <div>
+              <h1 className="text-base sm:text-xl font-black text-slate-900 dark:text-zinc-100 tracking-tight capitalize leading-tight">
+                {activeView.replace('-', ' ')}
+              </h1>
+              <p className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-widest mt-0.5">
+                Live Kitchen Status
+              </p>
+            </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button 
               onClick={toggleTheme}
-              className="p-2.5 rounded-xl bg-white dark:bg-zinc-800 shadow-sm border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 transition-colors"
+              className="p-2 sm:p-2.5 rounded-xl bg-white dark:bg-zinc-800 shadow-sm border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 transition-colors"
               title="Toggle theme"
             >
-              {theme === 'dark' ? <Sun className="size-5" /> : <Moon className="size-5" />}
+              {theme === 'dark' ? <Sun className="size-4 sm:size-5" /> : <Moon className="size-4 sm:size-5" />}
             </button>
 
             <Button 
               variant="outline" 
               onClick={handleRefresh}
               disabled={refreshing}
-              className="rounded-xl h-11 hidden sm:flex font-bold text-slate-600 dark:text-zinc-300 bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 shadow-sm hover:bg-slate-50 dark:hover:bg-zinc-700"
+              className="rounded-xl h-9 sm:h-11 px-2.5 sm:px-4 font-bold text-slate-600 dark:text-zinc-300 bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 shadow-sm hover:bg-slate-50 dark:hover:bg-zinc-700"
+              title="Refresh orders"
             >
-              <RefreshCw className={cn("size-4 mr-2", refreshing && "animate-spin text-blue-600")} />
-              Refresh
+              <RefreshCw className={cn("size-4 sm:mr-2", refreshing && "animate-spin text-blue-600")} />
+              <span className="hidden sm:inline">Refresh</span>
             </Button>
 
             <Button 
-              variant="outline"
+              variant="outline" 
               onClick={handleSignOut}
-              className="rounded-xl h-11 text-slate-600 dark:text-zinc-300 font-bold bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 shadow-sm hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 hover:border-red-200"
+              className="rounded-xl h-9 sm:h-11 px-2.5 sm:px-4 text-slate-600 dark:text-zinc-300 font-bold bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 shadow-sm hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 hover:border-red-200"
+              title="Sign Out"
             >
               <LogOut className="size-4 sm:mr-2" />
               <span className="hidden sm:inline">Sign Out</span>
@@ -201,7 +230,7 @@ export default function KitchenDashboard() {
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-hidden p-6 relative">
+        <main className="flex-1 overflow-hidden p-3 sm:p-5 md:p-6 pb-20 lg:pb-6 relative">
           {loading ? (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="size-12 rounded-full border-4 border-slate-200 dark:border-zinc-800 border-t-orange-500 animate-spin" />
@@ -210,6 +239,8 @@ export default function KitchenDashboard() {
             <>
               {activeView === 'dashboard' || activeView === 'orders' || activeView === 'preparing' || activeView === 'ready' ? (
                 <DashboardView 
+                  activeView={activeView}
+                  setActiveView={setActiveView}
                   pendingOrders={pendingOrders}
                   preparingOrders={preparingOrders}
                   readyOrders={readyOrders}
@@ -236,6 +267,78 @@ export default function KitchenDashboard() {
             </>
           )}
         </main>
+
+        {/* Mobile Bottom Quick Navigation Bar */}
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-white/10 px-2 py-1.5 flex items-center justify-around shadow-lg">
+          <button
+            onClick={() => setActiveView('dashboard')}
+            className={cn(
+              "flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-bold transition-colors min-w-[56px]",
+              activeView === 'dashboard' ? "text-orange-500 font-black" : "text-slate-500 dark:text-zinc-400"
+            )}
+          >
+            <LayoutDashboard className="size-5 mb-0.5" />
+            <span>Board</span>
+          </button>
+          <button
+            onClick={() => setActiveView('orders')}
+            className={cn(
+              "flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-bold transition-colors min-w-[56px] relative",
+              activeView === 'orders' ? "text-blue-500 font-black" : "text-slate-500 dark:text-zinc-400"
+            )}
+          >
+            <div className="relative">
+              <Clock className="size-5 mb-0.5" />
+              {pendingOrders.length > 0 && (
+                <span className="absolute -top-1 -right-2 bg-blue-500 text-white text-[9px] font-black size-4 rounded-full flex items-center justify-center">
+                  {pendingOrders.length}
+                </span>
+              )}
+            </div>
+            <span>New</span>
+          </button>
+          <button
+            onClick={() => setActiveView('preparing')}
+            className={cn(
+              "flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-bold transition-colors min-w-[56px] relative",
+              activeView === 'preparing' ? "text-orange-500 font-black" : "text-slate-500 dark:text-zinc-400"
+            )}
+          >
+            <div className="relative">
+              <Flame className="size-5 mb-0.5" />
+              {preparingOrders.length > 0 && (
+                <span className="absolute -top-1 -right-2 bg-orange-500 text-white text-[9px] font-black size-4 rounded-full flex items-center justify-center">
+                  {preparingOrders.length}
+                </span>
+              )}
+            </div>
+            <span>Cooking</span>
+          </button>
+          <button
+            onClick={() => setActiveView('ready')}
+            className={cn(
+              "flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-bold transition-colors min-w-[56px] relative",
+              activeView === 'ready' ? "text-green-500 font-black" : "text-slate-500 dark:text-zinc-400"
+            )}
+          >
+            <div className="relative">
+              <CheckCircle2 className="size-5 mb-0.5" />
+              {readyOrders.length > 0 && (
+                <span className="absolute -top-1 -right-2 bg-green-500 text-white text-[9px] font-black size-4 rounded-full flex items-center justify-center">
+                  {readyOrders.length}
+                </span>
+              )}
+            </div>
+            <span>Ready</span>
+          </button>
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-bold text-slate-500 dark:text-zinc-400 min-w-[56px]"
+          >
+            <Menu className="size-5 mb-0.5" />
+            <span>More</span>
+          </button>
+        </nav>
       </div>
 
       {/* Side Panel for Order Details */}

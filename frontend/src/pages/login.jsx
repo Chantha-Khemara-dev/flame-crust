@@ -235,7 +235,7 @@ export default function LoginPage() {
         );
         window.dispatchEvent(new Event("authChanged"));
         toast.success(`Welcome Kitchen Staff, ${staff.name || "Staff"}!`);
-        navigate("/admin/kitchen-dashboard", { replace: true });
+        navigate("/kitchen/dashboard", { replace: true });
       } else {
         const customer = data.customer || data.user || data;
         checkProfileAndRedirect(customer, data.token);

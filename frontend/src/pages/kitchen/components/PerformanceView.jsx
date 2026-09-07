@@ -43,23 +43,23 @@ export function PerformanceView({ orders = [] }) {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="mb-6 shrink-0">
-        <h2 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3">
-          <LineChart className="size-6 text-purple-500" /> Kitchen Performance Analytics
+      <div className="mb-4 sm:mb-6 shrink-0">
+        <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2.5 sm:gap-3">
+          <LineChart className="size-5 sm:size-6 text-purple-500" /> Kitchen Performance Analytics
         </h2>
-        <p className="text-sm font-bold text-slate-500 dark:text-zinc-400 mt-1">Monitor efficiency, speed, and overall kitchen rating</p>
+        <p className="text-xs sm:text-sm font-bold text-slate-500 dark:text-zinc-400 mt-0.5">Monitor efficiency, speed, and overall kitchen rating</p>
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
           <StatCard title="Orders Completed" value={completedToday.length} icon={CheckCircle2} color="green" />
           <StatCard title="Avg Prep Time" value={`${avgPrepMins}m ${avgPrepSecs}s`} icon={Clock} color="blue" />
           <StatCard title="Orders per Hour" value={ordersPerHour} icon={TrendingUp} color="orange" />
           <StatCard title="Delayed Orders" value={delayedOrders.length} icon={AlertTriangle} color="red" />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-white/5 shadow-sm">
             <h3 className="font-black text-slate-900 dark:text-white mb-6">Completion Rate vs Goal</h3>
             <div className="h-64 flex items-end justify-between gap-2">
               {weekPercentages.map((val, i) => (

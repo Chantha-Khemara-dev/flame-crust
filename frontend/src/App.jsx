@@ -6,7 +6,6 @@ import { ScrollToTop } from "@/components/shared/scroll-to-top.jsx";
 import { ActiveOrderWidget } from "@/components/food/active-order-widget.jsx";
 import { FlyToCart } from "@/components/shared/fly-to-cart.jsx";
 import { MobileBottomNav } from "@/components/food/mobile-bottom-nav.jsx";
-import { GlobalActiveCallManager } from "@/components/food/global-call-manager.jsx";
 import { SplashScreen } from "@/components/shared/splash-screen.jsx";
 import { API_URL } from "@/lib/api";
 
@@ -161,7 +160,6 @@ export default function App() {
       <SplashScreen />
       <ScrollToTop />
       <Toaster position="top-center" richColors closeButton />
-      <GlobalActiveCallManager />
       {!isStaff && <ActiveOrderWidget />}
       {!isStaff && <FlyToCart />}
       <MobileBottomNav />
@@ -184,7 +182,7 @@ export default function App() {
           <Route path="/driver/login" element={<Navigate to="/driver/dashboard" replace />} />
           <Route path="/driver/dashboard" element={<DriverDashboardPage />} />
           <Route path="/driver/profile" element={<DriverProfilePage />} />
-          <Route path="/kitchen/login" element={<Navigate to="/kitchen/dashboard" replace />} />
+          <Route path="/kitchen/login" element={<Navigate to="/login" replace />} />
           <Route path="/kitchen/dashboard" element={<KitchenDashboardPage />} />
         </Routes>
       </RoleRedirectGuard>

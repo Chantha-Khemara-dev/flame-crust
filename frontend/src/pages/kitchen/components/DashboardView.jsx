@@ -3,13 +3,13 @@ import {
   Clock, 
   Flame, 
   CheckCircle2, 
-  ShoppingBag,
-  TrendingUp,
-  DollarSign,
-  Utensils
+  ShoppingBag, 
+  TrendingUp, 
+  DollarSign, 
+  Utensils,
+  Inbox
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getImageUrl } from "@/lib/food-api";
 import { cn } from "@/lib/utils";
 
 // Helper component for elapsed time
@@ -20,7 +20,7 @@ function ElapsedTimer({ startTime }) {
     const calc = () => {
       const now = new Date();
       const start = new Date(startTime);
-      const diffInSecs = Math.floor((now - start) / 1000);
+      const diffInSecs = Math.max(0, Math.floor((now - start) / 1000));
       const m = Math.floor(diffInSecs / 60);
       const s = diffInSecs % 60;
       setElapsed(`${m}:${s.toString().padStart(2, '0')}`);
@@ -33,94 +33,187 @@ function ElapsedTimer({ startTime }) {
   return <span className="font-mono">{elapsed}</span>;
 }
 
-export function DashboardView({ pendingOrders, preparingOrders, readyOrders, updateOrderStatus, onOrderClick, todayRevenue, totalOrdersToday }) {
+export function DashboardView({ 
+  activeView = 'dashboard',
+  setActiveView,
+  pendingOrders = [], 
+  preparingOrders = [], 
+  readyOrders = [], 
+  updateOrderStatus, 
+  onOrderClick, 
+  todayRevenue = 0, 
+  totalOrdersToday = 0 
+}) {
+  const [mobileTab, setMobileTab] = useState(() => {
+    if (activeView === 'orders') return 'pending';
+    if (activeView === 'preparing') return 'preparing';
+    if (activeView === 'ready') return 'ready';
+    return 'all';
+  });
+
+  useEffect(() => {
+    if (activeView === 'orders') setMobileTab('pending');
+    else if (activeView === 'preparing') setMobileTab('preparing');
+    else if (activeView === 'ready') setMobileTab('ready');
+  }, [activeView]);
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Top Statistics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6 shrink-0">
-        <StatCard title="Today's Orders" value={totalOrdersToday || 0} icon={ShoppingBag} color="blue" />
+      {/* Top Statistics Cards - Horizontal scroll on mobile, grid on sm+ */}
+      <div className="flex sm:grid overflow-x-auto sm:overflow-visible no-scrollbar grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4 mb-3 sm:mb-6 shrink-0 pb-1 sm:pb-0">
+        <StatCard title="Today's Orders" value={totalOrdersToday} icon={ShoppingBag} color="blue" />
         <StatCard title="Preparing" value={preparingOrders.length} icon={Flame} color="orange" />
         <StatCard title="Ready" value={readyOrders.length} icon={CheckCircle2} color="green" />
         <StatCard title="Delayed" value="0" icon={Clock} color="red" />
         <StatCard title="Avg Prep Time" value="14 min" icon={Utensils} color="indigo" />
-        <StatCard title="Revenue Today" value={`$${(todayRevenue || 0).toFixed(2)}`} icon={DollarSign} color="emerald" />
+        <StatCard title="Revenue Today" value={`$${Number(todayRevenue || 0).toFixed(2)}`} icon={DollarSign} color="emerald" />
       </div>
 
-      {/* Kanban Board Columns */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 overflow-hidden">
+      {/* Mobile Column Switcher (Visible on small screens) */}
+      <div className="md:hidden flex items-center gap-1 p-1 bg-slate-200/80 dark:bg-zinc-900 rounded-2xl mb-3 shrink-0">
+        <button
+          onClick={() => setMobileTab('all')}
+          className={cn(
+            "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all text-center",
+            mobileTab === 'all'
+              ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm"
+              : "text-slate-600 dark:text-zinc-400 hover:text-slate-900"
+          )}
+        >
+          All ({pendingOrders.length + preparingOrders.length + readyOrders.length})
+        </button>
+        <button
+          onClick={() => setMobileTab('pending')}
+          className={cn(
+            "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all text-center",
+            mobileTab === 'pending'
+              ? "bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-sm"
+              : "text-slate-600 dark:text-zinc-400 hover:text-slate-900"
+          )}
+        >
+          New ({pendingOrders.length})
+        </button>
+        <button
+          onClick={() => setMobileTab('preparing')}
+          className={cn(
+            "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all text-center",
+            mobileTab === 'preparing'
+              ? "bg-white dark:bg-zinc-800 text-orange-600 dark:text-orange-400 shadow-sm"
+              : "text-slate-600 dark:text-zinc-400 hover:text-slate-900"
+          )}
+        >
+          Cooking ({preparingOrders.length})
+        </button>
+        <button
+          onClick={() => setMobileTab('ready')}
+          className={cn(
+            "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all text-center",
+            mobileTab === 'ready'
+              ? "bg-white dark:bg-zinc-800 text-green-600 dark:text-green-400 shadow-sm"
+              : "text-slate-600 dark:text-zinc-400 hover:text-slate-900"
+          )}
+        >
+          Ready ({readyOrders.length})
+        </button>
+      </div>
+
+      {/* Kanban Board Columns - Responsive Layout */}
+      <div className={cn(
+        "flex-1 overflow-hidden",
+        "md:grid md:grid-cols-3 md:gap-6",
+        mobileTab === 'all' ? "flex flex-col gap-4 overflow-y-auto pb-4 md:pb-0" : "flex flex-col"
+      )}>
         
         {/* NEW / TO PREPARE */}
-        <Column 
-          title="To Prepare" 
-          count={pendingOrders.length} 
-          icon={Clock} 
-          colorClass="text-blue-500"
-          bgClass="bg-blue-50 dark:bg-blue-900/20"
-        >
-          {pendingOrders.map(order => (
-            <OrderCard 
-              key={order.id} 
-              order={order} 
-              onClick={() => onOrderClick(order)}
-              action={
-                <Button 
-                  onClick={(e) => { e.stopPropagation(); updateOrderStatus(order.id, "PREPARING"); }}
-                  className="w-full h-12 rounded-xl bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-500/20 font-bold border border-orange-200 dark:border-orange-500/20"
-                >
-                  <Flame className="size-4 mr-2" /> Start Preparing
-                </Button>
-              }
-            />
-          ))}
-        </Column>
+        <div className={cn(
+          "h-full",
+          mobileTab !== 'all' && mobileTab !== 'pending' && "hidden md:block"
+        )}>
+          <Column 
+            title="To Prepare" 
+            count={pendingOrders.length} 
+            icon={Clock} 
+            colorClass="text-blue-500"
+            bgClass="bg-blue-50/50 dark:bg-blue-900/10"
+            emptyText="No pending tickets in queue"
+          >
+            {pendingOrders.map(order => (
+              <OrderCard 
+                key={order.id} 
+                order={order} 
+                onClick={() => onOrderClick(order)}
+                action={
+                  <Button 
+                    onClick={(e) => { e.stopPropagation(); updateOrderStatus(order.id, "PREPARING"); }}
+                    className="w-full h-11 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-sm transition-transform active:scale-[0.99]"
+                  >
+                    <Flame className="size-4 mr-2" /> Start Preparing
+                  </Button>
+                }
+              />
+            ))}
+          </Column>
+        </div>
 
         {/* PREPARING */}
-        <Column 
-          title="Preparing" 
-          count={preparingOrders.length} 
-          icon={Flame} 
-          colorClass="text-orange-500"
-          bgClass="bg-orange-50 dark:bg-orange-900/20"
-        >
-          {preparingOrders.map(order => (
-            <OrderCard 
-              key={order.id} 
-              order={order} 
-              onClick={() => onOrderClick(order)}
-              showTimer
-              action={
-                <Button 
-                  onClick={(e) => { e.stopPropagation(); updateOrderStatus(order.id, "READY"); }}
-                  className="w-full h-12 rounded-xl bg-green-500 hover:bg-green-600 text-white font-bold"
-                >
-                  <CheckCircle2 className="size-4 mr-2" /> Mark as Ready
-                </Button>
-              }
-            />
-          ))}
-        </Column>
+        <div className={cn(
+          "h-full",
+          mobileTab !== 'all' && mobileTab !== 'preparing' && "hidden md:block"
+        )}>
+          <Column 
+            title="Preparing" 
+            count={preparingOrders.length} 
+            icon={Flame} 
+            colorClass="text-orange-500"
+            bgClass="bg-orange-50/50 dark:bg-orange-900/10"
+            emptyText="No active cooking tickets"
+          >
+            {preparingOrders.map(order => (
+              <OrderCard 
+                key={order.id} 
+                order={order} 
+                onClick={() => onOrderClick(order)}
+                showTimer
+                action={
+                  <Button 
+                    onClick={(e) => { e.stopPropagation(); updateOrderStatus(order.id, "READY"); }}
+                    className="w-full h-11 rounded-xl bg-green-500 hover:bg-green-600 text-white font-bold shadow-sm transition-transform active:scale-[0.99]"
+                  >
+                    <CheckCircle2 className="size-4 mr-2" /> Mark as Ready
+                  </Button>
+                }
+              />
+            ))}
+          </Column>
+        </div>
 
         {/* READY */}
-        <Column 
-          title="Ready" 
-          count={readyOrders.length} 
-          icon={CheckCircle2} 
-          colorClass="text-green-500"
-          bgClass="bg-green-50 dark:bg-green-900/20"
-        >
-          {readyOrders.map(order => (
-            <OrderCard 
-              key={order.id} 
-              order={order} 
-              onClick={() => onOrderClick(order)}
-              action={
-                <div className="w-full h-12 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 flex items-center justify-center font-bold text-sm border border-slate-200 dark:border-zinc-700">
-                  <ShoppingBag className="size-4 mr-2" /> Waiting for Driver
-                </div>
-              }
-            />
-          ))}
-        </Column>
+        <div className={cn(
+          "h-full",
+          mobileTab !== 'all' && mobileTab !== 'ready' && "hidden md:block"
+        )}>
+          <Column 
+            title="Ready" 
+            count={readyOrders.length} 
+            icon={CheckCircle2} 
+            colorClass="text-green-500"
+            bgClass="bg-green-50/50 dark:bg-green-900/10"
+            emptyText="No orders ready for pickup"
+          >
+            {readyOrders.map(order => (
+              <OrderCard 
+                key={order.id} 
+                order={order} 
+                onClick={() => onOrderClick(order)}
+                action={
+                  <div className="w-full h-11 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 flex items-center justify-center font-bold text-xs sm:text-sm border border-slate-200/80 dark:border-zinc-700">
+                    <ShoppingBag className="size-4 mr-2 text-green-500" /> Waiting for Driver
+                  </div>
+                }
+              />
+            ))}
+          </Column>
+        </div>
 
       </div>
     </div>
@@ -138,31 +231,40 @@ function StatCard({ title, value, icon: Icon, color }) {
   };
 
   return (
-    <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">{title}</span>
-        <div className={cn("p-1.5 rounded-lg border", colorMap[color])}>
-          <Icon className="size-4" />
+    <div className="bg-white dark:bg-zinc-900 p-3 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-white/5 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow min-w-[135px] sm:min-w-0 shrink-0 sm:shrink">
+      <div className="flex items-center justify-between gap-2 mb-1.5 sm:mb-2">
+        <span className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider truncate">{title}</span>
+        <div className={cn("p-1.5 rounded-lg border shrink-0", colorMap[color])}>
+          <Icon className="size-3.5 sm:size-4" />
         </div>
       </div>
-      <div className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{value}</div>
+      <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">{value}</div>
     </div>
   );
 }
 
-function Column({ title, count, icon: Icon, colorClass, bgClass, children }) {
+function Column({ title, count, icon: Icon, colorClass, bgClass, emptyText, children }) {
+  const hasChildren = Array.isArray(children) ? children.length > 0 : Boolean(children);
+
   return (
-    <div className={cn("flex flex-col rounded-3xl border border-slate-200 dark:border-white/5 overflow-hidden transition-colors h-full", bgClass)}>
-      <div className="px-5 py-4 border-b border-slate-200/60 dark:border-white/5 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-md flex items-center justify-between shrink-0">
-        <h2 className="font-bold text-lg text-slate-900 dark:text-zinc-100 flex items-center gap-2">
-          <Icon className={cn("size-5", colorClass)} /> {title}
+    <div className={cn("flex flex-col rounded-3xl border border-slate-200/80 dark:border-white/10 overflow-hidden transition-colors h-full min-h-[260px]", bgClass)}>
+      <div className="px-4 sm:px-5 py-3.5 sm:py-4 border-b border-slate-200/60 dark:border-white/5 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md flex items-center justify-between shrink-0">
+        <h2 className="font-bold text-base sm:text-lg text-slate-900 dark:text-zinc-100 flex items-center gap-2">
+          <Icon className={cn("size-4 sm:size-5", colorClass)} /> {title}
         </h2>
-        <span className="bg-slate-200 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 text-sm font-black px-3 py-1 rounded-full">
+        <span className="bg-slate-200 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 text-xs sm:text-sm font-black px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full">
           {count}
         </span>
       </div>
-      <div className="flex-1 p-4 overflow-y-auto custom-scrollbar flex flex-col gap-4">
-        {children}
+      <div className="flex-1 p-3 sm:p-4 overflow-y-auto custom-scrollbar flex flex-col gap-3 sm:gap-4">
+        {hasChildren ? (
+          children
+        ) : (
+          <div className="flex-1 min-h-[140px] flex flex-col items-center justify-center text-center p-6 text-slate-400 dark:text-zinc-500">
+            <Inbox className="size-8 sm:size-10 mb-2 opacity-40" />
+            <p className="text-xs sm:text-sm font-bold">{emptyText || "No orders"}</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -172,23 +274,25 @@ function OrderCard({ order, onClick, action, showTimer }) {
   return (
     <div 
       onClick={onClick}
-      className="bg-white dark:bg-zinc-900 rounded-2xl p-4 shadow-sm border border-slate-200 dark:border-white/5 cursor-pointer hover:shadow-md hover:border-orange-500/50 transition-all flex flex-col group"
+      className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 sm:p-4 shadow-sm border border-slate-200/80 dark:border-white/5 cursor-pointer hover:shadow-md hover:border-orange-500/50 transition-all flex flex-col group"
     >
-      <div className="flex justify-between items-start mb-3 border-b border-slate-100 dark:border-white/5 pb-3">
+      <div className="flex justify-between items-start mb-3 border-b border-slate-100 dark:border-white/5 pb-2.5">
         <div>
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Order</span>
-          <h3 className="text-xl font-black text-slate-900 dark:text-zinc-100 leading-none">#{order.order_number || order.id}</h3>
+          <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-zinc-100 leading-none">
+            #{order.order_number ? (order.order_number.length > 8 ? order.order_number.slice(-6) : order.order_number) : order.id}
+          </h3>
         </div>
         <div className="text-right flex flex-col items-end">
           {showTimer ? (
-             <div className="flex items-center gap-1.5 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-1 rounded-lg text-sm font-bold border border-orange-200 dark:border-orange-500/20">
-               <Flame className="size-3.5 animate-pulse" />
+             <div className="flex items-center gap-1.5 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-1 rounded-lg text-xs sm:text-sm font-bold border border-orange-200 dark:border-orange-500/20">
+               <Flame className="size-3.5 animate-pulse text-orange-500" />
                <ElapsedTimer startTime={order.updated_at || order.created_at} />
              </div>
           ) : (
             <>
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Time</span>
-              <div className="flex items-center gap-1 text-sm font-bold text-slate-700 dark:text-zinc-300">
+              <div className="flex items-center gap-1 text-xs sm:text-sm font-bold text-slate-700 dark:text-zinc-300">
                 <Clock className="size-3.5" />
                 {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </div>
@@ -207,25 +311,25 @@ function OrderCard({ order, onClick, action, showTimer }) {
            <div className="flex justify-between items-center mt-1.5">
               <span className="text-xs font-bold text-slate-500">Preparing...</span>
               <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-slate-400">
-                 <div className="size-4 rounded-full bg-slate-200 dark:bg-zinc-700 flex items-center justify-center text-[8px] text-slate-600">C</div>
-                 Chef Khen
+                 <div className="size-4 rounded-full bg-slate-200 dark:bg-zinc-700 flex items-center justify-center text-[8px] text-slate-600 font-bold">C</div>
+                 Chef
               </div>
            </div>
         </div>
       )}
 
-      <div className="flex-1 space-y-2 mb-4">
+      <div className="flex-1 space-y-2 mb-3 sm:mb-4">
         {order.items?.map((item, idx) => (
           <div key={idx} className="flex gap-2 items-center">
             <div className="bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 px-1.5 py-0.5 rounded text-xs font-black min-w-[24px] text-center shrink-0">
               {item.quantity}x
             </div>
-            <span className="font-bold text-sm text-slate-800 dark:text-zinc-200 truncate">{item.product_name}</span>
+            <span className="font-bold text-xs sm:text-sm text-slate-800 dark:text-zinc-200 truncate">{item.product_name}</span>
           </div>
         ))}
       </div>
 
-      <div className="mt-auto">
+      <div className="mt-auto pt-1">
         {action}
       </div>
     </div>
