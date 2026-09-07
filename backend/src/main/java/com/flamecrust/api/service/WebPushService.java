@@ -87,7 +87,7 @@ public class WebPushService {
                     new Subscription.Keys(sub.getP256dh(), sub.getAuth())
             );
 
-            Notification notification = new Notification(subscription, jsonPayload);
+            Notification notification = new Notification(subscription, jsonPayload, nl.martijndwars.webpush.Urgency.HIGH);
             HttpResponse response = pushService.send(notification);
             int statusCode = response.getStatusLine().getStatusCode();
 
