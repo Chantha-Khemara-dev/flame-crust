@@ -12,6 +12,7 @@ import { list, get, update, getDriverMe, updateDriverLocation, getOrderMessages,
 import { OrderChatModal, showChatNotificationToast } from "@/components/food/order-chat-modal";
 import { FloatingChatHead } from "@/components/food/floating-chat-head";
 import { PushNotificationButton } from "@/components/common/PushNotificationButton";
+import { PushNotificationPromptModal } from "@/components/common/PushNotificationPromptModal";
 import { cn } from "@/lib/utils";
 
 // Leaflet imports
@@ -1336,6 +1337,9 @@ export default function DriverDashboardPage() {
           }}
         />
       )}
+
+      {/* Automatic Push Notification Prompt Modal */}
+      <PushNotificationPromptModal userType="DRIVER" userId={driver?.id} autoOpenDelay={800} />
 
     </div>
   );

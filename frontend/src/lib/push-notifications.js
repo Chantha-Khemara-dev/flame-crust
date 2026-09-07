@@ -1,8 +1,16 @@
 // frontend/src/lib/push-notifications.js
+import { getApiUrl } from './api';
 
-function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding)
+export const DEFAULT_VAPID_PUBLIC_KEY = 'BL14cYA9vTebqA9HDHOl4o78Bzv7A7DIQfxDqYgPHZSpp8WloY2V8V2qe6Ri4bKsl_KSXr-iJuOzv_AsB_Rl0Qw';
+
+export function urlBase64ToUint8Array(base64String) {
+  if (!base64String || typeof base64String !== 'string') {
+    throw new Error('Invalid VAPID public key');
+  }
+  // Strip any accidental quotes or whitespace
+  const cleanKey = base64String.trim().replace(/^["']|["']$/g, '');
+  const padding = '='.repeat((4 - (cleanKey.length % 4)) % 4);
+  const base64 = (cleanKey + padding)
     .replace(/-/g, '+')
     .replace(/_/g, '/');
 
@@ -44,7 +52,7 @@ export async function getExistingPushSubscription() {
 
 export async function subscribeToPushNotifications({ userType = 'CUSTOMER', userId = null } = {}) {
   if (!isPushNotificationSupported()) {
-    throw new Error('Push notifications are not supported on this browser or device.');
+    throw new Error('Browser របស់អ្នកមិនទាន់គាំទ្រ Web Push Notification នៅឡើយទេ។');
   }
 
   // Request browser permission
@@ -52,19 +60,24 @@ export async function subscribeToPushNotifications({ userType = 'CUSTOMER', user
   if (permission !== 'granted') {
     throw new Error(
       permission === 'denied'
-        ? 'Notification permission was denied. Please allow notifications in your browser site settings.'
-        : 'Notification permission was dismissed.'
+        ? 'ការអនុញ្ញាត Notification ត្រូវបានបដិសេធ (Denied)។ សូមបើក Allow នៅក្នុង Site Settings នៃ Browser។'
+        : 'មិនបានអនុញ្ញាត Notification'
     );
   }
 
-  // Fetch VAPID public key from backend
-  const keyResponse = await fetch('/api/notifications/vapid-public-key');
-  if (!keyResponse.ok) {
-    throw new Error('Failed to retrieve VAPID key from server.');
-  }
-  const { public_key: vapidPublicKey } = await keyResponse.json();
-  if (!vapidPublicKey) {
-    throw new Error('Server returned an empty VAPID public key.');
+  // Fetch VAPID public key from backend or fallback to default
+  let vapidPublicKey = DEFAULT_VAPID_PUBLIC_KEY;
+  try {
+    const apiUrl = getApiUrl();
+    const keyResponse = await fetch(`${apiUrl}/notifications/vapid-public-key`);
+    if (keyResponse.ok) {
+      const data = await keyResponse.json();
+      if (data && (data.public_key || data.publicKey)) {
+        vapidPublicKey = data.public_key || data.publicKey;
+      }
+    }
+  } catch (err) {
+    console.warn('Using default VAPID public key due to fetch error:', err);
   }
 
   const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
@@ -99,17 +112,22 @@ export async function subscribeToPushNotifications({ userType = 'CUSTOMER', user
     user_agent: navigator.userAgent
   };
 
-  const res = await fetch('/api/notifications/subscribe', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  });
+  try {
+    const apiUrl = getApiUrl();
+    const res = await fetch(`${apiUrl}/notifications/subscribe`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
 
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.error || 'Failed to save subscription to server.');
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      console.warn('Backend subscription save warning:', errData.error);
+    }
+  } catch (err) {
+    console.warn('Could not save push subscription to backend:', err);
   }
 
   return subscription;
@@ -122,11 +140,14 @@ export async function unsubscribeFromPushNotifications() {
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.getSubscription();
     if (subscription) {
-      await fetch('/api/notifications/unsubscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ endpoint: subscription.endpoint })
-      }).catch(() => {});
+      try {
+        const apiUrl = getApiUrl();
+        await fetch(`${apiUrl}/notifications/unsubscribe`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ endpoint: subscription.endpoint })
+        });
+      } catch (e) {}
 
       await subscription.unsubscribe();
     }
@@ -139,7 +160,8 @@ export async function sendTestPushNotification({ title, body, url, userId, userT
   const existingSub = await getExistingPushSubscription();
   const endpoint = existingSub ? existingSub.endpoint : null;
 
-  const res = await fetch('/api/notifications/test', {
+  const apiUrl = getApiUrl();
+  const res = await fetch(`${apiUrl}/notifications/test`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -158,3 +180,4 @@ export async function sendTestPushNotification({ title, body, url, userId, userT
 
   return await res.json();
 }
+

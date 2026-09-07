@@ -29,6 +29,7 @@ import { OrderChatModal, showChatNotificationToast } from "@/components/food/ord
 import { FloatingChatHead } from "@/components/food/floating-chat-head";
 import { list, get, update, getOrderMessages } from "@/lib/api";
 import { PushNotificationButton } from "@/components/common/PushNotificationButton";
+import { PushNotificationPromptModal } from "@/components/common/PushNotificationPromptModal";
 import { cn, formatDate } from "@/lib/utils";
 import { getImageUrl } from "@/lib/food-api";
 import { useTheme } from "@/components/theme-provider.jsx";
@@ -957,6 +958,9 @@ export default function OrderTrackingPage() {
           }}
         />
       )}
+
+      {/* Automatic Push Notification Prompt Modal for Customer */}
+      <PushNotificationPromptModal userType="CUSTOMER" userId={order?.customerId || order?.customer_id} autoOpenDelay={1200} />
     </div>
   );
 }
