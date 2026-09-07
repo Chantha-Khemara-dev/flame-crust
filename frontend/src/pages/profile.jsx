@@ -42,6 +42,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { PageTransition } from "@/components/shared/page-transition";
 import { MapPicker } from "@/components/food/map-picker";
 import { list, create, update, remove, API_URL } from "@/lib/api";
+import { unsubscribeFromPushNotifications } from "@/lib/push-notifications";
 import { getImageUrl } from "@/lib/food-api";
 import { useCart } from "@/lib/cart-store";
 import { useTheme } from "@/components/theme-provider.jsx";
@@ -662,7 +663,12 @@ export default function ProfilePage() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await unsubscribeFromPushNotifications();
+    } catch (e) {
+      console.error("Failed to unsubscribe push:", e);
+    }
     localStorage.removeItem("customerAuth");
     localStorage.removeItem("adminAuth");
     localStorage.removeItem("driverAuth");

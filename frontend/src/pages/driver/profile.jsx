@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { getDriverMe, updateDriverProfile, list } from "@/lib/api";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { cn } from "@/lib/utils";
+import { unsubscribeFromPushNotifications } from "@/lib/push-notifications";
 
 // ── Shared design primitives ────────────────────────────────────────────────
 // One radius scale (3xl card / 2xl inner / xl control) and token colours only,
@@ -366,7 +367,12 @@ export default function DriverProfilePage() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await unsubscribeFromPushNotifications();
+    } catch (e) {
+      console.error("Failed to unsubscribe push:", e);
+    }
     localStorage.removeItem("driverAuth");
     window.dispatchEvent(new Event("authChanged"));
     toast.success("Signed out successfully");

@@ -46,6 +46,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import AdminChangePasswordDialog from "./change-password-dialog.jsx";
+import { unsubscribeFromPushNotifications } from "@/lib/push-notifications";
 
 const iconMap = {
   dashboard: LayoutDashboard,
@@ -131,7 +132,12 @@ function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
 
   const handleNav = () => onNavigate?.();
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    try {
+      await unsubscribeFromPushNotifications();
+    } catch (e) {
+      console.error("Failed to unsubscribe push:", e);
+    }
     localStorage.removeItem("adminAuth");
     localStorage.removeItem("customerAuth");
     window.location.href = "/login";

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { list, update } from "@/lib/api";
+import { unsubscribeFromPushNotifications } from "@/lib/push-notifications";
 import { toast } from "sonner";
 import { 
   RefreshCw, 
@@ -111,7 +112,12 @@ export default function KitchenDashboard() {
     fetchData();
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    try {
+      await unsubscribeFromPushNotifications();
+    } catch (e) {
+      console.error("Failed to unsubscribe push:", e);
+    }
     localStorage.removeItem("kitchenAuth");
     localStorage.removeItem("adminAuth");
     window.dispatchEvent(new Event("authChanged"));

@@ -51,7 +51,22 @@ import { cn } from "@/lib/utils";
 import { QRCodeCanvas } from "qrcode.react";
 import { BakongKHQR, IndividualInfo } from "bakong-khqr";
 
-const DELIVERY_FEE = 3.99;
+// Dynamic delivery fee calculation
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
+  const R = 6371; // Earth radius in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+  return R * c; 
+}
+const STORE_LAT = 11.5564;
+const STORE_LNG = 104.9282;
+
 const FREE_DELIVERY_THRESHOLD = 25;
 
 const paymentMethods = [
@@ -108,6 +123,8 @@ function CheckoutPage() {
   const [showCouponModal, setShowCouponModal] = useState(false);
   const [allCoupons, setAllCoupons] = useState([]);
   const [loadingCoupons, setLoadingCoupons] = useState(false);
+  const [deliveryDistance, setDeliveryDistance] = useState(0);
+  const [calculatedDeliveryFee, setCalculatedDeliveryFee] = useState(1.00);
 
   const fetchCoupons = async () => {
     try {
@@ -224,7 +241,7 @@ function CheckoutPage() {
     setValue("notes", addr.notes || "");
   };
 
-  const saveAddressToLocal = (address, city, label = "Home", fullName = "", phone = "") => {
+  const saveAddressToLocal = (address, city, label = "Home", fullName = "", phone = "", lat = null, lng = null) => {
     if (!address?.trim()) return;
     const newAddr = {
       id: `local-${Date.now()}`,
@@ -233,6 +250,8 @@ function CheckoutPage() {
       city: city || "Phnom Penh",
       full_name: fullName,
       phone: phone,
+      latitude: lat,
+      longitude: lng,
       is_default: savedAddresses.length === 0,
       saved_at: new Date().toISOString()
     };
@@ -270,7 +289,7 @@ function CheckoutPage() {
               setValue("city", detectedCity);
               const fn = getValues("fullName") || "";
               const ph = getValues("phone") || "";
-              saveAddressToLocal(detectedAddress, detectedCity, "Auto Location", fn, ph);
+              saveAddressToLocal(detectedAddress, detectedCity, "Auto Location", fn, ph, latitude, longitude);
               toast.success("Location auto-detected and saved!");
           }
         } catch (err) {
@@ -286,6 +305,23 @@ function CheckoutPage() {
     );
   };
 
+  useEffect(() => {
+    const addr = savedAddresses.find(a => a.id === selectedAddressId);
+    let fee = 1.00;
+    let dist = 0;
+    if (addr && addr.latitude && addr.longitude) {
+      dist = calculateDistance(STORE_LAT, STORE_LNG, addr.latitude, addr.longitude);
+      if (dist <= 3) {
+        fee = 0.50;
+      } else {
+        fee = 0.50 + ((dist - 3) * 0.20);
+      }
+      if (fee > 15) fee = 15;
+    }
+    setDeliveryDistance(dist);
+    setCalculatedDeliveryFee(fee);
+  }, [selectedAddressId, savedAddresses]);
+
   const grossSubtotal = lines.reduce((s, l) => s + l.price * l.qty, 0);
   const isCouponValid = coupon && (!coupon.min_order_amount || grossSubtotal >= Number(coupon.min_order_amount));
   const discount = isCouponValid
@@ -299,7 +335,7 @@ function CheckoutPage() {
   const itemCount = lines.reduce((s, l) => s + l.qty, 0);
   const deliveryFee = (isCouponValid && coupon.discount_type === "FREE_DELIVERY") 
     ? 0 
-    : (subtotal === 0 ? 0 : DELIVERY_FEE);
+    : (subtotal === 0 ? 0 : calculatedDeliveryFee);
   const total = subtotal + deliveryFee;
 
   const [qrCodeString, setQrCodeString] = useState("");
@@ -602,6 +638,8 @@ function CheckoutPage() {
             address_line: `${address1}${address2 ? `, ${address2}` : ""}`,
             city: city || "Phnom Penh",
             notes: notes || null,
+            latitude: savedAddresses.find(a => a.id === selectedAddressId)?.latitude || null,
+            longitude: savedAddresses.find(a => a.id === selectedAddressId)?.longitude || null,
             is_default: true,
           });
           addressId = address?.id;
@@ -872,7 +910,9 @@ function CheckoutPage() {
                           </div>
                         )}
                         <div className="flex justify-between text-muted-foreground">
-                          <span>Delivery Fee</span>
+                          <span className="flex items-center gap-1">
+                            Delivery Fee {deliveryDistance > 0 && <span className="text-[10px]">({deliveryDistance.toFixed(1)} km)</span>}
+                          </span>
                           <span className={cn("font-medium", deliveryFee === 0 ? "text-green-600 dark:text-green-400" : "text-foreground")}>
                             {deliveryFee === 0 ? "FREE" : `$${deliveryFee.toFixed(2)}`}
                           </span>
@@ -1404,20 +1444,24 @@ function CheckoutPage() {
                   </div>
 
                   {/* Cost breakdown */}
-                  <div className="border-t border-border/60 pt-4 space-y-2 text-xs">
-                    <div className="flex justify-between text-muted-foreground">
+                  <div className="space-y-2 border-t border-border/40 pt-3">
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
                       <span>Subtotal</span>
-                      <span className="font-semibold text-foreground">${grossSubtotal.toFixed(2)}</span>
+                      <span className="font-medium text-foreground">${grossSubtotal.toFixed(2)}</span>
                     </div>
                     {coupon && (
-                      <div className="flex justify-between text-green-600 dark:text-green-400 font-semibold">
-                        <span>Discount ({coupon.code})</span>
+                      <div className="flex items-center justify-between text-sm text-green-600 dark:text-green-400 font-medium">
+                        <span className="flex items-center gap-1">
+                          <Ticket className="size-4" /> Discount ({coupon.code})
+                        </span>
                         <span>-${discount.toFixed(2)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>Delivery Fee</span>
-                      <span className={cn("font-semibold", deliveryFee === 0 ? "text-green-600 dark:text-green-400" : "text-foreground")}>
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        Delivery Fee {deliveryDistance > 0 && <span className="text-xs">({deliveryDistance.toFixed(1)} km)</span>}
+                      </span>
+                      <span className={cn("font-medium", deliveryFee === 0 ? "text-green-600 dark:text-green-400" : "text-foreground")}>
                         {deliveryFee === 0 ? "FREE" : `$${deliveryFee.toFixed(2)}`}
                       </span>
                     </div>
@@ -1608,7 +1652,7 @@ function CheckoutPage() {
                 if (pinnedCity) setValue("city", pinnedCity);
                 const fn = getValues("fullName") || "";
                 const ph = getValues("phone") || "";
-                saveAddressToLocal(pinnedAddress, pinnedCity, "Pinned Location", fn, ph);
+                saveAddressToLocal(pinnedAddress, pinnedCity, "Pinned Location", fn, ph, loc.lat, loc.lng);
                 setShowMapModal(false);
                 toast.success("Location pinned and saved from map!");
               }}
