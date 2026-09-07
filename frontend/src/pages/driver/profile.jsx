@@ -1,21 +1,146 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ArrowLeft, User, Mail, Phone, ShieldCheck, Car, Calendar, Star, 
-  CheckCircle, Package, Edit, Key, LogOut, Camera, Loader2, X, 
-  Check, Eye, EyeOff, Bike, MapPin, Sparkles, AlertCircle,
-  Sun, Moon, DollarSign, Award, Bell, RefreshCw, Zap, Flame, Crown, ChevronRight,
-  Shield, CheckCircle2, TrendingUp, Navigation
+import {
+  ArrowLeft, User, Mail, Phone, ShieldCheck, Calendar, Star,
+  CheckCircle2, Package, Edit, Key, LogOut, Camera, Loader2,
+  Check, Eye, EyeOff, Bike, MapPin, AlertCircle, X,
+  Sun, Moon, DollarSign, ChevronRight, TrendingUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter,
+  DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { ProfileSkeleton } from "@/components/shared/loading-skeleton";
 import { toast } from "sonner";
 import { getDriverMe, updateDriverProfile, list } from "@/lib/api";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { cn } from "@/lib/utils";
 
-const DEFAULT_COVER_PHOTO = "https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=2000&auto=format&fit=crop";
+// ── Shared design primitives ────────────────────────────────────────────────
+// One radius scale (3xl card / 2xl inner / xl control) and token colours only,
+// so every surface on the page reads as part of the same system.
+
+function SectionCard({ icon: Icon, title, action, children, className }) {
+  return (
+    <section className={cn("rounded-3xl border border-border/70 bg-card shadow-sm", className)}>
+      <header className="flex items-center justify-between gap-3 border-b border-border/60 px-5 py-4 sm:px-6">
+        <h2 className="flex min-w-0 items-center gap-2.5 text-sm font-bold text-foreground">
+          {Icon && (
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Icon className="size-4" />
+            </span>
+          )}
+          <span className="truncate">{title}</span>
+        </h2>
+        {action}
+      </header>
+      <div className="px-3 py-2 sm:px-4">{children}</div>
+    </section>
+  );
+}
+
+function InfoRow({ icon: Icon, label, value, href, tone = "default" }) {
+  const isEmpty = value === null || value === undefined || value === "";
+  const valueClass = isEmpty
+    ? "font-medium text-muted-foreground/70"
+    : tone === "success"
+      ? "text-emerald-600 dark:text-emerald-400"
+      : tone === "primary"
+        ? "text-primary"
+        : "text-foreground";
+
+  const body = (
+    <>
+      <span className="flex min-w-0 items-center gap-2.5">
+        {Icon && <Icon className="size-4 shrink-0 text-muted-foreground" />}
+        <span className="truncate text-sm text-muted-foreground">{label}</span>
+      </span>
+      <span className={cn("flex min-w-0 items-center gap-1.5 text-right text-sm font-semibold", valueClass)}>
+        <span className="truncate">{isEmpty ? "Not set" : value}</span>
+        {href && !isEmpty && <ChevronRight className="size-4 shrink-0 text-muted-foreground/60" />}
+      </span>
+    </>
+  );
+
+  const base =
+    "flex min-h-14 w-full items-center justify-between gap-4 rounded-xl border-b border-border/40 px-2 py-3 last:border-b-0";
+
+  return href && !isEmpty ? (
+    <a
+      href={href}
+      className={cn(base, "transition-colors hover:bg-secondary/60 hover:text-primary active:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary")}
+    >
+      {body}
+    </a>
+  ) : (
+    <div className={base}>{body}</div>
+  );
+}
+
+function StatTile({ icon: Icon, label, value, accent }) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-secondary/40 p-3.5 transition-colors hover:border-border">
+      <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", accent)}>
+        <Icon className="size-[18px]" />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-lg font-black leading-tight text-foreground tabular-nums">{value}</span>
+        <span className="block truncate text-[11px] font-medium text-muted-foreground">{label}</span>
+      </span>
+    </div>
+  );
+}
+
+function ActionRow({ icon: Icon, label, hint, onClick, tone = "default", trailing }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex min-h-14 w-full items-center gap-3 rounded-xl border-b border-border/40 px-2 py-3 text-left transition-colors last:border-b-0 active:bg-secondary/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+        tone === "destructive" ? "hover:bg-destructive/10" : "hover:bg-secondary/60"
+      )}
+    >
+      <span
+        className={cn(
+          "flex size-9 shrink-0 items-center justify-center rounded-xl",
+          tone === "destructive" ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"
+        )}
+      >
+        <Icon className="size-[18px]" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className={cn("block truncate text-sm font-bold", tone === "destructive" ? "text-destructive" : "text-foreground")}>
+          {label}
+        </span>
+        {hint && <span className="block truncate text-xs text-muted-foreground">{hint}</span>}
+      </span>
+      {trailing ?? <ChevronRight className="size-4 shrink-0 text-muted-foreground/60" />}
+    </button>
+  );
+}
+
+// Driver status is real data (ONLINE / BUSY / OFFLINE) — no hardcoded "Online" pill.
+const STATUS_MAP = {
+  ONLINE: {
+    label: "Online",
+    dot: "bg-emerald-500",
+    chip: "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  },
+  BUSY: {
+    label: "On delivery",
+    dot: "bg-amber-500",
+    chip: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  },
+  OFFLINE: {
+    label: "Offline",
+    dot: "bg-muted-foreground/60",
+    chip: "border-border bg-secondary text-muted-foreground",
+  },
+};
 
 export default function DriverProfilePage() {
   const navigate = useNavigate();
@@ -249,534 +374,481 @@ export default function DriverProfilePage() {
   };
 
   if (loading || !driver) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
-        <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-4">Loading Driver Profile...</p>
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
+  // `short` keeps the segmented control inside a 360px phone without
+  // truncating or hiding the scrollbar (the old bar silently overflowed).
   const tabs = [
-    { id: "OVERVIEW", label: "Overview", icon: User },
-    { id: "VEHICLE", label: "Vehicle & Gear", icon: Bike },
-    { id: "PERFORMANCE", label: "Performance", icon: TrendingUp },
-    { id: "SETTINGS", label: "Settings", icon: Key },
+    { id: "OVERVIEW", label: "Overview", short: "Info", icon: User },
+    { id: "VEHICLE", label: "Vehicle", short: "Vehicle", icon: Bike },
+    { id: "PERFORMANCE", label: "Performance", short: "Stats", icon: TrendingUp },
+    { id: "SETTINGS", label: "Settings", short: "Settings", icon: Key },
   ];
 
+  const status = STATUS_MAP[driver.status] || STATUS_MAP.OFFLINE;
+  const completionPct = stats.totalDeliveries > 0
+    ? Math.round((stats.completedDeliveries / stats.totalDeliveries) * 100)
+    : 0;
+
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary/20 pb-24 transition-colors">
-      
-      {/* Hidden File Input */}
-      <input 
-        ref={fileInputRef} 
-        type="file" 
-        accept="image/*" 
-        onChange={handlePhotoSelect} 
-        className="hidden" 
+    <div className="min-h-[100dvh] bg-background text-foreground transition-colors selection:bg-primary/20">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handlePhotoSelect}
+        className="hidden"
       />
 
-      {/* Top Navbar */}
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/70 pt-[env(safe-area-inset-top)]">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <Link 
-            to="/driver/dashboard" 
-            aria-label="Back to Dashboard"
-            className="flex size-9 items-center justify-center rounded-full text-foreground/80 transition-all hover:bg-secondary/70 hover:text-primary active:scale-95 sm:ml-0 sm:size-auto sm:gap-2 sm:text-xs sm:font-bold sm:uppercase sm:tracking-wider sm:hover:bg-transparent"
+      {/* ── Sticky top bar — every control is a 44px+ touch target ── */}
+      <header
+        className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-xl"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-3 sm:h-16 sm:px-6">
+          <Link
+            to="/driver/dashboard"
+            aria-label="Back to dashboard"
+            className="-ml-1 flex size-11 items-center justify-center gap-2 rounded-full text-foreground transition-all hover:bg-secondary active:scale-95 sm:w-auto sm:px-3 sm:hover:bg-transparent"
           >
-            <ArrowLeft className="size-4 stroke-[2.5]" />
-            <span className="hidden sm:inline">Back to Dashboard</span>
+            <ArrowLeft className="size-5 stroke-[2.5] sm:size-4" />
+            <span className="hidden text-xs font-bold uppercase tracking-wider sm:inline">Dashboard</span>
           </Link>
-          
+
           <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                "hidden items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide sm:flex",
+                status.chip
+              )}
+            >
+              <span className={cn("size-2 rounded-full", status.dot)} />
+              {status.label}
+            </span>
+
             <button
               type="button"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="size-9 rounded-full bg-secondary/80 hover:bg-secondary text-foreground flex items-center justify-center transition-colors cursor-pointer border border-border/50"
-              title="Toggle theme"
+              aria-label="Toggle theme"
+              className="flex size-11 items-center justify-center rounded-full border border-border/60 bg-secondary/60 text-foreground transition-all hover:bg-secondary active:scale-95"
             >
-              {theme === "dark" ? <Sun className="size-4 text-amber-400" /> : <Moon className="size-4 text-slate-700" />}
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={theme}
+                  initial={{ opacity: 0, rotate: -45, scale: 0.8 }}
+                  animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                  exit={{ opacity: 0, rotate: 45, scale: 0.8 }}
+                  transition={{ duration: 0.15 }}
+                  className="flex"
+                >
+                  {theme === "dark" ? <Sun className="size-[18px] text-amber-400" /> : <Moon className="size-[18px]" />}
+                </motion.span>
+              </AnimatePresence>
             </button>
-
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/30">
-              <div className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[10px] font-black text-emerald-500 uppercase tracking-wider">Online</span>
-            </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 mt-4 sm:mt-6 space-y-6">
-        
-        {/* Hero Banner & Profile Header Card */}
-        <div className="rounded-[32px] overflow-hidden bg-card border border-border/70 shadow-xl relative transition-all">
-          
-          {/* Cover Photo Header */}
-          <div className="h-44 sm:h-56 w-full relative overflow-hidden bg-gradient-to-r from-amber-600 via-red-600 to-orange-700">
-            <img 
-              src={DEFAULT_COVER_PHOTO} 
-              alt="Cover" 
-              className="w-full h-full object-cover opacity-60 mix-blend-overlay"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-            
-            {/* Top Right Badges */}
-            <div className="absolute top-4 right-4 flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full bg-black/50 backdrop-blur-md border border-white/20 text-white text-[11px] font-bold flex items-center gap-1.5 shadow-lg">
-                <Crown className="size-3.5 text-amber-400 fill-amber-400" />
-                Gold Partner Rider
-              </span>
-            </div>
-          </div>
+      <main
+        className="mx-auto w-full max-w-5xl px-3 pt-5 sm:px-6 lg:pt-8"
+        style={{ paddingBottom: "max(1.75rem, env(safe-area-inset-bottom, 1.75rem))" }}
+      >
+        <div className="grid items-start gap-4 lg:grid-cols-[340px_minmax(0,1fr)] lg:gap-6">
 
-          {/* Profile Details Bar */}
-          <div className="px-6 sm:px-8 pb-8 pt-0 relative">
-            <div className="flex flex-col sm:flex-row items-center sm:items-end gap-5 -mt-16 sm:-mt-20">
-              
-              {/* Avatar with Camera Trigger & Glow */}
-              <div className="relative group shrink-0">
-                <div className="size-32 sm:size-36 rounded-full overflow-hidden border-4 border-card ring-4 ring-primary/40 shadow-2xl relative bg-secondary">
-                  {driver.profile_photo ? (
-                    <img 
-                      src={driver.profile_photo} 
-                      alt={driver.name} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-secondary">
-                      <User className="size-16" />
-                    </div>
-                  )}
-
-                  {/* Uploading Spinner */}
-                  {isUploadingPhoto && (
-                    <div className="absolute inset-0 bg-black/70 backdrop-blur-xs flex flex-col items-center justify-center text-white">
-                      <Loader2 className="size-7 animate-spin text-primary" />
-                      <span className="text-[10px] font-black uppercase mt-1">Uploading...</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Camera Trigger */}
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploadingPhoto}
-                  className="absolute bottom-1 right-1 size-10 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center shadow-lg shadow-primary/30 ring-4 ring-card active:scale-90 transition-all cursor-pointer"
-                  title="Change Profile Photo"
-                >
-                  <Camera className="size-4.5 stroke-[2.5]" />
-                </button>
+          {/* ── LEFT RAIL: identity + key numbers (sticky on desktop) ── */}
+          <div className="space-y-4 lg:sticky lg:top-24 lg:space-y-5">
+            <section className="overflow-hidden rounded-3xl border border-border/70 bg-card shadow-sm">
+              {/* Cover — pure gradient instead of a remote photo: nothing to block on, nothing to break */}
+              <div className="relative h-24 bg-gradient-to-r from-primary via-primary/85 to-amber-600 sm:h-28">
+                <div className="absolute inset-0 opacity-25 [background-image:radial-gradient(circle_at_18%_25%,#fff_0,transparent_45%),radial-gradient(circle_at_82%_10%,#fff_0,transparent_38%)]" />
               </div>
 
-              {/* Driver Identity */}
-              <div className="text-center sm:text-left flex-1 min-w-0 pb-1">
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1">
-                  <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-                    {driver.name}
-                  </h1>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase px-2.5 py-0.5 bg-primary/15 text-primary rounded-full border border-primary/30">
-                    <Bike className="size-3 stroke-[2.5]" />
-                    Driver Partner
-                  </span>
-                </div>
-                
-                <p className="text-xs sm:text-sm font-semibold text-muted-foreground">
-                  Flame & Crust Express Courier • Priority Fleet
-                </p>
+              <div className="px-4 pb-5 sm:px-6">
+                <div className="-mt-12 flex items-end gap-4 sm:-mt-14">
+                  <div className="relative shrink-0">
+                    <div className="relative size-24 overflow-hidden rounded-full border-4 border-card bg-secondary shadow-lg sm:size-28">
+                      {driver.profile_photo ? (
+                        <img src={driver.profile_photo} alt={driver.name} className="size-full object-cover" />
+                      ) : (
+                        <div className="flex size-full items-center justify-center text-muted-foreground">
+                          <User className="size-10" />
+                        </div>
+                      )}
 
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3 mt-3">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground/80 bg-secondary/80 px-3 py-1 rounded-xl border border-border/50">
-                    <ShieldCheck className="size-4 text-primary" />
-                    ID: {driver.phone || "0888631805"}
+                      {isUploadingPhoto && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/70 text-white backdrop-blur-sm">
+                          <Loader2 className="size-6 animate-spin" />
+                          <span className="text-[10px] font-bold uppercase tracking-wide">Uploading</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploadingPhoto}
+                      aria-label="Change profile photo"
+                      className="absolute -bottom-1 -right-1 flex size-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 ring-4 ring-card transition-transform hover:bg-primary/90 active:scale-90 disabled:opacity-60"
+                    >
+                      <Camera className="size-[18px]" />
+                    </button>
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground/80 bg-secondary/80 px-3 py-1 rounded-xl border border-border/50">
-                    <Calendar className="size-4 text-amber-500" />
-                    Joined: {driver.created_at ? new Date(driver.created_at).toLocaleDateString("en-GB") : "22/08/2026"}
+
+                  <div className="min-w-0 flex-1 pb-1.5">
+                    <h1 className="truncate text-xl font-black tracking-tight text-foreground sm:text-2xl">
+                      {driver.name}
+                    </h1>
+                    <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                      <Bike className="size-3.5 shrink-0 text-primary" />
+                      <span className="truncate">Driver Partner</span>
+                    </p>
+                    {/* Status pill moves inline on phones where the header hides it */}
+                    <span
+                      className={cn(
+                        "mt-2 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide sm:hidden",
+                        status.chip
+                      )}
+                    >
+                      <span className={cn("size-1.5 rounded-full", status.dot)} />
+                      {status.label}
+                    </span>
                   </div>
                 </div>
-              </div>
 
-              {/* Edit Profile Button */}
-              <div className="shrink-0 pt-2 sm:pt-0">
+                {/* Direct contact — real values, tappable */}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {driver.phone && (
+                    <a
+                      href={`tel:${driver.phone}`}
+                      className="flex min-h-9 max-w-full items-center gap-1.5 rounded-full border border-border/60 bg-secondary/50 px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                    >
+                      <Phone className="size-3.5 shrink-0" />
+                      <span className="truncate">{driver.phone}</span>
+                    </a>
+                  )}
+                  {driver.email && (
+                    <a
+                      href={`mailto:${driver.email}`}
+                      className="flex min-h-9 max-w-full items-center gap-1.5 rounded-full border border-border/60 bg-secondary/50 px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                    >
+                      <Mail className="size-3.5 shrink-0" />
+                      <span className="truncate">{driver.email}</span>
+                    </a>
+                  )}
+                </div>
+
                 <Button
                   onClick={() => setIsEditModalOpen(true)}
-                  className="rounded-2xl h-11 px-5 bg-gradient-to-r from-primary to-amber-600 hover:from-primary/90 hover:to-amber-600/90 text-primary-foreground font-bold text-xs uppercase tracking-wider shadow-lg shadow-primary/20 active:scale-95 transition-all gap-2"
+                  className="mt-4 h-12 w-full gap-2 rounded-2xl bg-primary text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.98]"
                 >
                   <Edit className="size-4" />
                   Edit Profile
                 </Button>
               </div>
+            </section>
 
+            {/* Key numbers — all derived from the orders API, no placeholders */}
+            <div className="grid grid-cols-2 gap-3">
+              <StatTile icon={Package} label="Deliveries" value={stats.totalDeliveries} accent="bg-primary/10 text-primary" />
+              <StatTile icon={CheckCircle2} label="Completed" value={stats.completedDeliveries} accent="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" />
+              <StatTile icon={Star} label="Rating" value={stats.rating} accent="bg-amber-500/10 text-amber-600 dark:text-amber-400" />
+              <StatTile icon={TrendingUp} label="Success rate" value={`${stats.successRate}%`} accent="bg-violet-500/10 text-violet-600 dark:text-violet-400" />
             </div>
           </div>
-        </div>
 
-        {/* 4 Sleek Stat Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="bg-card rounded-[24px] p-5 border border-border/70 shadow-xs flex flex-col items-center justify-center text-center group hover:border-primary/50 transition-all">
-            <div className="size-11 rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
-              <Package className="size-5.5 stroke-[2.5]" />
-            </div>
-            <h3 className="text-2xl sm:text-3xl font-black text-foreground">{stats.totalDeliveries}</h3>
-            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-0.5">Total Deliveries</p>
-          </div>
-
-          <div className="bg-card rounded-[24px] p-5 border border-border/70 shadow-xs flex flex-col items-center justify-center text-center group hover:border-emerald-500/50 transition-all">
-            <div className="size-11 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
-              <CheckCircle className="size-5.5 stroke-[2.5]" />
-            </div>
-            <h3 className="text-2xl sm:text-3xl font-black text-foreground">{stats.completedDeliveries}</h3>
-            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-0.5">Completed Trips</p>
-          </div>
-
-          <div className="bg-card rounded-[24px] p-5 border border-border/70 shadow-xs flex flex-col items-center justify-center text-center group hover:border-amber-500/50 transition-all">
-            <div className="size-11 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
-              <Star className="size-5.5 stroke-[2.5] fill-amber-500/20" />
-            </div>
-            <h3 className="text-2xl sm:text-3xl font-black text-foreground">{stats.rating}</h3>
-            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-0.5">Customer Rating</p>
-          </div>
-
-          <div className="bg-card rounded-[24px] p-5 border border-border/70 shadow-xs flex flex-col items-center justify-center text-center group hover:border-purple-500/50 transition-all">
-            <div className="size-11 rounded-2xl bg-purple-500/10 text-purple-500 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
-              <ShieldCheck className="size-5.5 stroke-[2.5]" />
-            </div>
-            <h3 className="text-2xl sm:text-3xl font-black text-foreground">{stats.successRate}%</h3>
-            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-0.5">Success Rate</p>
-          </div>
-        </div>
-
-        {/* Tabbed Navigation Bar (Matches Customer Profile) */}
-        <div className="flex items-center gap-1.5 p-1.5 bg-secondary/60 rounded-2xl border border-border/60 overflow-x-auto no-scrollbar">
-          {tabs.map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                aria-label={tab.label}
-                aria-current={isActive}
-                className={cn(
-                  "flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-2.5 py-2.5 text-xs font-bold transition-all duration-200 cursor-pointer active:scale-[0.97] sm:px-4 sm:text-sm",
-                  isActive
-                    ? "bg-card text-foreground shadow-md border border-border/60"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
-                )}
-              >
-                <Icon className={cn("size-4 shrink-0", isActive ? "text-primary" : "")} />
-                {/* Icon-only on phones — the full labels overflowed 360px screens */}
-                <span className="hidden sm:inline">{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* TAB 1: OVERVIEW */}
-        {activeTab === "OVERVIEW" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 animate-in fade-in duration-200">
-            {/* Personal Details Card */}
-            <div className="bg-card rounded-[28px] p-6 border border-border/70 shadow-xs">
-              <div className="flex items-center justify-between pb-4 mb-4 border-b border-border/50">
-                <h2 className="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-2">
-                  <User className="size-4 text-primary" />
-                  Personal Information
-                </h2>
-                <button 
-                  onClick={() => setIsEditModalOpen(true)}
-                  className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <Edit className="size-3.5" /> Edit
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 pb-4 border-b border-border/40">
-                  <div>
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-0.5">Full Name</p>
-                    <p className="text-sm font-bold text-foreground truncate">{driver.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-0.5">Phone Number</p>
-                    <p className="text-sm font-bold text-foreground flex items-center gap-1 truncate">
-                      <Phone className="size-3.5 text-muted-foreground shrink-0" />
-                      {driver.phone}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-0.5">National ID / Passport</p>
-                    <p className="text-sm font-bold text-foreground truncate">
-                      {driver.national_id || "ID-98234710"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-0.5">Emergency Contact</p>
-                    <p className="text-sm font-bold text-foreground truncate">
-                      {driver.emergency_contact || "012 345 678"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Operational Location & Status */}
-            <div className="bg-card rounded-[28px] p-6 border border-border/70 shadow-xs">
-              <div className="flex items-center justify-between pb-4 mb-4 border-b border-border/50">
-                <h2 className="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-2">
-                  <MapPin className="size-4 text-primary" />
-                  Service & Delivery Zone
-                </h2>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                  ACTIVE
-                </span>
-              </div>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 pb-4 border-b border-border/40">
-                  <div>
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-0.5">Operating Area</p>
-                    <p className="text-sm font-bold text-foreground truncate">
-                      {driver.address || "Phnom Penh Central"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-0.5">Fleet Base</p>
-                    <p className="text-sm font-bold text-foreground truncate">
-                      Main Kitchen Store
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-0.5">Driver Status</p>
-                    <p className="text-sm font-bold text-emerald-500 flex items-center gap-1.5">
-                      <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                      Verified & Active
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-0.5">Safety Certificate</p>
-                    <p className="text-sm font-bold text-foreground flex items-center gap-1">
-                      <ShieldCheck className="size-3.5 text-primary" /> Level 2 Verified
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2: VEHICLE & GEAR */}
-        {activeTab === "VEHICLE" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 animate-in fade-in duration-200">
-            {/* Vehicle Details */}
-            <div className="bg-card rounded-[28px] p-6 border border-border/70 shadow-xs">
-              <div className="flex items-center justify-between pb-4 mb-4 border-b border-border/50">
-                <h2 className="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-2">
-                  <Bike className="size-4 text-primary" />
-                  Vehicle Registration
-                </h2>
-                <button 
-                  onClick={() => setIsEditModalOpen(true)}
-                  className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <Edit className="size-3.5" /> Edit
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 pb-4 border-b border-border/40">
-                  <div>
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-0.5">Vehicle Model</p>
-                    <p className="text-sm font-bold text-foreground truncate">
-                      {driver.vehicle_info || "Honda Wave 125i (Red/Black)"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-0.5">License Plate</p>
-                    <p className="text-sm font-black text-primary bg-primary/10 px-2.5 py-0.5 rounded-lg inline-block">
-                      {driver.license_plate || "1A-2345"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-0.5">Vehicle Type</p>
-                    <p className="text-sm font-bold text-foreground">Motorcycle / Scooter</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-0.5">Inspection Status</p>
-                    <p className="text-sm font-bold text-emerald-500 flex items-center gap-1">
-                      <CheckCircle2 className="size-3.5" /> Passed (Aug 2026)
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Gear & Safety Checklist */}
-            <div className="bg-card rounded-[28px] p-6 border border-border/70 shadow-xs">
-              <h2 className="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-2 pb-4 mb-4 border-b border-border/50">
-                <ShieldCheck className="size-4 text-primary" />
-                Gear & Equipment Verification
-              </h2>
-
-              <div className="space-y-3">
-                {[
-                  { name: "Safety Helmet (Full/Half face)", status: true },
-                  { name: "Flame & Crust Insulated Pizza Bag", status: true },
-                  { name: "Driver Uniform / Reflective Vest", status: true },
-                  { name: "Handlebar Phone Mount & Charger", status: true },
-                ].map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 rounded-2xl bg-secondary/40 border border-border/50">
-                    <span className="text-xs font-bold text-foreground">{item.name}</span>
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 text-[10px] font-black flex items-center gap-1">
-                      <Check className="size-3 stroke-[3]" /> VERIFIED
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 3: PERFORMANCE */}
-        {activeTab === "PERFORMANCE" && (
-          <div className="space-y-6 animate-in fade-in duration-200">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-gradient-to-br from-card to-secondary/50 rounded-[28px] p-6 border border-border/70 shadow-xs">
-                <div className="size-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-3">
-                  <DollarSign className="size-5 stroke-[2.5]" />
-                </div>
-                <p className="text-xs font-black text-muted-foreground uppercase tracking-wider">Estimated Earnings</p>
-                <h3 className="text-3xl font-black text-foreground mt-1">${stats.totalEarnings.toFixed(2)}</h3>
-                <p className="text-[11px] text-emerald-500 font-bold mt-2 flex items-center gap-1">
-                  <TrendingUp className="size-3.5" /> +14% from last week
-                </p>
-              </div>
-
-              <div className="bg-gradient-to-br from-card to-secondary/50 rounded-[28px] p-6 border border-border/70 shadow-xs">
-                <div className="size-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mb-3">
-                  <Award className="size-5 stroke-[2.5]" />
-                </div>
-                <p className="text-xs font-black text-muted-foreground uppercase tracking-wider">On-Time Rate</p>
-                <h3 className="text-3xl font-black text-foreground mt-1">98.2%</h3>
-                <p className="text-[11px] text-amber-500 font-bold mt-2 flex items-center gap-1">
-                  <Flame className="size-3.5" /> Top 5% speed in Phnom Penh
-                </p>
-              </div>
-
-              <div className="bg-gradient-to-br from-card to-secondary/50 rounded-[28px] p-6 border border-border/70 shadow-xs">
-                <div className="size-10 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-3">
-                  <Star className="size-5 stroke-[2.5] fill-emerald-500/20" />
-                </div>
-                <p className="text-xs font-black text-muted-foreground uppercase tracking-wider">Customer Satisfaction</p>
-                <h3 className="text-3xl font-black text-foreground mt-1">4.9 / 5.0</h3>
-                <p className="text-[11px] text-muted-foreground font-semibold mt-2">
-                  Based on 38 recent reviews
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 4: SETTINGS */}
-        {activeTab === "SETTINGS" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 animate-in fade-in duration-200">
-            {/* Security & Password */}
-            <div className="bg-card rounded-[28px] p-6 border border-border/70 shadow-xs">
-              <h2 className="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-2 pb-4 mb-4 border-b border-border/50">
-                <Key className="size-4 text-primary" />
-                Security & Credentials
-              </h2>
-
-              <p className="text-xs text-muted-foreground mb-4">
-                Keep your driver account secure by changing your password periodically.
-              </p>
-
-              <Button
-                variant="outline"
-                onClick={() => setIsPasswordModalOpen(true)}
-                className="w-full h-12 rounded-2xl border-border hover:bg-secondary font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2"
-              >
-                <Key className="size-4 text-primary" />
-                Change Password
-              </Button>
-            </div>
-
-            {/* App Preferences & Logout */}
-            <div className="bg-card rounded-[28px] p-6 border border-border/70 shadow-xs flex flex-col justify-between">
-              <div>
-                <h2 className="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-2 pb-4 mb-4 border-b border-border/50">
-                  <Sun className="size-4 text-primary" />
-                  App Preferences
-                </h2>
-
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-secondary/40 border border-border/50 mb-4">
-                  <div>
-                    <p className="text-xs font-bold text-foreground">Appearance Theme</p>
-                    <p className="text-[11px] text-muted-foreground">{theme === "dark" ? "Dark Mode" : "Light Mode"}</p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                    className="rounded-xl h-9 px-3 gap-1.5 text-xs font-bold"
+          {/* ── RIGHT COLUMN: tabs + panel ── */}
+          <div className="min-w-0 space-y-4 lg:space-y-5">
+            <div
+              role="tablist"
+              aria-label="Profile sections"
+              className="flex gap-1 rounded-2xl border border-border/60 bg-secondary/50 p-1"
+            >
+              {tabs.map(tab => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    role="tab"
+                    type="button"
+                    aria-selected={isActive}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={cn(
+                      "relative flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl px-1.5 text-xs font-bold transition-colors sm:gap-2 sm:px-3 sm:text-sm",
+                      isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                    )}
                   >
-                    {theme === "dark" ? <Sun className="size-3.5 text-amber-400" /> : <Moon className="size-3.5 text-slate-700" />}
-                    Switch
-                  </Button>
-                </div>
-              </div>
-
-              <Button
-                variant="destructive"
-                onClick={handleLogout}
-                className="w-full h-12 rounded-2xl font-bold text-xs uppercase tracking-wider gap-2 shadow-lg shadow-destructive/20 active:scale-95"
-              >
-                <LogOut className="size-4" />
-                Sign Out from Driver Hub
-              </Button>
+                    {isActive && (
+                      <motion.span
+                        layoutId="driverProfileTab"
+                        className="absolute inset-0 rounded-xl border border-border/60 bg-card shadow-sm"
+                        transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                      />
+                    )}
+                    <Icon className={cn("relative size-4 shrink-0", isActive && "text-primary")} />
+                    <span className="relative truncate sm:hidden">{tab.short}</span>
+                    <span className="relative hidden truncate sm:inline">{tab.label}</span>
+                  </button>
+                );
+              })}
             </div>
-          </div>
-        )}
 
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                role="tabpanel"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                className="space-y-4 lg:space-y-5"
+              >
+                {activeTab === "OVERVIEW" && (
+                  <>
+                    <SectionCard
+                      icon={User}
+                      title="Personal information"
+                      action={
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setIsEditModalOpen(true)}
+                          className="h-9 shrink-0 gap-1.5 rounded-xl px-3 text-xs font-bold text-primary hover:bg-primary/10 hover:text-primary"
+                        >
+                          <Edit className="size-3.5" /> Edit
+                        </Button>
+                      }
+                    >
+                      <InfoRow icon={User} label="Full name" value={driver.name} />
+                      <InfoRow
+                        icon={Phone}
+                        label="Phone"
+                        value={driver.phone}
+                        href={driver.phone ? `tel:${driver.phone}` : undefined}
+                      />
+                      <InfoRow
+                        icon={Mail}
+                        label="Email"
+                        value={driver.email}
+                        href={driver.email ? `mailto:${driver.email}` : undefined}
+                      />
+                      <InfoRow icon={ShieldCheck} label="National ID" value={driver.national_id} />
+                      <InfoRow
+                        icon={Calendar}
+                        label="Date of birth"
+                        value={driver.date_of_birth ? new Date(driver.date_of_birth).toLocaleDateString("en-GB") : null}
+                      />
+                      <InfoRow
+                        icon={Phone}
+                        label="Emergency contact"
+                        value={driver.emergency_contact}
+                        href={driver.emergency_contact ? `tel:${driver.emergency_contact}` : undefined}
+                      />
+                    </SectionCard>
+
+                    <SectionCard icon={MapPin} title="Service zone">
+                      <InfoRow icon={MapPin} label="Operating area" value={driver.address} />
+                      <InfoRow
+                        icon={Calendar}
+                        label="Joined"
+                        value={driver.created_at ? new Date(driver.created_at).toLocaleDateString("en-GB") : null}
+                      />
+                      <InfoRow icon={CheckCircle2} label="Account status" value={status.label} tone="success" />
+                    </SectionCard>
+                  </>
+                )}
+
+                {activeTab === "VEHICLE" && (
+                  <>
+                    {/* Plate first — it is what a driver actually needs at a glance */}
+                    <div className="rounded-3xl border border-border/70 bg-card p-5 shadow-sm sm:p-6">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        License plate
+                      </p>
+                      <div className="mt-3 rounded-2xl border-2 border-primary/25 bg-primary/5 px-4 py-5 text-center">
+                        <span className="block truncate font-mono text-2xl font-black tracking-[0.18em] text-foreground tabular-nums sm:text-3xl">
+                          {driver.license_plate || "— — — —"}
+                        </span>
+                      </div>
+                      {!driver.license_plate && (
+                        <p className="mt-3 flex items-start gap-2 text-xs font-medium text-muted-foreground">
+                          <AlertCircle className="mt-px size-4 shrink-0 text-amber-500" />
+                          Add your plate so the kitchen and customers can identify you at pickup.
+                        </p>
+                      )}
+                    </div>
+
+                    <SectionCard
+                      icon={Bike}
+                      title="Vehicle details"
+                      action={
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setIsEditModalOpen(true)}
+                          className="h-9 shrink-0 gap-1.5 rounded-xl px-3 text-xs font-bold text-primary hover:bg-primary/10 hover:text-primary"
+                        >
+                          <Edit className="size-3.5" /> Edit
+                        </Button>
+                      }
+                    >
+                      <InfoRow icon={Bike} label="Model" value={driver.vehicle_info} />
+                      <InfoRow icon={ShieldCheck} label="License plate" value={driver.license_plate} tone="primary" />
+                      <InfoRow icon={MapPin} label="Operating area" value={driver.address} />
+                    </SectionCard>
+                  </>
+                )}
+
+                {activeTab === "PERFORMANCE" && (
+                  <>
+                    {/* Earnings hero — real total from the orders API */}
+                    <div className="relative overflow-hidden rounded-3xl border border-border/70 bg-card p-5 shadow-sm sm:p-6">
+                      <div className="pointer-events-none absolute -right-10 -top-10 size-36 rounded-full bg-primary/10 blur-2xl" />
+                      <p className="relative text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Total earnings
+                      </p>
+                      <p className="relative mt-1.5 flex items-center gap-1 text-4xl font-black tracking-tight text-foreground tabular-nums sm:text-5xl">
+                        <DollarSign className="size-6 self-center text-primary sm:size-7" />
+                        {stats.totalEarnings.toFixed(2)}
+                      </p>
+                      <p className="relative mt-2 text-xs font-medium text-muted-foreground">
+                        From {stats.completedDeliveries} completed {stats.completedDeliveries === 1 ? "delivery" : "deliveries"}
+                      </p>
+                    </div>
+
+                    <SectionCard icon={TrendingUp} title="Breakdown">
+                      {/* Success rate */}
+                      <div className="border-b border-border/40 px-2 py-4">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <span className="text-sm text-muted-foreground">Success rate</span>
+                          <span className="text-sm font-bold text-foreground tabular-nums">{stats.successRate}%</span>
+                        </div>
+                        <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-secondary">
+                          <motion.div
+                            className="h-full rounded-full bg-gradient-to-r from-primary to-amber-500"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${stats.successRate}%` }}
+                            transition={{ duration: 0.6, ease: "easeOut" }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Completion ratio */}
+                      <div className="border-b border-border/40 px-2 py-4">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <span className="text-sm text-muted-foreground">Completed</span>
+                          <span className="text-sm font-bold text-foreground tabular-nums">
+                            {stats.completedDeliveries} / {stats.totalDeliveries}
+                          </span>
+                        </div>
+                        <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-secondary">
+                          <motion.div
+                            className="h-full rounded-full bg-emerald-500"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${completionPct}%` }}
+                            transition={{ duration: 0.6, ease: "easeOut" }}
+                          />
+                        </div>
+                      </div>
+
+                      <InfoRow icon={Star} label="Customer rating" value={`${stats.rating} / 5.0`} />
+                      <InfoRow icon={Package} label="Assigned deliveries" value={stats.totalDeliveries} />
+                      <InfoRow icon={CheckCircle2} label="Completed trips" value={stats.completedDeliveries} tone="success" />
+                    </SectionCard>
+                  </>
+                )}
+
+                {activeTab === "SETTINGS" && (
+                  <>
+                    <SectionCard icon={Sun} title="Appearance">
+                      <div className="flex items-center justify-between gap-4 px-2 py-4">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold text-foreground">Theme</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            Currently {theme === "dark" ? "dark" : "light"} mode
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 gap-1 rounded-xl border border-border/60 bg-secondary/50 p-1">
+                          {["light", "dark"].map(mode => (
+                            <button
+                              key={mode}
+                              type="button"
+                              onClick={() => setTheme(mode)}
+                              aria-pressed={theme === mode}
+                              className={cn(
+                                "flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-bold capitalize transition-colors",
+                                theme === mode
+                                  ? "bg-card text-foreground shadow-sm"
+                                  : "text-muted-foreground hover:text-foreground"
+                              )}
+                            >
+                              {mode === "light" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+                              {mode}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </SectionCard>
+
+                    <SectionCard icon={Key} title="Account & security">
+                      <ActionRow
+                        icon={Key}
+                        label="Change password"
+                        hint="Use at least 6 characters"
+                        onClick={() => setIsPasswordModalOpen(true)}
+                      />
+                      <ActionRow
+                        icon={User}
+                        label="Edit profile details"
+                        hint="Name, phone, vehicle, area"
+                        onClick={() => setIsEditModalOpen(true)}
+                      />
+                      <ActionRow
+                        icon={LogOut}
+                        label="Sign out"
+                        hint="You will need to log in again"
+                        onClick={handleLogout}
+                        tone="destructive"
+                      />
+                    </SectionCard>
+                  </>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </div>
       </main>
 
-      {/* ── MODAL: EDIT PROFILE ── */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-          <div className="bg-card text-foreground w-full sm:max-w-lg rounded-t-[32px] sm:rounded-[32px] max-h-[90vh] flex flex-col overflow-hidden border border-border shadow-2xl animate-in slide-in-from-bottom duration-300">
-            
-            <div className="p-5 border-b border-border/60 flex items-center justify-between shrink-0 bg-secondary/30">
-              <div className="flex items-center gap-2.5">
-                <div className="size-9 rounded-full bg-primary/15 text-primary flex items-center justify-center">
-                  <Edit className="size-4.5 stroke-[2.5]" />
-                </div>
-                <div>
-                  <h2 className="text-base font-black text-foreground uppercase tracking-tight">
-                    Edit Driver Profile
-                  </h2>
-                  <p className="text-xs text-muted-foreground font-semibold">
-                    Update your personal and vehicle details
-                  </p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setIsEditModalOpen(false)}
-                className="size-8 rounded-full bg-secondary hover:bg-secondary/80 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                <X className="size-4" />
-              </button>
+      {/* ── Edit profile ── */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent
+          showCloseButton={false}
+          className="max-h-[90dvh] gap-0 overflow-hidden rounded-t-3xl border-border bg-card p-0 text-foreground sm:rounded-3xl"
+        >
+          <DialogHeader className="flex-row items-center justify-between gap-3 border-b border-border/60 bg-secondary/30 px-4 py-3 text-left sm:px-5">
+            <div className="min-w-0">
+              <DialogTitle className="truncate text-base font-black tracking-tight">
+                Edit profile
+              </DialogTitle>
+              <DialogDescription className="truncate text-xs">
+                Update your personal and vehicle details
+              </DialogDescription>
             </div>
+            {/* Own close button: shadcn's built-in one is a 16px tap target */}
+            <DialogClose asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Close"
+                className="size-11 shrink-0 rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+              >
+                <X className="size-5" />
+              </Button>
+            </DialogClose>
+          </DialogHeader>
 
-            <form onSubmit={handleSaveProfile} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 custom-scrollbar">
+          <form onSubmit={handleSaveProfile} className="max-h-[62dvh] space-y-4 overflow-y-auto px-4 py-5 custom-scrollbar sm:px-5">
               <div>
                 <label className="text-xs font-bold text-foreground/90 mb-1.5 flex items-center justify-between">
                   <span>Full Name</span>
@@ -858,145 +930,144 @@ export default function DriverProfilePage() {
                 />
               </div>
 
-              <div className="pt-3 flex gap-3">
-                <Button 
-                  type="button" 
-                  variant="outline"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="flex-1 h-12 rounded-2xl font-bold text-xs uppercase cursor-pointer hover:bg-secondary border-border"
-                >
-                  Cancel
-                </Button>
-                <Button 
+              <DialogFooter className="gap-3 pt-2 sm:gap-3">
+                <DialogClose asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-12 flex-1 rounded-2xl border-border text-xs font-bold uppercase hover:bg-secondary"
+                  >
+                    Cancel
+                  </Button>
+                </DialogClose>
+                <Button
                   type="submit"
                   disabled={isSavingProfile}
-                  className="flex-[2] h-12 rounded-2xl bg-gradient-to-r from-primary to-amber-600 hover:from-primary/90 hover:to-amber-600/90 text-primary-foreground font-bold text-xs uppercase shadow-md shadow-primary/20 cursor-pointer active:scale-95 transition-all"
+                  className="h-12 flex-[2] gap-2 rounded-2xl bg-primary text-xs font-bold uppercase text-primary-foreground shadow-md shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.98]"
                 >
                   {isSavingProfile ? (
                     <>
-                      <Loader2 className="size-4 animate-spin mr-2" />
+                      <Loader2 className="size-4 animate-spin" />
                       Saving...
                     </>
                   ) : (
                     <>
-                      <Check className="size-4 stroke-[3] mr-1.5" />
-                      Save Changes
+                      <Check className="size-4 stroke-[3]" />
+                      Save changes
                     </>
                   )}
                 </Button>
-              </div>
+              </DialogFooter>
             </form>
+        </DialogContent>
+      </Dialog>
 
-          </div>
-        </div>
-      )}
-
-      {/* ── MODAL: CHANGE PASSWORD ── */}
-      {isPasswordModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-          <div className="bg-card text-foreground w-full sm:max-w-md rounded-t-[32px] sm:rounded-[32px] flex flex-col overflow-hidden border border-border shadow-2xl animate-in slide-in-from-bottom duration-300">
-            
-            <div className="p-5 border-b border-border/60 flex items-center justify-between shrink-0 bg-secondary/30">
-              <div className="flex items-center gap-2.5">
-                <div className="size-9 rounded-full bg-primary/15 text-primary flex items-center justify-center">
-                  <Key className="size-4.5 stroke-[2.5]" />
-                </div>
-                <div>
-                  <h2 className="text-base font-black text-foreground uppercase tracking-tight">
-                    Change Password
-                  </h2>
-                  <p className="text-xs text-muted-foreground font-semibold">
-                    Set a new secure password
-                  </p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setIsPasswordModalOpen(false)}
-                className="size-8 rounded-full bg-secondary hover:bg-secondary/80 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
+      {/* ── Change password ── */}
+      <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
+        <DialogContent
+          showCloseButton={false}
+          className="gap-0 overflow-hidden rounded-t-3xl border-border bg-card p-0 text-foreground sm:max-w-md sm:rounded-3xl"
+        >
+          <DialogHeader className="flex-row items-center justify-between gap-3 border-b border-border/60 bg-secondary/30 px-4 py-3 text-left sm:px-5">
+            <div className="min-w-0">
+              <DialogTitle className="truncate text-base font-black tracking-tight">
+                Change password
+              </DialogTitle>
+              <DialogDescription className="truncate text-xs">
+                Use at least 6 characters
+              </DialogDescription>
+            </div>
+            <DialogClose asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Close"
+                className="size-11 shrink-0 rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
               >
-                <X className="size-4" />
-              </button>
+                <X className="size-5" />
+              </Button>
+            </DialogClose>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdatePassword} className="space-y-4 px-4 py-5 sm:px-5">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-foreground/90">New password</label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                  placeholder="At least 6 characters"
+                  autoComplete="new-password"
+                  required
+                  className="h-12 rounded-xl border-border/80 bg-secondary/40 pr-14 text-sm focus-visible:ring-primary"
+                />
+                {/* 44px reveal target — the old one was a bare 16px icon */}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-1 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="size-[18px]" /> : <Eye className="size-[18px]" />}
+                </button>
+              </div>
             </div>
 
-            <form onSubmit={handleUpdatePassword} className="p-5 sm:p-6 space-y-4">
-              <div>
-                <label className="text-xs font-bold text-foreground/90 block mb-1.5">
-                  New Password *
-                </label>
-                <div className="relative">
-                  <Input 
-                    type={showPassword ? "text" : "password"}
-                    value={passwordForm.newPassword}
-                    onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
-                    placeholder="At least 6 characters"
-                    required
-                    className="h-11 rounded-xl pr-10 bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary"
-                  />
-                  <button 
-                    type="button" 
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
-                  >
-                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                  </button>
-                </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-foreground/90">Confirm password</label>
+              <div className="relative">
+                <Input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  placeholder="Repeat new password"
+                  autoComplete="new-password"
+                  required
+                  className="h-12 rounded-xl border-border/80 bg-secondary/40 pr-14 text-sm focus-visible:ring-primary"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(v => !v)}
+                  aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                  className="absolute right-1 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {showConfirmPassword ? <EyeOff className="size-[18px]" /> : <Eye className="size-[18px]" />}
+                </button>
               </div>
+            </div>
 
-              <div>
-                <label className="text-xs font-bold text-foreground/90 block mb-1.5">
-                  Confirm Password *
-                </label>
-                <div className="relative">
-                  <Input 
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={passwordForm.confirmPassword}
-                    onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                    placeholder="Repeat new password"
-                    required
-                    className="h-11 rounded-xl pr-10 bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary"
-                  />
-                  <button 
-                    type="button" 
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
-                  >
-                    {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="pt-3 flex gap-3">
-                <Button 
-                  type="button" 
+            <DialogFooter className="gap-3 pt-1 sm:gap-3">
+              <DialogClose asChild>
+                <Button
+                  type="button"
                   variant="outline"
-                  onClick={() => setIsPasswordModalOpen(false)}
-                  className="flex-1 h-12 rounded-2xl font-bold text-xs uppercase cursor-pointer hover:bg-secondary border-border"
+                  className="h-12 flex-1 rounded-2xl border-border text-xs font-bold uppercase hover:bg-secondary"
                 >
                   Cancel
                 </Button>
-                <Button 
-                  type="submit"
-                  disabled={isUpdatingPassword}
-                  className="flex-[2] h-12 rounded-2xl bg-gradient-to-r from-primary to-amber-600 hover:from-primary/90 hover:to-amber-600/90 text-primary-foreground font-bold text-xs uppercase shadow-md shadow-primary/20 cursor-pointer active:scale-95 transition-all"
-                >
-                  {isUpdatingPassword ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin mr-2" />
-                      Updating...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="size-4 stroke-[3] mr-1.5" />
-                      Update Password
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-
-          </div>
-        </div>
-      )}
+              </DialogClose>
+              <Button
+                type="submit"
+                disabled={isUpdatingPassword}
+                className="h-12 flex-[2] gap-2 rounded-2xl bg-primary text-xs font-bold uppercase text-primary-foreground shadow-md shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.98]"
+              >
+                {isUpdatingPassword ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <Check className="size-4 stroke-[3]" />
+                    Update password
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
