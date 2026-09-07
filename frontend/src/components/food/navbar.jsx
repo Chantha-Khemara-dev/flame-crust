@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/theme-provider.jsx";
 import { SearchModal } from "./search-modal";
 import { fetchCategories } from "@/lib/food-api";
-import { PushNotificationButton } from "@/components/common/PushNotificationButton";
 
 
 let cachedActiveOrders = [];
@@ -571,13 +570,6 @@ function Navbar() {
               </Button>
             ) : null}
 
-            <div className="hidden lg:flex items-center shrink-0">
-              <PushNotificationButton 
-                userType={customer ? "CUSTOMER" : (adminUser ? "STAFF" : "GUEST")} 
-                userId={customer?.id || adminUser?.id} 
-              />
-            </div>
-
             {/* Compact Chat Button for Active Ongoing Orders */}
             {activeOrders.length > 0 && (
               <div className="relative flex items-center justify-center size-10 sm:size-11 shrink-0">
@@ -715,18 +707,6 @@ function Navbar() {
                     </Button>
                   </div>
                 ) : null}
-
-                <div className="p-2.5 rounded-2xl bg-secondary/40 border border-border/50 flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-foreground truncate">ការជូនដំណឹងក្រៅ App</p>
-                    <p className="text-[10px] text-muted-foreground truncate">Push Notifications</p>
-                  </div>
-                  <PushNotificationButton 
-                    userType={customer ? "CUSTOMER" : (adminUser ? "STAFF" : "GUEST")} 
-                    userId={customer?.id || adminUser?.id} 
-                    className="scale-90 origin-right"
-                  />
-                </div>
 
                 {isAdmin && (
                   <Link

@@ -46,6 +46,7 @@ import { unsubscribeFromPushNotifications } from "@/lib/push-notifications";
 import { getImageUrl } from "@/lib/food-api";
 import { useCart } from "@/lib/cart-store";
 import { useTheme } from "@/components/theme-provider.jsx";
+import { PushNotificationButton } from "@/components/common/PushNotificationButton";
 import { toast } from "sonner";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -1102,6 +1103,20 @@ export default function ProfilePage() {
                           {theme === "dark" ? <Moon className="size-3 sm:size-3.5" /> : <Sun className="size-3 sm:size-3.5" />}
                           <span>{theme === "dark" ? "Dark" : "Light"}</span>
                         </button>
+                      </div>
+
+                      {/* Push Notifications Settings */}
+                      <div className="flex items-center justify-between p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl text-sm font-medium transition-all group">
+                        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                          <div className="size-9 sm:size-11 rounded-xl sm:rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                            <Flame className="size-4 sm:size-5" />
+                          </div>
+                          <div className="text-left min-w-0">
+                            <span className="font-semibold text-foreground text-xs sm:text-sm block">Push Notifications</span>
+                            <span className="text-[10px] sm:text-xs text-muted-foreground">Order updates & driver chat alerts</span>
+                          </div>
+                        </div>
+                        <PushNotificationButton userType="CUSTOMER" userId={customer.id} className="scale-90 origin-right" />
                       </div>
 
                       {/* Sign Out */}
