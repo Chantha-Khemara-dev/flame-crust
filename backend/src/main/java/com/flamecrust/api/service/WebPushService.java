@@ -65,8 +65,13 @@ public class WebPushService {
             Map<String, Object> payload = new HashMap<>();
             payload.put("title", title);
             payload.put("body", body);
-            payload.put("icon", "/logo-192.png");
+            
+            String icon = (extraData != null && extraData.get("icon") != null) ? extraData.get("icon").toString() : "/logo-192.png";
+            payload.put("icon", icon);
             payload.put("badge", "/logo-192.png");
+            if (extraData != null && extraData.get("image") != null) {
+                payload.put("image", extraData.get("image").toString());
+            }
             
             Map<String, Object> data = new HashMap<>();
             data.put("url", url != null ? url : "/");
@@ -101,7 +106,7 @@ public class WebPushService {
         }
     }
 
-    public void sendToUser(Long userId, String userType, String title, String body, String url) {
+    public void sendToUserWithExtra(Long userId, String userType, String title, String body, String url, Map<String, Object> extraData) {
         List<PushSubscription> subs = subscriptionRepository.findByUserIdAndUserType(userId, userType);
         if (subs.isEmpty()) {
             log.info("No push subscriptions found for user {} with type {}", userId, userType);
@@ -109,8 +114,12 @@ public class WebPushService {
         }
 
         for (PushSubscription sub : subs) {
-            sendNotification(sub, title, body, url, null);
+            sendNotification(sub, title, body, url, extraData);
         }
+    }
+
+    public void sendToUser(Long userId, String userType, String title, String body, String url) {
+        sendToUserWithExtra(userId, userType, title, body, url, null);
     }
 
     public void sendToUserType(String userType, String title, String body, String url) {

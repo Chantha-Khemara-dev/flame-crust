@@ -13,6 +13,7 @@ import { OrderChatModal, showChatNotificationToast } from "@/components/food/ord
 import { FloatingChatHead } from "@/components/food/floating-chat-head";
 import { PushNotificationButton } from "@/components/common/PushNotificationButton";
 import { PushNotificationPromptModal } from "@/components/common/PushNotificationPromptModal";
+import { subscribeToPushNotifications } from "@/lib/push-notifications";
 import { cn } from "@/lib/utils";
 
 // Leaflet imports
@@ -859,7 +860,21 @@ export default function DriverDashboardPage() {
     };
   }, [theme]);
 
-  const [driver, setDriver] = useState(null);
+  const [driver, setDriver] = useState(() => {
+    try {
+      const auth = localStorage.getItem("driverAuth");
+      return auth ? JSON.parse(auth) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  // Auto-sync driver push subscription token to backend if notification permission is already granted
+  useEffect(() => {
+    if (driver?.id && typeof window !== 'undefined' && window.Notification && window.Notification.permission === 'granted') {
+      subscribeToPushNotifications({ userType: "DRIVER", userId: driver.id }).catch(() => {});
+    }
+  }, [driver?.id]);
   const [activeTab, setActiveTab] = useState("available"); // "available" or "my_deliveries"
   const [mobileView, setMobileView] = useState("list"); // "list" or "map"
 

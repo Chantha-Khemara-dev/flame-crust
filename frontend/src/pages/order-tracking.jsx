@@ -30,6 +30,7 @@ import { FloatingChatHead } from "@/components/food/floating-chat-head";
 import { list, get, update, getOrderMessages } from "@/lib/api";
 import { PushNotificationButton } from "@/components/common/PushNotificationButton";
 import { PushNotificationPromptModal } from "@/components/common/PushNotificationPromptModal";
+import { subscribeToPushNotifications } from "@/lib/push-notifications";
 import { cn, formatDate } from "@/lib/utils";
 import { getImageUrl } from "@/lib/food-api";
 import { useTheme } from "@/components/theme-provider.jsx";
@@ -151,6 +152,14 @@ export default function OrderTrackingPage() {
 
   const [order, setOrder] = useState(null);
   const [driver, setDriver] = useState(null);
+
+  // Auto-sync customer push subscription token to backend if notification permission is already granted
+  useEffect(() => {
+    const custId = order?.customerId || order?.customer_id;
+    if (custId && typeof window !== 'undefined' && window.Notification && window.Notification.permission === 'granted') {
+      subscribeToPushNotifications({ userType: "CUSTOMER", userId: custId }).catch(() => {});
+    }
+  }, [order?.customerId, order?.customer_id]);
   const [address, setAddress] = useState(null);
   const [items, setItems] = useState([]);
   const [products, setProducts] = useState([]);

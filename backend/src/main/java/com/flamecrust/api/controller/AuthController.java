@@ -22,6 +22,8 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletableFuture;
+import com.flamecrust.api.service.WebPushService;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -32,17 +34,19 @@ public class AuthController {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final WebPushService webPushService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     // Rate limiting buckets per IP/Email
     private final Map<String, Bucket> otpBuckets = new ConcurrentHashMap<>();
     private final Map<String, Bucket> loginBuckets = new ConcurrentHashMap<>();
 
-    public AuthController(JdbcTemplate jdbc, EmailService emailService, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+    public AuthController(JdbcTemplate jdbc, EmailService emailService, PasswordEncoder passwordEncoder, JwtUtil jwtUtil, WebPushService webPushService) {
         this.jdbc = jdbc;
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.webPushService = webPushService;
     }
 
     private Bucket getOtpBucket(String key) {
@@ -1087,6 +1091,68 @@ public class AuthController {
                 "INSERT INTO order_messages (order_id, sender_type, sender_id, sender_name, message, is_read) VALUES (?, ?, ?, ?, ?, FALSE)",
                 orderId, senderType, senderId, senderName, message.trim()
             );
+
+            // Asynchronously dispatch real Web Push Notification with sender photo & direct open URL
+            final String finalMsgText = message.trim();
+            final String finalSenderName = senderName;
+            final String finalSenderType = senderType;
+            final Long finalSenderId = senderId;
+            final Long finalOrderId = orderId;
+
+            CompletableFuture.runAsync(() -> {
+                try {
+                    List<Map<String, Object>> orders = jdbc.queryForList("SELECT customer_id, driver_id FROM orders WHERE id = ?", finalOrderId);
+                    if (!orders.isEmpty()) {
+                        Map<String, Object> ord = orders.get(0);
+                        Long customerId = ord.get("customer_id") != null ? ((Number) ord.get("customer_id")).longValue() : null;
+                        Long driverId = ord.get("driver_id") != null ? ((Number) ord.get("driver_id")).longValue() : null;
+
+                        String senderPhoto = null;
+                        if ("DRIVER".equalsIgnoreCase(finalSenderType) && finalSenderId != null) {
+                            List<String> photos = jdbc.queryForList("SELECT profile_photo FROM drivers WHERE id = ?", String.class, finalSenderId);
+                            if (!photos.isEmpty() && photos.get(0) != null && !photos.get(0).isBlank()) {
+                                senderPhoto = photos.get(0);
+                            }
+                        } else if ("CUSTOMER".equalsIgnoreCase(finalSenderType) && finalSenderId != null) {
+                            List<String> avatars = jdbc.queryForList("SELECT avatar FROM customers WHERE id = ?", String.class, finalSenderId);
+                            if (!avatars.isEmpty() && avatars.get(0) != null && !avatars.get(0).isBlank()) {
+                                senderPhoto = avatars.get(0);
+                            }
+                        }
+
+                        // Parse voice/image or text
+                        String notiBody = finalMsgText;
+                        String attachedImage = null;
+                        if (notiBody.startsWith("[VOICE]:")) {
+                            notiBody = "🎤 បានផ្ញើសារជាសំឡេង (Voice message)";
+                        } else if (notiBody.startsWith("[IMG]:")) {
+                            attachedImage = notiBody.substring(6).trim();
+                            notiBody = "📷 បានផ្ញើរូបភាព (Photo attachment)";
+                        }
+
+                        Map<String, Object> extra = new HashMap<>();
+                        if (senderPhoto != null) {
+                            extra.put("icon", senderPhoto);
+                        }
+                        if (attachedImage != null) {
+                            extra.put("image", attachedImage);
+                        }
+                        extra.put("orderId", finalOrderId);
+
+                        if ("DRIVER".equalsIgnoreCase(finalSenderType) && customerId != null) {
+                            String title = "💬 " + finalSenderName + " (អ្នកដឹកជញ្ជូន 🛵)";
+                            String url = "/order-tracking/" + finalOrderId;
+                            webPushService.sendToUserWithExtra(customerId, "CUSTOMER", title, notiBody, url, extra);
+                        } else if ("CUSTOMER".equalsIgnoreCase(finalSenderType) && driverId != null) {
+                            String title = "💬 " + finalSenderName + " (អតិថិជន 🍕)";
+                            String url = "/driver/dashboard";
+                            webPushService.sendToUserWithExtra(driverId, "DRIVER", title, notiBody, url, extra);
+                        }
+                    }
+                } catch (Exception ex) {
+                    log.error("Failed to send chat push notification: {}", ex.getMessage());
+                }
+            });
 
             return ResponseEntity.ok(Map.of("success", true, "message", "Sent successfully"));
         } catch (Exception e) {
