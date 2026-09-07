@@ -70,3 +70,8 @@ bakong:
     url: ${BAKONG_API_URL:https://api-bakong.nbc.gov.kh/v1/check_transaction_by_md5}
     token: ${BAKONG_API_TOKEN:eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7ImlkIjoiOTYzZjdiMDAxMTZjNDgxNCJ9LCJpYXQiOjE3ODc4MzE2NTcsImV4cCI6MTc5NTYwNzY1N30.WByYtYb4p6zAMEqTKOrRXOx4xPcLK1G2m_30KZOh660}
 
+vapid:
+  public-key: ${VAPID_PUBLIC_KEY:BL14cYA9vTebqA9HDHOl4o78Bzv7A7DIQfxDqYgPHZSpp8WloY2V8V2qe6Ri4bKsl_KSXr-iJuOzv_AsB_Rl0Qw}
+  private-key: ${VAPID_PRIVATE_KEY:uKyvz2wgF1_FWMkj2u3Hz1lNfUskNFrhtWerK66l33M}
+  subject: ${VAPID_SUBJECT:mailto:support@flamecrust.com}
+

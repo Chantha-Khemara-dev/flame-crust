@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { list, get, update, getDriverMe, updateDriverLocation, getOrderMessages, getActiveCall } from "@/lib/api";
 import { OrderChatModal, showChatNotificationToast } from "@/components/food/order-chat-modal";
 import { FloatingChatHead } from "@/components/food/floating-chat-head";
+import { PushNotificationButton } from "@/components/common/PushNotificationButton";
 import { cn } from "@/lib/utils";
 
 // Leaflet imports
@@ -78,6 +79,9 @@ function DriverHeader({ driver, locationActive, theme, toggleTheme, onRefresh, r
           >
             <RefreshCw className={cn("size-4", refreshing && "animate-spin text-red-500")} />
           </button>
+
+          {/* Push Notification Toggle */}
+          <PushNotificationButton userType="DRIVER" userId={driver?.id} className="scale-90 origin-right sm:scale-100" />
 
           {/* Theme Toggle */}
           <button 

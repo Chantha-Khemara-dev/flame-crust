@@ -18,6 +18,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import com.flamecrust.api.service.WebPushService;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -27,6 +29,7 @@ public class AdminCrudController {
     private final ApplicationContext context;
     private final ObjectMapper mapper;
     private final JdbcTemplate jdbc;
+    private final WebPushService webPushService;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     private record ResourceConfig(Class<?> entityClass, Class<? extends JpaRepository> repoClass) {}
@@ -207,6 +210,8 @@ public class AdminCrudController {
                 }
             }
 
+            triggerPushNotifications(resource, saved);
+
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
         } catch (DataIntegrityViolationException e) {
             return ResponseEntity.badRequest().body(Map.of("error", "Database constraint failed: " + e.getMostSpecificCause().getMessage()));
@@ -269,6 +274,8 @@ public class AdminCrudController {
                 }
             }
             
+            triggerPushNotifications(resource, saved);
+
             return ResponseEntity.ok(saved);
         } catch (DataIntegrityViolationException e) {
             return ResponseEntity.badRequest().body(Map.of("error", "Database constraint failed: " + e.getMostSpecificCause().getMessage()));
@@ -283,5 +290,54 @@ public class AdminCrudController {
         if (!repo.existsById(id)) return ResponseEntity.notFound().build();
         repo.deleteById(id);
         return ResponseEntity.ok(Map.of("message", "deleted", "id", id));
+    }
+
+    private void triggerPushNotifications(String resource, Object savedEntity) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                if ("order_messages".equalsIgnoreCase(resource) && savedEntity instanceof OrderMessage msg) {
+                    Long orderId = msg.getOrderId();
+                    String senderType = msg.getSenderType();
+                    String senderName = msg.getSenderName() != null ? msg.getSenderName() : "Flame & Crust";
+                    String text = msg.getMessage();
+                    if (text != null && text.startsWith("[VOICE]:")) {
+                        text = "🎤 បានផ្ញើសារសំឡេង (Voice message)";
+                    } else if (text != null && text.startsWith("[IMG]:")) {
+                        text = "📷 បានផ្ញើរូបភាព (Photo attachment)";
+                    }
+
+                    List<Map<String, Object>> orders = jdbc.queryForList("SELECT customer_id, driver_id FROM orders WHERE id = ?", orderId);
+                    if (!orders.isEmpty()) {
+                        Map<String, Object> ord = orders.get(0);
+                        Long customerId = ord.get("customer_id") != null ? ((Number) ord.get("customer_id")).longValue() : null;
+                        Long driverId = ord.get("driver_id") != null ? ((Number) ord.get("driver_id")).longValue() : null;
+
+                        if ("DRIVER".equalsIgnoreCase(senderType) && customerId != null) {
+                            webPushService.sendToUser(customerId, "CUSTOMER", "💬 " + senderName, text, "/order-tracking/" + orderId);
+                        } else if ("CUSTOMER".equalsIgnoreCase(senderType) && driverId != null) {
+                            webPushService.sendToUser(driverId, "DRIVER", "💬 " + senderName, text, "/driver/dashboard");
+                        }
+                    }
+                } else if ("orders".equalsIgnoreCase(resource) && savedEntity instanceof Order ord) {
+                    Long orderId = ord.getId();
+                    Long customerId = ord.getCustomerId();
+                    String status = ord.getStatus();
+                    if (customerId != null && status != null) {
+                        String statusText = switch (status.toUpperCase()) {
+                            case "CONFIRMED" -> "ការកុម្ម៉ង់របស់អ្នកត្រូវបានទទួលយកហើយ!";
+                            case "PREPARING" -> "ចុងភៅកំពុងរៀបចំធ្វើម្ហូបរបស់អ្នកយ៉ាងយកចិត្តទុកដាក់ 🍕";
+                            case "READY" -> "ម្ហូបរបស់អ្នករួចរាល់ហើយ កំពុងរង់ចាំអ្នកដឹកជញ្ជូន 🛵";
+                            case "OUT_FOR_DELIVERY" -> "អ្នកដឹកកំពុងធ្វើដំណើរយកម្ហូបជូនអ្នកហើយ 🚀";
+                            case "DELIVERED" -> "ការកុម្ម៉ង់ត្រូវបានដឹកជញ្ជូនជោគជ័យ! សូមពិសារដោយឆ្ងាញ់មាត់ 😋";
+                            case "CANCELLED" -> "ការកុម្ម៉ង់របស់អ្នកត្រូវបានបោះបង់";
+                            default -> "ស្ថានភាពការកុម្ម៉ង់៖ " + status;
+                        };
+                        webPushService.sendToUser(customerId, "CUSTOMER", "🍕 បច្ចុប្បន្នភាពការកុម្ម៉ង់ #" + orderId, statusText, "/order-tracking/" + orderId);
+                    }
+                }
+            } catch (Exception ex) {
+                System.err.println("Error triggering push notification: " + ex.getMessage());
+            }
+        });
     }
 }

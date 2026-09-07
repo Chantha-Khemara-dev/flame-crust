@@ -16,6 +16,7 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api/],
+        importScripts: ['/sw-push.js'],
         runtimeCaching: [
           {
             urlPattern: /^\/api\/.*/i,
@@ -27,7 +28,7 @@ export default defineConfig({
           }
         ]
       },
-      includeAssets: ['logo.png', 'logo-192.png', 'robots.txt'],
+      includeAssets: ['logo.png', 'logo-192.png', 'robots.txt', 'sw-push.js'],
       manifest: {
         name: 'Flame Crust',
         short_name: 'FlameCrust',
