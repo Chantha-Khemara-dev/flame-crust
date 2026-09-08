@@ -51,6 +51,7 @@ export function ActiveOrderWidget() {
     }
 
     const checkActiveOrders = async () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       try {
         const stored = localStorage.getItem("customerAuth");
         if (!stored) {
@@ -89,6 +90,8 @@ export function ActiveOrderWidget() {
 
     checkActiveOrders();
     const interval = setInterval(checkActiveOrders, 10000);
+    const handleVis = () => { if (document.visibilityState === "visible") checkActiveOrders(); };
+    document.addEventListener("visibilitychange", handleVis);
 
     const handleOrderPlaced = () => {
       setIsDismissed(false);
@@ -104,6 +107,7 @@ export function ActiveOrderWidget() {
 
     return () => {
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVis);
       window.removeEventListener("orderPlaced", handleOrderPlaced);
       window.removeEventListener("authChanged", checkActiveOrders);
       window.removeEventListener("storage", checkActiveOrders);

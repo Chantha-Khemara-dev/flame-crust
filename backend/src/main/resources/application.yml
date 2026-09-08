@@ -18,11 +18,12 @@ spring:
     password: ${MYSQL_PASSWORD:${SPRING_DATASOURCE_PASSWORD:}}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
-      maximum-pool-size: 20
+      maximum-pool-size: 25
       minimum-idle: 5
       connection-timeout: 20000
       idle-timeout: 300000
       max-lifetime: 1800000
+      leak-detection-threshold: 10000
   jpa:
     hibernate:
       ddl-auto: none
@@ -58,12 +59,17 @@ spring:
 
 server:
   port: ${PORT:8080}
+  compression:
+    enabled: true
+    mime-types: application/json,text/html,text/xml,text/plain,application/javascript,text/css
+    min-response-size: 1024
   tomcat:
     threads:
-      max: 25
-      min-spare: 4
-    accept-count: 50
-    max-connections: 100
+      max: 200
+      min-spare: 20
+    accept-count: 200
+    max-connections: 4000
+    connection-timeout: 20000
 
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}

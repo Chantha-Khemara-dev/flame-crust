@@ -23,13 +23,17 @@ public class ProductController {
     }
 
     @GetMapping
-    public List<Product> all() {
-        return products.findByActiveTrueOrderByIdAsc();
+    public ResponseEntity<List<Product>> all() {
+        return ResponseEntity.ok()
+                .cacheControl(org.springframework.http.CacheControl.maxAge(java.time.Duration.ofSeconds(60)).cachePublic())
+                .body(products.findByActiveTrueOrderByIdAsc());
     }
 
     @GetMapping("/categories")
     public ResponseEntity<List<Category>> getCategories() {
-        return ResponseEntity.ok(categories.findByActiveTrueOrderBySortOrderAsc());
+        return ResponseEntity.ok()
+                .cacheControl(org.springframework.http.CacheControl.maxAge(java.time.Duration.ofSeconds(120)).cachePublic())
+                .body(categories.findByActiveTrueOrderBySortOrderAsc());
     }
 
     @GetMapping("/{idOrCategory}")

@@ -29,6 +29,7 @@ export function GlobalCustomerChatManager() {
     if (isExcludedPage) return;
 
     const checkActiveDelivery = async () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       try {
         const stored = localStorage.getItem("customerAuth");
         if (!stored) {
@@ -78,7 +79,12 @@ export function GlobalCustomerChatManager() {
 
     checkActiveDelivery();
     const interval = setInterval(checkActiveDelivery, 8000);
-    return () => clearInterval(interval);
+    const handleVis = () => { if (document.visibilityState === "visible") checkActiveDelivery(); };
+    document.addEventListener("visibilitychange", handleVis);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVis);
+    };
   }, [location.pathname, isExcludedPage]);
 
   // 2. Monitor background messages for active delivery
@@ -86,6 +92,7 @@ export function GlobalCustomerChatManager() {
     if (!activeOrder || isExcludedPage) return;
 
     const checkMessages = async () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       try {
         const msgs = await getOrderMessages(activeOrder.id);
         if (Array.isArray(msgs) && msgs.length > 0) {
