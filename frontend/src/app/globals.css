@@ -132,6 +132,10 @@
   mix-blend-mode: normal !important;
 }
 
+::view-transition-group(root) {
+  animation-duration: 0.65s !important;
+}
+
 ::view-transition-old(root) {
   z-index: 1;
 }
