@@ -69,22 +69,30 @@ export default function KitchenDashboard() {
 
   const fetchData = async (isInitial = false) => {
     try {
+      // Recent orders and items (limit 100/250) sorted by newest first for maximum speed
       const promises = [
-        list("orders"),
-        list("order_items"),
-        list("customers")
+        list("orders", { limit: 100, sort: "id", dir: "desc" }),
+        list("order_items", { limit: 250, sort: "id", dir: "desc" }),
       ];
+
+      // Customers only need to be fetched initially or on manual refresh
+      if (isInitial || customers.length === 0) {
+        promises.push(list("customers", { limit: 100, sort: "id", dir: "desc" }));
+      }
       if (cachedStandaloneKitchenProducts.length === 0 || isInitial) {
-        promises.push(list("products"));
+        promises.push(list("products", { limit: 100 }));
       }
       
       const results = await Promise.all(promises);
-      setOrders(results[0] || []);
-      setOrderItems(results[1] || []);
-      setCustomers(results[2] || []);
-      if (results[3]) {
-        cachedStandaloneKitchenProducts = results[3];
-        setProducts(results[3]);
+      if (results[0]) setOrders(results[0]);
+      if (results[1]) setOrderItems(results[1]);
+      if (results[2] && (isInitial || customers.length === 0)) {
+        setCustomers(results[2]);
+      }
+      const prodRes = results[3] || (results.length > 2 && cachedStandaloneKitchenProducts.length === 0 ? results[2] : null);
+      if (prodRes && Array.isArray(prodRes)) {
+        cachedStandaloneKitchenProducts = prodRes;
+        setProducts(prodRes);
       }
     } catch (error) {
       if (isInitial) toast.error("Failed to load kitchen data.");

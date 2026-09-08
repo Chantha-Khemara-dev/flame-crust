@@ -96,6 +96,13 @@ public class AdminCrudController {
         }
     }
 
+    private final Map<String, CacheEntry> lookupCache = new java.util.concurrent.ConcurrentHashMap<>();
+    private record CacheEntry(Map<String, Object> data, long expiresAt) {}
+
+    private void invalidateLookupCache(String resource) {
+        if (resource != null) lookupCache.remove(resource.toLowerCase());
+    }
+
     @GetMapping("/{resource}")
     public Map<String, Object> all(
             @PathVariable String resource,
@@ -104,6 +111,18 @@ public class AdminCrudController {
             @RequestParam(required = false) Integer size,
             @RequestParam(required = false, defaultValue = "id") String sort,
             @RequestParam(required = false) String dir) {
+        
+        String resKey = resource.toLowerCase();
+        boolean isCacheable = (page == 0 && (limit == null || limit == -1) && 
+                java.util.Set.of("categories", "roles", "branches", "coupons").contains(resKey));
+        
+        if (isCacheable) {
+            CacheEntry entry = lookupCache.get(resKey);
+            if (entry != null && System.currentTimeMillis() < entry.expiresAt()) {
+                return entry.data();
+            }
+        }
+
         JpaRepository<Object, Long> repo = getRepository(resource);
         
         // All admin resources start from ID 1 ascending (1, 2, 3...)
@@ -121,11 +140,14 @@ public class AdminCrudController {
             resp.put("page", 0);
             resp.put("size", allItems.size());
             resp.put("totalPages", 1);
+            if (isCacheable) {
+                lookupCache.put(resKey, new CacheEntry(resp, System.currentTimeMillis() + 30000));
+            }
             return resp;
         }
 
-        int pageSize = size != null ? size : (limit != null ? limit : 500);
-        if (pageSize <= 0) pageSize = 500;
+        int pageSize = size != null ? size : (limit != null ? limit : 100);
+        if (pageSize <= 0) pageSize = 100;
         if (pageSize > 1000) pageSize = 1000;
 
         org.springframework.data.domain.Page<Object> pageResult = repo.findAll(PageRequest.of(page, pageSize, sortObj));
@@ -136,6 +158,9 @@ public class AdminCrudController {
         resp.put("page", pageResult.getNumber());
         resp.put("size", pageResult.getSize());
         resp.put("totalPages", pageResult.getTotalPages());
+        if (isCacheable) {
+            lookupCache.put(resKey, new CacheEntry(resp, System.currentTimeMillis() + 30000));
+        }
         return resp;
     }
 
@@ -210,6 +235,7 @@ public class AdminCrudController {
                 }
             }
 
+            invalidateLookupCache(resource);
             triggerPushNotifications(resource, saved);
 
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
@@ -274,6 +300,7 @@ public class AdminCrudController {
                 }
             }
             
+            invalidateLookupCache(resource);
             triggerPushNotifications(resource, saved);
 
             return ResponseEntity.ok(saved);
@@ -289,6 +316,7 @@ public class AdminCrudController {
         JpaRepository<Object, Long> repo = getRepository(resource);
         if (!repo.existsById(id)) return ResponseEntity.notFound().build();
         repo.deleteById(id);
+        invalidateLookupCache(resource);
         return ResponseEntity.ok(Map.of("message", "deleted", "id", id));
     }
 

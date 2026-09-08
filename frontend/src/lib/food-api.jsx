@@ -1,4 +1,4 @@
-import { getDashboard, getProducts } from "./api";
+import { getDashboard, getProducts, getProductCategories } from "./api";
 import { DEFAULT_FALLBACK_PRODUCTS } from "./food-data";
 
 let cachedFoodItems = DEFAULT_FALLBACK_PRODUCTS;
@@ -89,10 +89,7 @@ async function fetchCategories() {
 
   inFlightCategoriesPromise = (async () => {
     try {
-      const { API_URL } = await import('./api');
-      const res = await fetch(`${API_URL}/products/categories`);
-      if (!res.ok) throw new Error("Failed to load categories");
-      const data = await res.json();
+      const data = await getProductCategories();
       if (Array.isArray(data) && data.length > 0) {
         cachedCategories = data;
         try {

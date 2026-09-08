@@ -17,9 +17,16 @@ import java.util.Map;
 public class DashboardController {
     
     private final JdbcTemplate jdbc;
+    private volatile Map<String, Object> cachedOverview = null;
+    private volatile long cacheExpiresAt = 0;
 
     @GetMapping
     public Map<String, Object> overview() {
+        long now = System.currentTimeMillis();
+        if (cachedOverview != null && now < cacheExpiresAt) {
+            return cachedOverview;
+        }
+
         Map<String, Object> result = new LinkedHashMap<>();
         
         try {
@@ -50,9 +57,9 @@ public class DashboardController {
                     "GROUP BY DATE(created_at) ORDER BY order_date ASC");
             result.put("chartData", chartPoints);
 
-            // 4. Top Selling Products
+            // 4. Top Selling Products (using line_total or unit_price * quantity)
             List<Map<String, Object>> topProducts = jdbc.queryForList(
-                    "SELECT p.name, COUNT(oi.id) as sales, COALESCE(SUM(oi.price * oi.quantity), 0) as revenue " +
+                    "SELECT p.name, COUNT(oi.id) as sales, COALESCE(SUM(COALESCE(oi.line_total, oi.unit_price * oi.quantity)), 0) as revenue " +
                     "FROM order_items oi JOIN products p ON oi.product_id = p.id " +
                     "GROUP BY p.id, p.name ORDER BY sales DESC LIMIT 5");
             result.put("topProducts", topProducts);
@@ -81,6 +88,8 @@ public class DashboardController {
                     "ORDER BY i.stock_quantity ASC LIMIT 5");
             result.put("lowStock", lowStock);
 
+            cachedOverview = result;
+            cacheExpiresAt = now + 5000; // 5 seconds cache
         } catch (Exception e) {
             result.put("totalRevenue", BigDecimal.ZERO);
             result.put("totalOrders", 0);

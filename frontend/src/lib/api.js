@@ -106,7 +106,28 @@ export const API_URL = {
   includes: (...args) => getApiUrl().includes(...args),
 };
 
+const inFlightRequests = new Map();
+const responseCache = new Map();
+
+export function clearApiCache(pathPrefix) {
+  if (!pathPrefix) {
+    responseCache.clear();
+    return;
+  }
+  for (const key of responseCache.keys()) {
+    if (key.includes(pathPrefix)) responseCache.delete(key);
+  }
+}
+
 async function request(path, options = {}) {
+  const method = (options.method || "GET").toUpperCase();
+  const isGet = method === "GET";
+
+  // Invalidate cache immediately on mutations (POST, PUT, DELETE)
+  if (!isGet) {
+    responseCache.clear();
+  }
+
   let token = null;
   if (typeof window !== 'undefined') {
     const adminAuth = localStorage.getItem("adminAuth");
@@ -125,32 +146,86 @@ async function request(path, options = {}) {
     }
   }
 
-  const headers = {
-    Accept: "application/json",
-    ...(options.body ? { "Content-Type": "application/json" } : {}),
-    ...(token ? { "Authorization": `Bearer ${token}` } : {}),
-    ...options.headers
-  };
-
   const currentApiUrl = getApiUrl();
-  const response = await globalThis.fetch(`${currentApiUrl}${path}`, {
-    ...options,
-    headers
-  });
+  const fullUrl = `${currentApiUrl}${path}`;
+  const cacheKey = `${token || "anon"}:${fullUrl}`;
 
-  if (!response.ok) {
-    let message = `API request failed: ${response.status} ${response.statusText}`;
-    try {
-      const error = await response.json();
-      message = error.error ?? error.message ?? message;
-    } catch {
-      // Keep the HTTP error when the response is not JSON.
+  // Check TTL micro-cache for GET requests (0 ms latency)
+  if (isGet && !options.noCache && !options.refresh) {
+    const cached = responseCache.get(cacheKey);
+    if (cached && Date.now() < cached.expiresAt) {
+      return cached.data;
     }
-    throw new Error(message);
   }
 
-  if (response.status === 204) return null;
-  return response.json();
+  // Deduplicate simultaneous in-flight GET requests
+  if (isGet && inFlightRequests.has(cacheKey) && !options.noCache && !options.refresh) {
+    return inFlightRequests.get(cacheKey);
+  }
+
+  const execRequest = async () => {
+    const headers = {
+      Accept: "application/json",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+      ...options.headers
+    };
+
+    // Safe 15s timeout to prevent browser hanging indefinitely
+    let signal = options.signal;
+    let timeoutId = null;
+    if (!signal && typeof AbortController !== "undefined") {
+      const controller = new AbortController();
+      timeoutId = setTimeout(() => controller.abort(new Error("Request timeout")), 15000);
+      signal = controller.signal;
+    }
+
+    try {
+      const response = await globalThis.fetch(fullUrl, {
+        ...options,
+        signal,
+        headers
+      });
+
+      if (!response.ok) {
+        let message = `API request failed: ${response.status} ${response.statusText}`;
+        try {
+          const error = await response.json();
+          message = error.error ?? error.message ?? message;
+        } catch {
+          // Keep the HTTP error when the response is not JSON.
+        }
+        throw new Error(message);
+      }
+
+      if (response.status === 204) return null;
+      const data = await response.json();
+
+      // Store in micro-cache with appropriate TTL
+      if (isGet && !options.noCache) {
+        let ttl = 3000; // 3s micro-cache for orders / high-frequency data
+        if (path.includes("/products") || path.includes("/categories") || path.includes("/coupons")) {
+          ttl = 45000; // 45s for products & categories
+        } else if (path.includes("/dashboard")) {
+          ttl = 5000; // 5s for dashboard
+        }
+        responseCache.set(cacheKey, { data, expiresAt: Date.now() + ttl });
+      }
+
+      return data;
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+      inFlightRequests.delete(cacheKey);
+    }
+  };
+
+  if (isGet && !options.noCache && !options.refresh) {
+    const p = execRequest();
+    inFlightRequests.set(cacheKey, p);
+    return p;
+  }
+
+  return execRequest();
 }
 
 function jsonBody(data) {
@@ -163,6 +238,10 @@ export function getHealth(options = {}) {
 
 export function getProducts(category, options = {}) {
   return request(`/products${category ? `/${encodeURIComponent(category)}` : ""}`, options);
+}
+
+export function getProductCategories(options = {}) {
+  return request("/products/categories", options);
 }
 
 export function getDashboard(options = {}) {
