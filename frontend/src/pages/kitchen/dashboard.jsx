@@ -47,15 +47,9 @@ export default function KitchenDashboard() {
     localStorage.setItem("kitchenTheme", theme);
     if (theme === "dark") {
       document.documentElement.classList.add("dark");
-      document.body.style.backgroundColor = '#09090b';
     } else {
       document.documentElement.classList.remove("dark");
-      document.body.style.backgroundColor = '#f8fafc';
     }
-    return () => {
-      document.body.style.backgroundColor = '';
-      document.documentElement.classList.remove("dark");
-    };
   }, [theme]);
 
   useEffect(() => {
@@ -172,7 +166,7 @@ export default function KitchenDashboard() {
   if (!user) return null;
 
   return (
-    <div className="flex h-[100dvh] max-h-[100dvh] overflow-hidden bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 font-sans selection:bg-orange-100 dark:selection:bg-orange-500/30">
+    <div className="flex h-[100dvh] max-h-[100dvh] overflow-hidden bg-background text-foreground font-sans selection:bg-primary/20">
       
       <KitchenSidebar 
         activeView={activeView} 
@@ -183,22 +177,22 @@ export default function KitchenDashboard() {
       
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         {/* Top Header */}
-        <header className="h-[calc(env(safe-area-inset-top,0px)+3.75rem)] sm:h-[calc(env(safe-area-inset-top,0px)+4.25rem)] pt-[env(safe-area-inset-top,0px)] border-b border-slate-200/60 dark:border-white/10 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md flex items-center justify-between px-3.5 sm:px-6 md:px-8 shrink-0 z-20 transition-colors">
+        <header className="h-[calc(env(safe-area-inset-top,0px)+3.75rem)] sm:h-[calc(env(safe-area-inset-top,0px)+4.25rem)] pt-[env(safe-area-inset-top,0px)] border-b border-border/60 bg-card/80 dark:bg-zinc-900/80 backdrop-blur-2xl flex items-center justify-between px-3.5 sm:px-6 md:px-8 shrink-0 z-20 transition-colors">
           <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
-            <div className="size-9 sm:size-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-md shadow-orange-500/20 shrink-0">
-              <ChefHat className="size-5 text-white" />
+            <div className="size-9 sm:size-10 rounded-2xl bg-gradient-to-br from-primary via-orange-500 to-amber-500 flex items-center justify-center shadow-warm text-white shrink-0">
+              <Flame className="size-5 fill-white/20" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <h1 className="text-sm sm:text-lg font-black text-slate-900 dark:text-zinc-100 tracking-tight capitalize leading-tight truncate">
+                <h1 className="font-serif font-bold text-base sm:text-xl text-foreground tracking-tight capitalize leading-tight truncate">
                   {activeView === 'dashboard' ? 'Kitchen Board' : activeView.replace('-', ' ')}
                 </h1>
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
                   <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   Live
                 </span>
               </div>
-              <p className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider truncate">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider truncate">
                 {activeOrdersCount} {activeOrdersCount === 1 ? 'Order' : 'Orders'} in queue
               </p>
             </div>
@@ -207,27 +201,27 @@ export default function KitchenDashboard() {
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             <button 
               onClick={toggleTheme}
-              className="p-2 sm:p-2.5 rounded-xl bg-slate-100 dark:bg-zinc-800/80 border border-slate-200/80 dark:border-zinc-700/80 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 transition-colors"
+              className="p-2 sm:p-2.5 rounded-full bg-secondary/80 hover:bg-secondary border border-border/70 text-foreground transition-colors shadow-2xs"
               title="Toggle theme"
             >
-              {theme === 'dark' ? <Sun className="size-4 sm:size-4.5" /> : <Moon className="size-4 sm:size-4.5" />}
+              {theme === 'dark' ? <Sun className="size-4 sm:size-4.5 text-accent" /> : <Moon className="size-4 sm:size-4.5" />}
             </button>
 
             <Button 
               variant="outline" 
               onClick={handleRefresh}
               disabled={refreshing}
-              className="rounded-xl h-9 sm:h-10 px-2.5 sm:px-3.5 font-bold text-slate-700 dark:text-zinc-200 bg-slate-100 dark:bg-zinc-800/80 border-slate-200/80 dark:border-zinc-700/80 hover:bg-slate-200 dark:hover:bg-zinc-700"
+              className="rounded-full h-9 sm:h-10 px-3 sm:px-4 font-serif font-bold text-foreground bg-secondary/70 hover:bg-secondary border-border/70 shadow-2xs"
               title="Refresh orders"
             >
-              <RefreshCw className={cn("size-3.5 sm:mr-1.5", refreshing && "animate-spin text-orange-500")} />
+              <RefreshCw className={cn("size-3.5 sm:mr-1.5", refreshing && "animate-spin text-primary")} />
               <span className="hidden sm:inline text-xs">Sync</span>
             </Button>
 
             <Button 
               variant="outline" 
               onClick={handleSignOut}
-              className="rounded-xl h-9 sm:h-10 px-2.5 sm:px-3.5 text-slate-600 dark:text-zinc-400 font-bold bg-slate-100 dark:bg-zinc-800/80 border-slate-200/80 dark:border-zinc-700/80 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 hover:border-red-200"
+              className="rounded-full h-9 sm:h-10 px-3 sm:px-4 text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30 font-serif font-bold bg-secondary/70 border-border/70 shadow-2xs"
               title="Sign Out"
             >
               <LogOut className="size-3.5 sm:mr-1.5" />
@@ -237,10 +231,10 @@ export default function KitchenDashboard() {
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-hidden p-2.5 sm:p-5 md:p-6 pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))] lg:pb-6 relative">
+        <main className="flex-1 overflow-hidden p-3 sm:p-5 md:p-6 pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))] lg:pb-6 relative">
           {loading ? (
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="size-12 rounded-full border-4 border-slate-200 dark:border-zinc-800 border-t-orange-500 animate-spin" />
+              <div className="size-12 rounded-full border-4 border-border border-t-primary animate-spin" />
             </div>
           ) : (
             <>
@@ -288,7 +282,7 @@ export default function KitchenDashboard() {
         {/* Authentic iOS Frosted Glass Mobile Bottom Capsule - Matching Customer Navigation */}
         <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] inset-x-3 sm:inset-x-6 z-[70] lg:hidden select-none pointer-events-none">
           <nav
-            className="pointer-events-auto mx-auto max-w-md bg-white/75 dark:bg-zinc-900/75 backdrop-blur-2xl backdrop-saturate-150 border border-black/[0.08] dark:border-white/[0.12] ring-1 ring-white/30 dark:ring-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.12)] rounded-full p-1.5 transition-all duration-300"
+            className="pointer-events-auto mx-auto max-w-md bg-card/85 dark:bg-zinc-900/85 backdrop-blur-2xl backdrop-saturate-150 border border-black/[0.08] dark:border-white/[0.12] ring-1 ring-white/30 dark:ring-white/5 shadow-warm-lg rounded-full p-1.5 transition-all duration-300"
             aria-label="Kitchen Navigation Dock"
           >
             <div className="grid grid-cols-4 items-center gap-1">
@@ -302,8 +296,8 @@ export default function KitchenDashboard() {
                   className={cn(
                     "relative flex flex-col items-center justify-center py-1.5 px-1 rounded-full transition-all duration-150 cursor-pointer touch-manipulation select-none w-full",
                     activeView === 'dashboard'
-                      ? "bg-orange-500/12 text-orange-600 dark:text-orange-400 shadow-2xs"
-                      : "text-muted-foreground/75 text-slate-500 dark:text-zinc-400 hover:text-foreground hover:bg-foreground/5 active:scale-90"
+                      ? "bg-primary/12 text-primary shadow-2xs font-bold"
+                      : "text-muted-foreground/80 hover:text-foreground hover:bg-foreground/5 active:scale-90"
                   )}
                 >
                   <div className="relative flex items-center justify-center size-6 mb-0.5">
@@ -314,21 +308,16 @@ export default function KitchenDashboard() {
                       )}
                     />
                     {activeOrdersCount > 0 && (
-                      <span className="absolute -top-1.5 -right-2.5 min-w-[17px] h-[17px] px-1 rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white text-[9px] font-extrabold flex items-center justify-center ring-2 ring-white dark:ring-zinc-900 shadow-xs animate-in zoom-in-75 duration-150">
+                      <span className="absolute -top-1.5 -right-2.5 min-w-[17px] h-[17px] px-1 rounded-full bg-gradient-to-r from-primary to-orange-500 text-white text-[9px] font-extrabold flex items-center justify-center ring-2 ring-card shadow-xs animate-in zoom-in-75 duration-150">
                         {activeOrdersCount}
                       </span>
                     )}
                   </div>
-                  <span
-                    className={cn(
-                      "text-[10px] tracking-tight leading-none transition-colors duration-150",
-                      activeView === 'dashboard' ? "font-bold text-orange-600 dark:text-orange-400" : "font-medium"
-                    )}
-                  >
+                  <span className="text-[10px] tracking-tight leading-none">
                     Board
                   </span>
                   {activeView === 'dashboard' && (
-                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-0.5 rounded-full bg-orange-500 shadow-[0_0_6px_rgba(249,115,22,0.8)]" />
+                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-0.5 rounded-full bg-primary shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
                   )}
                 </div>
               </button>
@@ -343,8 +332,8 @@ export default function KitchenDashboard() {
                   className={cn(
                     "relative flex flex-col items-center justify-center py-1.5 px-1 rounded-full transition-all duration-150 cursor-pointer touch-manipulation select-none w-full",
                     activeView === 'customers'
-                      ? "bg-blue-500/12 text-blue-600 dark:text-blue-400 shadow-2xs"
-                      : "text-muted-foreground/75 text-slate-500 dark:text-zinc-400 hover:text-foreground hover:bg-foreground/5 active:scale-90"
+                      ? "bg-primary/12 text-primary shadow-2xs font-bold"
+                      : "text-muted-foreground/80 hover:text-foreground hover:bg-foreground/5 active:scale-90"
                   )}
                 >
                   <div className="relative flex items-center justify-center size-6 mb-0.5">
@@ -355,16 +344,11 @@ export default function KitchenDashboard() {
                       )}
                     />
                   </div>
-                  <span
-                    className={cn(
-                      "text-[10px] tracking-tight leading-none transition-colors duration-150",
-                      activeView === 'customers' ? "font-bold text-blue-600 dark:text-blue-400" : "font-medium"
-                    )}
-                  >
+                  <span className="text-[10px] tracking-tight leading-none">
                     Customers
                   </span>
                   {activeView === 'customers' && (
-                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-0.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.8)]" />
+                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-0.5 rounded-full bg-primary shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
                   )}
                 </div>
               </button>
@@ -379,8 +363,8 @@ export default function KitchenDashboard() {
                   className={cn(
                     "relative flex flex-col items-center justify-center py-1.5 px-1 rounded-full transition-all duration-150 cursor-pointer touch-manipulation select-none w-full",
                     activeView === 'performance'
-                      ? "bg-purple-500/12 text-purple-600 dark:text-purple-400 shadow-2xs"
-                      : "text-muted-foreground/75 text-slate-500 dark:text-zinc-400 hover:text-foreground hover:bg-foreground/5 active:scale-90"
+                      ? "bg-primary/12 text-primary shadow-2xs font-bold"
+                      : "text-muted-foreground/80 hover:text-foreground hover:bg-foreground/5 active:scale-90"
                   )}
                 >
                   <div className="relative flex items-center justify-center size-6 mb-0.5">
@@ -391,16 +375,11 @@ export default function KitchenDashboard() {
                       )}
                     />
                   </div>
-                  <span
-                    className={cn(
-                      "text-[10px] tracking-tight leading-none transition-colors duration-150",
-                      activeView === 'performance' ? "font-bold text-purple-600 dark:text-purple-400" : "font-medium"
-                    )}
-                  >
+                  <span className="text-[10px] tracking-tight leading-none">
                     Analytics
                   </span>
                   {activeView === 'performance' && (
-                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-0.5 rounded-full bg-purple-500 shadow-[0_0_6px_rgba(168,85,247,0.8)]" />
+                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-0.5 rounded-full bg-primary shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
                   )}
                 </div>
               </button>
@@ -415,8 +394,8 @@ export default function KitchenDashboard() {
                   className={cn(
                     "relative flex flex-col items-center justify-center py-1.5 px-1 rounded-full transition-all duration-150 cursor-pointer touch-manipulation select-none w-full",
                     activeView === 'chef-profile'
-                      ? "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 shadow-2xs"
-                      : "text-muted-foreground/75 text-slate-500 dark:text-zinc-400 hover:text-foreground hover:bg-foreground/5 active:scale-90"
+                      ? "bg-primary/12 text-primary shadow-2xs font-bold"
+                      : "text-muted-foreground/80 hover:text-foreground hover:bg-foreground/5 active:scale-90"
                   )}
                 >
                   <div className="relative flex items-center justify-center size-6 mb-0.5">
@@ -427,16 +406,11 @@ export default function KitchenDashboard() {
                       )}
                     />
                   </div>
-                  <span
-                    className={cn(
-                      "text-[10px] tracking-tight leading-none transition-colors duration-150",
-                      activeView === 'chef-profile' ? "font-bold text-emerald-600 dark:text-emerald-400" : "font-medium"
-                    )}
-                  >
+                  <span className="text-[10px] tracking-tight leading-none">
                     Profile
                   </span>
                   {activeView === 'chef-profile' && (
-                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-0.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
+                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-0.5 rounded-full bg-primary shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
                   )}
                 </div>
               </button>

@@ -61,24 +61,24 @@ export function CustomersView({ customers = [], orders = [] }) {
     <div className="flex flex-col h-full overflow-hidden">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 sm:mb-6 shrink-0">
         <div>
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2.5 sm:gap-3">
-            <Users className="size-5 sm:size-6 text-blue-500" /> Customers Directory
+          <h2 className="font-serif text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2.5 sm:gap-3">
+            <Users className="size-5 sm:size-6 text-primary" /> Customers Directory
           </h2>
-          <p className="text-xs sm:text-sm font-bold text-slate-500 dark:text-zinc-400 mt-0.5">Manage and view customer profiles and history</p>
+          <p className="text-xs sm:text-sm font-medium text-muted-foreground mt-0.5">Manage and view customer profiles and order history</p>
         </div>
         <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <input 
             type="text" 
             placeholder="Search customers..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm font-bold focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-sm"
+            className="w-full bg-card border border-border/70 rounded-full pl-10 pr-4 py-2 text-sm font-medium text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-xs"
           />
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
+      <div className="flex-1 overflow-y-auto custom-scrollbar pb-6">
         {enrichedCustomers.length === 0 ? (
           <div className="h-64 flex items-center justify-center">
             <EmptyState 
@@ -93,11 +93,11 @@ export function CustomersView({ customers = [], orders = [] }) {
               <div 
                 key={customer.id} 
                 onClick={() => setActiveCustomer(customer)}
-                className="bg-white dark:bg-zinc-900 rounded-3xl p-5 border border-slate-200 dark:border-white/5 shadow-sm hover:shadow-md hover:border-blue-500/40 transition-all cursor-pointer group"
+                className="bg-card rounded-3xl p-5 border border-border/70 shadow-warm hover:shadow-warm-lg hover:border-primary/40 transition-all cursor-pointer group"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="size-12 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-slate-200 dark:border-white/5 shadow-sm">
+                    <div className="size-12 rounded-full bg-secondary flex items-center justify-center overflow-hidden border border-border/60 shadow-xs">
                       {customer.avatar ? (
                         <img src={customer.avatar.startsWith('http') ? customer.avatar : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(customer.name)}&backgroundColor=cbd5e1&textColor=334155`} alt={customer.name} className="w-full h-full object-cover" />
                       ) : (
@@ -105,8 +105,8 @@ export function CustomersView({ customers = [], orders = [] }) {
                       )}
                     </div>
                     <div>
-                      <h3 className="font-black text-slate-900 dark:text-white truncate max-w-[120px]">{customer.name}</h3>
-                      <p className="text-xs font-bold text-slate-500">{customer.username}</p>
+                      <h3 className="font-serif font-bold text-foreground truncate max-w-[130px]">{customer.name}</h3>
+                      <p className="text-xs font-medium text-muted-foreground">{customer.username}</p>
                     </div>
                   </div>
                   <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md border shrink-0 ${

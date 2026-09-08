@@ -44,10 +44,13 @@ export function PerformanceView({ orders = [] }) {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="mb-4 sm:mb-6 shrink-0">
-        <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2.5 sm:gap-3">
-          <LineChart className="size-5 sm:size-6 text-purple-500" /> Kitchen Performance Analytics
+        <h2 className="text-xl sm:text-2xl font-serif font-bold text-foreground flex items-center gap-2.5 sm:gap-3">
+          <span className="p-1.5 rounded-xl bg-primary/10 text-primary shadow-xs">
+            <LineChart className="size-5 sm:size-6" />
+          </span>
+          Kitchen Performance Analytics
         </h2>
-        <p className="text-xs sm:text-sm font-bold text-slate-500 dark:text-zinc-400 mt-0.5">Monitor efficiency, speed, and overall kitchen rating</p>
+        <p className="text-xs sm:text-sm font-medium text-muted-foreground mt-1">Monitor efficiency, prep speed, and overall kitchen rating</p>
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar pb-6">
@@ -59,48 +62,48 @@ export function PerformanceView({ orders = [] }) {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-white/5 shadow-sm">
-            <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white mb-4 sm:mb-6">Completion Rate vs Goal</h3>
+          <div className="bg-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-border/70 shadow-warm">
+            <h3 className="font-serif font-bold text-base sm:text-lg text-foreground mb-4 sm:mb-6">Completion Rate vs Goal</h3>
             <div className="h-48 sm:h-64 flex items-end justify-between gap-1.5 sm:gap-2">
               {weekPercentages.map((val, i) => (
-                <div key={i} className="w-full bg-slate-100 dark:bg-zinc-800 rounded-t-xl relative group">
+                <div key={i} className="w-full bg-secondary/70 rounded-t-xl relative group">
                   <div 
-                    className="absolute bottom-0 left-0 right-0 bg-blue-500 rounded-t-xl transition-all duration-1000" 
+                    className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-primary to-orange-500 rounded-t-xl transition-all duration-1000 shadow-warm" 
                     style={{ height: `${val}%` }}
                   />
-                  <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">{val}%</span>
+                  <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">{val}%</span>
                 </div>
               ))}
             </div>
-            <div className="flex justify-between mt-4 text-[10px] font-bold text-slate-400 uppercase">
+            <div className="flex justify-between mt-4 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
               <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-white/5 shadow-sm flex flex-col justify-between">
+          <div className="bg-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-border/70 shadow-warm flex flex-col justify-between">
             <div>
-              <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white mb-1">Customer Rating</h3>
-              <p className="text-xs sm:text-sm font-bold text-slate-500">Based on food quality and prep time</p>
+              <h3 className="font-serif font-bold text-base sm:text-lg text-foreground mb-1">Customer Rating</h3>
+              <p className="text-xs sm:text-sm font-medium text-muted-foreground">Based on artisan food quality and prep time</p>
             </div>
             <div className="flex items-center justify-center py-6 sm:py-10">
-              <div className="relative size-36 sm:size-48 rounded-full border-[12px] sm:border-[16px] border-slate-100 dark:border-zinc-800 flex items-center justify-center overflow-hidden">
+              <div className="relative size-36 sm:size-48 rounded-full border-[12px] sm:border-[16px] border-secondary flex items-center justify-center overflow-hidden">
                 <svg className="absolute inset-0 size-full -rotate-90" viewBox="0 0 192 192">
-                  <circle cx="96" cy="96" r="80" fill="none" stroke="currentColor" strokeWidth="16" className="text-orange-500" strokeDasharray="502" strokeDashoffset="25" strokeLinecap="round" />
+                  <circle cx="96" cy="96" r="80" fill="none" stroke="currentColor" strokeWidth="16" className="text-primary" strokeDasharray="502" strokeDashoffset="25" strokeLinecap="round" />
                 </svg>
                 <div className="text-center">
-                  <span className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white block">4.9</span>
-                  <span className="text-xs sm:text-sm font-bold text-orange-500">★★★★★</span>
+                  <span className="text-3xl sm:text-5xl font-serif font-bold text-foreground block">4.9</span>
+                  <span className="text-xs sm:text-sm font-bold text-amber-500">★★★★★</span>
                 </div>
               </div>
             </div>
-            <div className="flex justify-center gap-6">
+            <div className="flex justify-center gap-8 pt-2 border-t border-border/50">
               <div className="text-center">
-                <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">98%</div>
-                <div className="text-[10px] font-bold text-slate-500 uppercase">Positive</div>
+                <div className="text-lg sm:text-xl font-serif font-bold text-foreground">98%</div>
+                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Positive</div>
               </div>
               <div className="text-center">
-                <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">2%</div>
-                <div className="text-[10px] font-bold text-slate-500 uppercase">Negative</div>
+                <div className="text-lg sm:text-xl font-serif font-bold text-foreground">2%</div>
+                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Negative</div>
               </div>
             </div>
           </div>
@@ -112,21 +115,21 @@ export function PerformanceView({ orders = [] }) {
 
 function StatCard({ title, value, icon: Icon, color }) {
   const colorMap = {
-    blue: "text-blue-500 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400 border-blue-100 dark:border-blue-500/20",
-    orange: "text-orange-500 bg-orange-50 dark:bg-orange-500/10 dark:text-orange-400 border-orange-100 dark:border-orange-500/20",
-    green: "text-green-600 bg-green-50 dark:bg-green-500/10 dark:text-green-400 border-green-100 dark:border-green-500/20",
-    red: "text-red-500 bg-red-50 dark:bg-red-500/10 dark:text-red-400 border-red-100 dark:border-red-500/20",
+    blue: "text-sky-600 bg-sky-500/10 border-sky-500/20",
+    orange: "text-primary bg-primary/10 border-primary/20",
+    green: "text-emerald-600 bg-emerald-500/10 border-emerald-500/20",
+    red: "text-red-600 bg-red-500/10 border-red-500/20",
   };
 
   return (
-    <div className="bg-white dark:bg-zinc-900 p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
+    <div className="bg-card p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-border/70 shadow-warm hover:shadow-warm-lg transition-all">
       <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-        <div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl border shrink-0 ${colorMap[color]}`}>
+        <div className={`p-2 rounded-xl border shrink-0 ${colorMap[color]}`}>
           <Icon className="size-4 sm:size-5" />
         </div>
-        <span className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider leading-tight truncate">{title}</span>
+        <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider leading-tight truncate">{title}</span>
       </div>
-      <div className="text-xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight truncate">{value}</div>
+      <div className="text-xl sm:text-3xl font-serif font-bold text-foreground tracking-tight truncate">{value}</div>
     </div>
   );
 }
