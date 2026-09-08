@@ -140,18 +140,7 @@
   z-index: 99999;
 }
 
-/* Global smooth color morphing when theme changes across all admin & app elements */
-html.theme-transitioning,
-html.theme-transitioning *,
-html.theme-transitioning *::before,
-html.theme-transitioning *::after {
-  transition: background-color 400ms cubic-bezier(0.16, 1, 0.3, 1),
-              border-color 400ms cubic-bezier(0.16, 1, 0.3, 1),
-              color 300ms cubic-bezier(0.16, 1, 0.3, 1),
-              fill 300ms ease,
-              stroke 300ms ease,
-              box-shadow 400ms ease !important;
-}
+
 
 /* Theme Toggle Icon Spin and Spring Animation */
 @keyframes themeIconSpin {
