@@ -50,8 +50,8 @@ export function PerformanceView({ orders = [] }) {
         <p className="text-xs sm:text-sm font-bold text-slate-500 dark:text-zinc-400 mt-0.5">Monitor efficiency, speed, and overall kitchen rating</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+      <div className="flex-1 overflow-y-auto custom-scrollbar pb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 mb-4 sm:mb-6">
           <StatCard title="Orders Completed" value={completedToday.length} icon={CheckCircle2} color="green" />
           <StatCard title="Avg Prep Time" value={`${avgPrepMins}m ${avgPrepSecs}s`} icon={Clock} color="blue" />
           <StatCard title="Orders per Hour" value={ordersPerHour} icon={TrendingUp} color="orange" />
@@ -60,8 +60,8 @@ export function PerformanceView({ orders = [] }) {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-white/5 shadow-sm">
-            <h3 className="font-black text-slate-900 dark:text-white mb-6">Completion Rate vs Goal</h3>
-            <div className="h-64 flex items-end justify-between gap-2">
+            <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white mb-4 sm:mb-6">Completion Rate vs Goal</h3>
+            <div className="h-48 sm:h-64 flex items-end justify-between gap-1.5 sm:gap-2">
               {weekPercentages.map((val, i) => (
                 <div key={i} className="w-full bg-slate-100 dark:bg-zinc-800 rounded-t-xl relative group">
                   <div 
@@ -77,29 +77,29 @@ export function PerformanceView({ orders = [] }) {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm flex flex-col justify-between">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-white/5 shadow-sm flex flex-col justify-between">
             <div>
-              <h3 className="font-black text-slate-900 dark:text-white mb-2">Customer Rating</h3>
-              <p className="text-sm font-bold text-slate-500">Based on food quality and prep time</p>
+              <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white mb-1">Customer Rating</h3>
+              <p className="text-xs sm:text-sm font-bold text-slate-500">Based on food quality and prep time</p>
             </div>
-            <div className="flex items-center justify-center py-10">
-              <div className="relative size-48 rounded-full border-[16px] border-slate-100 dark:border-zinc-800 flex items-center justify-center overflow-hidden">
-                <svg className="absolute inset-0 size-full -rotate-90">
+            <div className="flex items-center justify-center py-6 sm:py-10">
+              <div className="relative size-36 sm:size-48 rounded-full border-[12px] sm:border-[16px] border-slate-100 dark:border-zinc-800 flex items-center justify-center overflow-hidden">
+                <svg className="absolute inset-0 size-full -rotate-90" viewBox="0 0 192 192">
                   <circle cx="96" cy="96" r="80" fill="none" stroke="currentColor" strokeWidth="16" className="text-orange-500" strokeDasharray="502" strokeDashoffset="25" strokeLinecap="round" />
                 </svg>
                 <div className="text-center">
-                  <span className="text-5xl font-black text-slate-900 dark:text-white block">4.9</span>
-                  <span className="text-sm font-bold text-orange-500">★★★★★</span>
+                  <span className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white block">4.9</span>
+                  <span className="text-xs sm:text-sm font-bold text-orange-500">★★★★★</span>
                 </div>
               </div>
             </div>
             <div className="flex justify-center gap-6">
               <div className="text-center">
-                <div className="text-xl font-black text-slate-900 dark:text-white">98%</div>
+                <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">98%</div>
                 <div className="text-[10px] font-bold text-slate-500 uppercase">Positive</div>
               </div>
               <div className="text-center">
-                <div className="text-xl font-black text-slate-900 dark:text-white">2%</div>
+                <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">2%</div>
                 <div className="text-[10px] font-bold text-slate-500 uppercase">Negative</div>
               </div>
             </div>
@@ -119,14 +119,14 @@ function StatCard({ title, value, icon: Icon, color }) {
   };
 
   return (
-    <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
-      <div className="flex items-center gap-3 mb-3">
-        <div className={`p-2 rounded-xl border ${colorMap[color]}`}>
-          <Icon className="size-5" />
+    <div className="bg-white dark:bg-zinc-900 p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
+      <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+        <div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl border shrink-0 ${colorMap[color]}`}>
+          <Icon className="size-4 sm:size-5" />
         </div>
-        <span className="text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider leading-tight">{title}</span>
+        <span className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider leading-tight truncate">{title}</span>
       </div>
-      <div className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{value}</div>
+      <div className="text-xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight truncate">{value}</div>
     </div>
   );
 }

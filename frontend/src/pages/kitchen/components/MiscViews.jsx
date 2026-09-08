@@ -22,7 +22,7 @@ export function ChefProfileView({
         <p className="text-xs sm:text-sm font-bold text-slate-500 dark:text-zinc-400 mt-0.5">Manage your active kitchen shift and status</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
+      <div className="flex-1 overflow-y-auto custom-scrollbar pb-6">
         <div className="bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-slate-200 dark:border-white/5 shadow-sm max-w-3xl space-y-6">
           <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 sm:gap-6">
             <div className="size-20 sm:size-24 rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-lg text-3xl sm:text-4xl font-black text-white shrink-0">

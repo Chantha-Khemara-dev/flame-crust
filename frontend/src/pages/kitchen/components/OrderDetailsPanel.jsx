@@ -74,10 +74,10 @@ export function OrderDetailsPanel({ order, onClose, user, customers = [], update
       />
       
       {/* Panel */}
-      <div className="relative w-full sm:max-w-xl md:max-w-2xl bg-white dark:bg-zinc-950 h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-300 border-l border-slate-200 dark:border-white/10">
+      <div className="relative w-full sm:max-w-xl md:max-w-2xl bg-white dark:bg-zinc-950 h-[100dvh] max-h-[100dvh] shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-300 border-l border-slate-200 dark:border-white/10">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-zinc-900/50 backdrop-blur-md">
+        <div className="flex items-center justify-between p-3.5 sm:p-6 border-b border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-zinc-900/50 backdrop-blur-md pt-[max(0.875rem,calc(env(safe-area-inset-top,0px)+0.5rem))]">
           <div className="min-w-0 pr-2">
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
               <span>Order #{order.order_number ? (order.order_number.length > 8 ? order.order_number.slice(-6) : order.order_number) : order.id}</span>
@@ -142,17 +142,17 @@ export function OrderDetailsPanel({ order, onClose, user, customers = [], update
               </div>
             </div>
             {customer && (
-              <div className="flex items-center gap-2 justify-end sm:justify-start shrink-0">
+              <div className="flex items-center gap-2 justify-end sm:justify-start shrink-0 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60 dark:border-white/5">
                 {customer.email && (
-                  <a href={`mailto:${customer.email}`} className="flex items-center justify-center rounded-xl size-9 sm:size-10 border border-slate-200 dark:border-white/10 dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors" title="Email">
+                  <a href={`mailto:${customer.email}`} className="flex-1 sm:flex-initial flex items-center justify-center rounded-xl size-9 sm:size-10 border border-slate-200 dark:border-white/10 dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors" title="Email">
                     <MessageCircle className="size-4 text-slate-600 dark:text-zinc-300" />
                   </a>
                 )}
-                <button onClick={() => setChatOpen(true)} className="flex items-center justify-center rounded-xl h-9 sm:h-10 px-3 sm:px-4 bg-orange-500 text-white text-xs sm:text-sm font-bold hover:bg-orange-600 transition-colors shadow-sm" title="Chat with Customer">
+                <button onClick={() => setChatOpen(true)} className="flex-1 sm:flex-initial flex items-center justify-center rounded-xl h-9 sm:h-10 px-3 sm:px-4 bg-orange-500 text-white text-xs sm:text-sm font-bold hover:bg-orange-600 transition-colors shadow-sm" title="Chat with Customer">
                   <MessageCircle className="size-3.5 sm:size-4 mr-1.5" /> Chat
                 </button>
                 {customer.phone && (
-                  <a href={`tel:${customer.phone}`} className="flex items-center justify-center rounded-xl size-9 sm:size-10 border border-slate-200 dark:border-white/10 dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors" title="Call">
+                  <a href={`tel:${customer.phone}`} className="flex-1 sm:flex-initial flex items-center justify-center rounded-xl size-9 sm:size-10 border border-slate-200 dark:border-white/10 dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors" title="Call">
                     <Phone className="size-4 text-slate-600 dark:text-zinc-300" />
                   </a>
                 )}
@@ -248,39 +248,39 @@ export function OrderDetailsPanel({ order, onClose, user, customers = [], update
 
         {/* Sticky Action Footer */}
         {updateOrderStatus && (
-          <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-white/10 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md shrink-0 flex items-center gap-3">
+          <div className="p-3 sm:p-5 border-t border-slate-200 dark:border-white/10 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md shrink-0 flex items-center gap-2 sm:gap-3 pb-[max(0.875rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))]">
             {(order.status === 'PENDING' || order.status === 'CONFIRMED') && (
               <Button 
                 onClick={() => updateOrderStatus(order.id, 'PREPARING')}
-                className="flex-1 h-12 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-black text-sm sm:text-base shadow-lg shadow-orange-500/25 transition-all"
+                className="flex-1 h-11 sm:h-12 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-black text-xs sm:text-base shadow-lg shadow-orange-500/25 transition-all truncate"
               >
-                <Flame className="size-5 mr-2" /> Start Preparing Ticket
+                <Flame className="size-4 sm:size-5 mr-1.5 sm:mr-2 shrink-0" /> Start Preparing
               </Button>
             )}
             {order.status === 'PREPARING' && (
               <Button 
                 onClick={() => updateOrderStatus(order.id, 'READY')}
-                className="flex-1 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm sm:text-base shadow-lg shadow-emerald-500/25 transition-all"
+                className="flex-1 h-11 sm:h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-base shadow-lg shadow-emerald-500/25 transition-all truncate"
               >
-                <CheckCircle2 className="size-5 mr-2" /> Mark as Ready for Pickup
+                <CheckCircle2 className="size-4 sm:size-5 mr-1.5 sm:mr-2 shrink-0" /> Mark as Ready
               </Button>
             )}
             {order.status === 'READY' && (
-              <div className="flex-1 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-black text-xs sm:text-sm flex items-center justify-center gap-2 border border-emerald-500/20">
-                <CheckCircle2 className="size-4" /> Order Prepared • Waiting for Driver / Delivery
+              <div className="flex-1 h-11 sm:h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-black text-[11px] sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 border border-emerald-500/20 px-2 text-center">
+                <CheckCircle2 className="size-4 shrink-0" /> <span className="truncate">Order Prepared • Waiting for Driver</span>
               </div>
             )}
             {['DELIVERED', 'COMPLETED'].includes(order.status) && (
-              <div className="flex-1 h-12 rounded-2xl bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 font-black text-xs sm:text-sm flex items-center justify-center gap-2 border border-slate-200 dark:border-zinc-700">
-                <CheckCircle2 className="size-4 text-emerald-500" /> Order Completed
+              <div className="flex-1 h-11 sm:h-12 rounded-2xl bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 font-black text-xs sm:text-sm flex items-center justify-center gap-2 border border-slate-200 dark:border-zinc-700">
+                <CheckCircle2 className="size-4 text-emerald-500 shrink-0" /> Order Completed
               </div>
             )}
             <Button 
               variant="outline" 
               onClick={handlePrintTicket}
-              className="h-12 px-4 rounded-2xl border-slate-200 dark:border-white/10 font-bold shrink-0 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800"
+              className="h-11 sm:h-12 px-3 sm:px-4 rounded-2xl border-slate-200 dark:border-white/10 font-bold shrink-0 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 text-xs sm:text-sm"
             >
-              <Printer className="size-4 sm:mr-2" />
+              <Printer className="size-4 sm:mr-1.5" />
               <span className="hidden sm:inline">Print KOT</span>
             </Button>
           </div>

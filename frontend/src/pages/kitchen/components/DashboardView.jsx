@@ -130,7 +130,7 @@ export function DashboardView({
       <div className={cn(
         "flex-1 overflow-hidden",
         selectedColumn === 'all' 
-          ? "flex flex-col md:grid md:grid-cols-3 md:gap-6 gap-4 overflow-y-auto pb-4 md:pb-0" 
+          ? "flex flex-col md:grid md:grid-cols-3 md:gap-6 gap-3 sm:gap-4 overflow-y-auto pb-4 md:pb-0" 
           : "flex flex-col"
       )}>
         
@@ -146,6 +146,7 @@ export function DashboardView({
             colorClass="text-blue-500"
             bgClass="bg-blue-50/50 dark:bg-blue-900/10"
             emptyText="No pending tickets in queue"
+            isAllViewOnMobile={selectedColumn === 'all'}
           >
             {pendingOrders.map(order => (
               <OrderCard 
@@ -155,9 +156,9 @@ export function DashboardView({
                 action={
                   <Button 
                     onClick={(e) => { e.stopPropagation(); updateOrderStatus(order.id, "PREPARING"); }}
-                    className="w-full h-11 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-sm transition-transform active:scale-[0.99]"
+                    className="w-full h-10 sm:h-11 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-sm transition-transform active:scale-[0.98] text-xs sm:text-sm"
                   >
-                    <Flame className="size-4 mr-2" /> Start Preparing
+                    <Flame className="size-4 mr-1.5 sm:mr-2" /> Start Preparing
                   </Button>
                 }
               />
@@ -177,6 +178,7 @@ export function DashboardView({
             colorClass="text-orange-500"
             bgClass="bg-orange-50/50 dark:bg-orange-900/10"
             emptyText="No active cooking tickets"
+            isAllViewOnMobile={selectedColumn === 'all'}
           >
             {preparingOrders.map(order => (
               <OrderCard 
@@ -187,9 +189,9 @@ export function DashboardView({
                 action={
                   <Button 
                     onClick={(e) => { e.stopPropagation(); updateOrderStatus(order.id, "READY"); }}
-                    className="w-full h-11 rounded-xl bg-green-500 hover:bg-green-600 text-white font-bold shadow-sm transition-transform active:scale-[0.99]"
+                    className="w-full h-10 sm:h-11 rounded-xl bg-green-500 hover:bg-green-600 text-white font-bold shadow-sm transition-transform active:scale-[0.98] text-xs sm:text-sm"
                   >
-                    <CheckCircle2 className="size-4 mr-2" /> Mark as Ready
+                    <CheckCircle2 className="size-4 mr-1.5 sm:mr-2" /> Mark as Ready
                   </Button>
                 }
               />
@@ -209,6 +211,7 @@ export function DashboardView({
             colorClass="text-green-500"
             bgClass="bg-green-50/50 dark:bg-green-900/10"
             emptyText="No orders ready for pickup"
+            isAllViewOnMobile={selectedColumn === 'all'}
           >
             {readyOrders.map(order => (
               <OrderCard 
@@ -216,8 +219,8 @@ export function DashboardView({
                 order={order} 
                 onClick={() => onOrderClick(order)}
                 action={
-                  <div className="w-full h-11 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 flex items-center justify-center font-bold text-xs sm:text-sm border border-slate-200/80 dark:border-zinc-700">
-                    <ShoppingBag className="size-4 mr-2 text-green-500" /> Waiting for Driver
+                  <div className="w-full h-10 sm:h-11 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 flex items-center justify-center font-bold text-xs sm:text-sm border border-slate-200/80 dark:border-zinc-700">
+                    <ShoppingBag className="size-4 mr-1.5 text-green-500" /> Waiting for Driver
                   </div>
                 }
               />
@@ -241,37 +244,44 @@ function StatCard({ title, value, icon: Icon, color }) {
   };
 
   return (
-    <div className="bg-white dark:bg-zinc-900 p-3 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-white/5 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow min-w-[135px] sm:min-w-0 shrink-0 sm:shrink">
-      <div className="flex items-center justify-between gap-2 mb-1.5 sm:mb-2">
+    <div className="bg-white dark:bg-zinc-900 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200/80 dark:border-white/5 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow min-w-[125px] sm:min-w-0 shrink-0 sm:shrink">
+      <div className="flex items-center justify-between gap-2 mb-1 sm:mb-2">
         <span className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider truncate">{title}</span>
         <div className={cn("p-1.5 rounded-lg border shrink-0", colorMap[color])}>
           <Icon className="size-3.5 sm:size-4" />
         </div>
       </div>
-      <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">{value}</div>
+      <div className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">{value}</div>
     </div>
   );
 }
 
-function Column({ title, count, icon: Icon, colorClass, bgClass, emptyText, children }) {
+function Column({ title, count, icon: Icon, colorClass, bgClass, emptyText, isAllViewOnMobile, children }) {
   const hasChildren = Array.isArray(children) ? children.length > 0 : Boolean(children);
 
   return (
-    <div className={cn("flex flex-col rounded-3xl border border-slate-200/80 dark:border-white/10 overflow-hidden transition-colors h-full min-h-[260px]", bgClass)}>
-      <div className="px-4 sm:px-5 py-3.5 sm:py-4 border-b border-slate-200/60 dark:border-white/5 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md flex items-center justify-between shrink-0">
-        <h2 className="font-bold text-base sm:text-lg text-slate-900 dark:text-zinc-100 flex items-center gap-2">
+    <div className={cn(
+      "flex flex-col rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-white/10 overflow-hidden transition-colors",
+      isAllViewOnMobile ? "min-h-[160px] md:h-full" : "h-full min-h-[260px]",
+      bgClass
+    )}>
+      <div className="px-3.5 sm:px-5 py-3 sm:py-4 border-b border-slate-200/60 dark:border-white/5 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md flex items-center justify-between shrink-0">
+        <h2 className="font-bold text-sm sm:text-lg text-slate-900 dark:text-zinc-100 flex items-center gap-2">
           <Icon className={cn("size-4 sm:size-5", colorClass)} /> {title}
         </h2>
-        <span className="bg-slate-200 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 text-xs sm:text-sm font-black px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full">
+        <span className="bg-slate-200 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 text-xs sm:text-sm font-black px-2 sm:px-3 py-0.5 sm:py-1 rounded-full">
           {count}
         </span>
       </div>
-      <div className="flex-1 p-3 sm:p-4 overflow-y-auto custom-scrollbar flex flex-col gap-3 sm:gap-4">
+      <div className={cn(
+        "p-2.5 sm:p-4 custom-scrollbar flex flex-col gap-2.5 sm:gap-4",
+        isAllViewOnMobile ? "max-h-[360px] md:max-h-none overflow-y-auto md:flex-1" : "flex-1 overflow-y-auto"
+      )}>
         {hasChildren ? (
           children
         ) : (
-          <div className="flex-1 min-h-[140px] flex flex-col items-center justify-center text-center p-6 text-slate-400 dark:text-zinc-500">
-            <Inbox className="size-8 sm:size-10 mb-2 opacity-40" />
+          <div className="flex-1 min-h-[120px] flex flex-col items-center justify-center text-center p-4 sm:p-6 text-slate-400 dark:text-zinc-500">
+            <Inbox className="size-7 sm:size-10 mb-1.5 opacity-40" />
             <p className="text-xs sm:text-sm font-bold">{emptyText || "No orders"}</p>
           </div>
         )}

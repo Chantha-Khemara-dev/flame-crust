@@ -173,7 +173,7 @@ export default function KitchenDashboard() {
   if (!user) return null;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 font-sans selection:bg-orange-100 dark:selection:bg-orange-500/30">
+    <div className="flex h-[100dvh] max-h-[100dvh] overflow-hidden bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 font-sans selection:bg-orange-100 dark:selection:bg-orange-500/30">
       
       <KitchenSidebar 
         activeView={activeView} 
@@ -186,26 +186,26 @@ export default function KitchenDashboard() {
       
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         {/* Top Header */}
-        <header className="h-[calc(env(safe-area-inset-top)+4.25rem)] pt-[env(safe-area-inset-top)] border-b border-slate-200/60 dark:border-white/10 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md flex items-center justify-between px-3 sm:px-6 md:px-8 shrink-0 z-20 transition-colors">
-          <div className="flex items-center gap-2.5 sm:gap-3">
+        <header className="h-[calc(env(safe-area-inset-top,0px)+3.75rem)] sm:h-[calc(env(safe-area-inset-top,0px)+4.25rem)] pt-[env(safe-area-inset-top,0px)] border-b border-slate-200/60 dark:border-white/10 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md flex items-center justify-between px-3 sm:px-6 md:px-8 shrink-0 z-20 transition-colors">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-2 rounded-xl bg-white dark:bg-zinc-800 shadow-sm border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 transition-colors"
+              className="lg:hidden p-2 rounded-xl bg-white dark:bg-zinc-800 shadow-sm border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 transition-colors shrink-0"
               aria-label="Open kitchen menu"
             >
               <Menu className="size-5" />
             </button>
-            <div>
-              <h1 className="text-base sm:text-xl font-black text-slate-900 dark:text-zinc-100 tracking-tight capitalize leading-tight">
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-xl font-black text-slate-900 dark:text-zinc-100 tracking-tight capitalize leading-tight truncate">
                 {activeView === 'dashboard' ? 'Kitchen Board' : activeView.replace('-', ' ')}
               </h1>
-              <p className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-widest mt-0.5">
+              <p className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-widest mt-0.5 truncate">
                 Live Kitchen Status
               </p>
             </div>
           </div>
           
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             <button 
               onClick={toggleTheme}
               className="p-2 sm:p-2.5 rounded-xl bg-white dark:bg-zinc-800 shadow-sm border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 transition-colors"
@@ -238,7 +238,7 @@ export default function KitchenDashboard() {
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-hidden p-3 sm:p-5 md:p-6 pb-20 lg:pb-6 relative">
+        <main className="flex-1 overflow-hidden p-2.5 sm:p-5 md:p-6 pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:pb-6 relative">
           {loading ? (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="size-12 rounded-full border-4 border-slate-200 dark:border-zinc-800 border-t-orange-500 animate-spin" />
@@ -287,7 +287,7 @@ export default function KitchenDashboard() {
         </main>
 
         {/* Mobile Bottom Quick Navigation Bar */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-white/10 px-2 py-1.5 flex items-center justify-around shadow-lg">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-white/10 px-1 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] flex items-center justify-around shadow-lg">
           <button
             onClick={() => setActiveView('dashboard')}
             className={cn(

@@ -23,7 +23,7 @@ function SidebarContent({ activeView, onSelectView, user, onClose, activeOrdersC
   return (
     <div className="flex flex-col h-full bg-slate-900 dark:bg-zinc-950 text-slate-300">
       {/* Header */}
-      <div className="p-5 sm:p-6 border-b border-slate-800 flex items-center justify-between">
+      <div className="p-4 sm:p-6 border-b border-slate-800 flex items-center justify-between pt-[max(1rem,calc(env(safe-area-inset-top,0px)+0.75rem))]">
         <div className="flex items-center gap-3">
           <div className="size-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-lg shadow-orange-500/20 shrink-0">
             <ChefHat className="size-5 text-white" />
@@ -36,7 +36,7 @@ function SidebarContent({ activeView, onSelectView, user, onClose, activeOrdersC
         {onClose && (
           <button
             onClick={onClose}
-            className="lg:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="lg:hidden size-10 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors flex items-center justify-center shrink-0"
             aria-label="Close menu"
           >
             <X className="size-5" />
@@ -75,7 +75,7 @@ function SidebarContent({ activeView, onSelectView, user, onClose, activeOrdersC
       </div>
 
       {/* Staff Profile Footer */}
-      <div className="p-4 border-t border-slate-800 bg-slate-900/50 shrink-0">
+      <div className="p-4 border-t border-slate-800 bg-slate-900/50 shrink-0 pb-[max(1rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))]">
         <div 
           onClick={() => onSelectView('chef-profile')}
           className={cn(
@@ -130,7 +130,7 @@ export function KitchenSidebar({ activeView, setActiveView, user, mobileOpen, on
             onClick={onCloseMobile}
             aria-hidden="true"
           />
-          <div className="relative w-72 max-w-[85vw] h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-300">
+          <div className="relative w-72 max-w-[85vw] h-[100dvh] max-h-[100dvh] shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-300">
             <SidebarContent 
               activeView={activeView} 
               onSelectView={handleSelect} 
