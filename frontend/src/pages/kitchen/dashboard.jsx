@@ -237,7 +237,7 @@ export default function KitchenDashboard() {
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-hidden p-2.5 sm:p-5 md:p-6 pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:pb-6 relative">
+        <main className="flex-1 overflow-hidden p-2.5 sm:p-5 md:p-6 pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))] lg:pb-6 relative">
           {loading ? (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="size-12 rounded-full border-4 border-slate-200 dark:border-zinc-800 border-t-orange-500 animate-spin" />
@@ -285,67 +285,164 @@ export default function KitchenDashboard() {
           )}
         </main>
 
-        {/* Mobile Bottom Navigation Bar - Pure 4-tab portal */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl border-t border-slate-200/80 dark:border-white/10 px-2 pt-1.5 pb-[max(0.7rem,calc(env(safe-area-inset-bottom,0px)+0.2rem))] flex items-center justify-around shadow-[0_-4px_24px_rgba(0,0,0,0.06)]">
-          <button
-            onClick={() => setActiveView('dashboard')}
-            className={cn(
-              "flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl text-[11px] font-bold transition-all relative flex-1 max-w-[85px]",
-              activeView === 'dashboard' 
-                ? "bg-orange-500/15 text-orange-600 dark:text-orange-400 font-black shadow-sm" 
-                : "text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-300"
-            )}
+        {/* Authentic iOS Frosted Glass Mobile Bottom Capsule - Matching Customer Navigation */}
+        <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] inset-x-3 sm:inset-x-6 z-[70] lg:hidden select-none pointer-events-none">
+          <nav
+            className="pointer-events-auto mx-auto max-w-md bg-white/75 dark:bg-zinc-900/75 backdrop-blur-2xl backdrop-saturate-150 border border-black/[0.08] dark:border-white/[0.12] ring-1 ring-white/30 dark:ring-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.12)] rounded-full p-1.5 transition-all duration-300"
+            aria-label="Kitchen Navigation Dock"
           >
-            <div className="relative">
-              <LayoutDashboard className="size-5 mb-0.5" />
-              {activeOrdersCount > 0 && (
-                <span className="absolute -top-1.5 -right-2.5 bg-gradient-to-r from-orange-500 to-red-500 text-white text-[9px] font-black min-w-[17px] h-[17px] px-1 rounded-full flex items-center justify-center shadow-sm shadow-orange-500/40 animate-pulse">
-                  {activeOrdersCount}
-                </span>
-              )}
+            <div className="grid grid-cols-4 items-center gap-1">
+              {/* Tab 1: Board */}
+              <button
+                type="button"
+                onClick={() => setActiveView('dashboard')}
+                className="w-full flex items-center justify-center focus:outline-none touch-manipulation cursor-pointer active:scale-95 transition-transform duration-100"
+              >
+                <div
+                  className={cn(
+                    "relative flex flex-col items-center justify-center py-1.5 px-1 rounded-full transition-all duration-150 cursor-pointer touch-manipulation select-none w-full",
+                    activeView === 'dashboard'
+                      ? "bg-orange-500/12 text-orange-600 dark:text-orange-400 shadow-2xs"
+                      : "text-muted-foreground/75 text-slate-500 dark:text-zinc-400 hover:text-foreground hover:bg-foreground/5 active:scale-90"
+                  )}
+                >
+                  <div className="relative flex items-center justify-center size-6 mb-0.5">
+                    <LayoutDashboard
+                      className={cn(
+                        "size-5 transition-transform duration-150 ease-out",
+                        activeView === 'dashboard' ? "scale-110 stroke-[2.3]" : "stroke-[1.8]"
+                      )}
+                    />
+                    {activeOrdersCount > 0 && (
+                      <span className="absolute -top-1.5 -right-2.5 min-w-[17px] h-[17px] px-1 rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white text-[9px] font-extrabold flex items-center justify-center ring-2 ring-white dark:ring-zinc-900 shadow-xs animate-in zoom-in-75 duration-150">
+                        {activeOrdersCount}
+                      </span>
+                    )}
+                  </div>
+                  <span
+                    className={cn(
+                      "text-[10px] tracking-tight leading-none transition-colors duration-150",
+                      activeView === 'dashboard' ? "font-bold text-orange-600 dark:text-orange-400" : "font-medium"
+                    )}
+                  >
+                    Board
+                  </span>
+                  {activeView === 'dashboard' && (
+                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-0.5 rounded-full bg-orange-500 shadow-[0_0_6px_rgba(249,115,22,0.8)]" />
+                  )}
+                </div>
+              </button>
+
+              {/* Tab 2: Customers */}
+              <button
+                type="button"
+                onClick={() => setActiveView('customers')}
+                className="w-full flex items-center justify-center focus:outline-none touch-manipulation cursor-pointer active:scale-95 transition-transform duration-100"
+              >
+                <div
+                  className={cn(
+                    "relative flex flex-col items-center justify-center py-1.5 px-1 rounded-full transition-all duration-150 cursor-pointer touch-manipulation select-none w-full",
+                    activeView === 'customers'
+                      ? "bg-blue-500/12 text-blue-600 dark:text-blue-400 shadow-2xs"
+                      : "text-muted-foreground/75 text-slate-500 dark:text-zinc-400 hover:text-foreground hover:bg-foreground/5 active:scale-90"
+                  )}
+                >
+                  <div className="relative flex items-center justify-center size-6 mb-0.5">
+                    <Users
+                      className={cn(
+                        "size-5 transition-transform duration-150 ease-out",
+                        activeView === 'customers' ? "scale-110 stroke-[2.3]" : "stroke-[1.8]"
+                      )}
+                    />
+                  </div>
+                  <span
+                    className={cn(
+                      "text-[10px] tracking-tight leading-none transition-colors duration-150",
+                      activeView === 'customers' ? "font-bold text-blue-600 dark:text-blue-400" : "font-medium"
+                    )}
+                  >
+                    Customers
+                  </span>
+                  {activeView === 'customers' && (
+                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-0.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.8)]" />
+                  )}
+                </div>
+              </button>
+
+              {/* Tab 3: Analytics */}
+              <button
+                type="button"
+                onClick={() => setActiveView('performance')}
+                className="w-full flex items-center justify-center focus:outline-none touch-manipulation cursor-pointer active:scale-95 transition-transform duration-100"
+              >
+                <div
+                  className={cn(
+                    "relative flex flex-col items-center justify-center py-1.5 px-1 rounded-full transition-all duration-150 cursor-pointer touch-manipulation select-none w-full",
+                    activeView === 'performance'
+                      ? "bg-purple-500/12 text-purple-600 dark:text-purple-400 shadow-2xs"
+                      : "text-muted-foreground/75 text-slate-500 dark:text-zinc-400 hover:text-foreground hover:bg-foreground/5 active:scale-90"
+                  )}
+                >
+                  <div className="relative flex items-center justify-center size-6 mb-0.5">
+                    <LineChart
+                      className={cn(
+                        "size-5 transition-transform duration-150 ease-out",
+                        activeView === 'performance' ? "scale-110 stroke-[2.3]" : "stroke-[1.8]"
+                      )}
+                    />
+                  </div>
+                  <span
+                    className={cn(
+                      "text-[10px] tracking-tight leading-none transition-colors duration-150",
+                      activeView === 'performance' ? "font-bold text-purple-600 dark:text-purple-400" : "font-medium"
+                    )}
+                  >
+                    Analytics
+                  </span>
+                  {activeView === 'performance' && (
+                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-0.5 rounded-full bg-purple-500 shadow-[0_0_6px_rgba(168,85,247,0.8)]" />
+                  )}
+                </div>
+              </button>
+
+              {/* Tab 4: Profile */}
+              <button
+                type="button"
+                onClick={() => setActiveView('chef-profile')}
+                className="w-full flex items-center justify-center focus:outline-none touch-manipulation cursor-pointer active:scale-95 transition-transform duration-100"
+              >
+                <div
+                  className={cn(
+                    "relative flex flex-col items-center justify-center py-1.5 px-1 rounded-full transition-all duration-150 cursor-pointer touch-manipulation select-none w-full",
+                    activeView === 'chef-profile'
+                      ? "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 shadow-2xs"
+                      : "text-muted-foreground/75 text-slate-500 dark:text-zinc-400 hover:text-foreground hover:bg-foreground/5 active:scale-90"
+                  )}
+                >
+                  <div className="relative flex items-center justify-center size-6 mb-0.5">
+                    <ChefHat
+                      className={cn(
+                        "size-5 transition-transform duration-150 ease-out",
+                        activeView === 'chef-profile' ? "scale-110 stroke-[2.3]" : "stroke-[1.8]"
+                      )}
+                    />
+                  </div>
+                  <span
+                    className={cn(
+                      "text-[10px] tracking-tight leading-none transition-colors duration-150",
+                      activeView === 'chef-profile' ? "font-bold text-emerald-600 dark:text-emerald-400" : "font-medium"
+                    )}
+                  >
+                    Profile
+                  </span>
+                  {activeView === 'chef-profile' && (
+                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-0.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
+                  )}
+                </div>
+              </button>
             </div>
-            <span>Board</span>
-          </button>
-
-          <button
-            onClick={() => setActiveView('customers')}
-            className={cn(
-              "flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl text-[11px] font-bold transition-all relative flex-1 max-w-[85px]",
-              activeView === 'customers' 
-                ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 font-black shadow-sm" 
-                : "text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-300"
-            )}
-          >
-            <Users className="size-5 mb-0.5" />
-            <span>Customers</span>
-          </button>
-
-          <button
-            onClick={() => setActiveView('performance')}
-            className={cn(
-              "flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl text-[11px] font-bold transition-all relative flex-1 max-w-[85px]",
-              activeView === 'performance' 
-                ? "bg-purple-500/15 text-purple-600 dark:text-purple-400 font-black shadow-sm" 
-                : "text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-300"
-            )}
-          >
-            <LineChart className="size-5 mb-0.5" />
-            <span>Analytics</span>
-          </button>
-
-          <button
-            onClick={() => setActiveView('chef-profile')}
-            className={cn(
-              "flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl text-[11px] font-bold transition-all relative flex-1 max-w-[85px]",
-              activeView === 'chef-profile' 
-                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-black shadow-sm" 
-                : "text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-300"
-            )}
-          >
-            <ChefHat className="size-5 mb-0.5" />
-            <span>Profile</span>
-          </button>
-        </nav>
+          </nav>
+        </div>
       </div>
 
       {/* Side Panel for Order Details */}
