@@ -46,15 +46,19 @@ export function DashboardView({
 }) {
   const [selectedColumn, setSelectedColumn] = useState('all');
 
+  const safePending = Array.isArray(pendingOrders) ? pendingOrders : [];
+  const safePreparing = Array.isArray(preparingOrders) ? preparingOrders : [];
+  const safeReady = Array.isArray(readyOrders) ? readyOrders : [];
+
   // Dynamic calculations
-  const delayedOrdersCount = pendingOrders.filter(o => {
+  const delayedOrdersCount = safePending.filter(o => {
     if (!o.created_at) return false;
     return (Date.now() - new Date(o.created_at).getTime()) > 15 * 60 * 1000;
   }).length;
 
   let totalPrepSecs = 0;
   let prepCount = 0;
-  readyOrders.forEach(o => {
+  safeReady.forEach(o => {
     if (o.created_at && o.updated_at) {
       const diff = Math.floor((new Date(o.updated_at) - new Date(o.created_at)) / 1000);
       if (diff > 0 && diff < 7200) {

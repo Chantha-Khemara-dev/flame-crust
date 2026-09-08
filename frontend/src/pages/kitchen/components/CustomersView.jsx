@@ -7,9 +7,12 @@ export function CustomersView({ customers = [], orders = [] }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCustomer, setActiveCustomer] = useState(null);
 
+  const safeCustomers = Array.isArray(customers) ? customers : (customers?.items || customers?.content || []);
+  const safeOrders = Array.isArray(orders) ? orders : (orders?.items || orders?.content || []);
+
   // Enrich customers with their order history
-  const enrichedCustomers = customers.map(customer => {
-    const customerOrders = orders.filter(o => String(o.customer_id) === String(customer.id));
+  const enrichedCustomers = safeCustomers.map(customer => {
+    const customerOrders = safeOrders.filter(o => String(o.customer_id) === String(customer.id));
     
     // Total Orders
     const totalOrders = customerOrders.length;
@@ -183,10 +186,10 @@ export function CustomersView({ customers = [], orders = [] }) {
 
           <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 mt-2 pr-1">
             <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">Order History</h4>
-            {orders.filter(o => String(o.customer_id) === String(activeCustomer?.id)).length === 0 ? (
+            {safeOrders.filter(o => String(o.customer_id) === String(activeCustomer?.id)).length === 0 ? (
               <p className="text-xs font-bold text-slate-400 text-center py-6">No previous orders found for this customer.</p>
             ) : (
-              orders
+              safeOrders
                 .filter(o => String(o.customer_id) === String(activeCustomer?.id))
                 .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
                 .map(o => (

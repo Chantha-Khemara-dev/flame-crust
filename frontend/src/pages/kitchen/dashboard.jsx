@@ -85,15 +85,26 @@ export default function KitchenDashboard() {
       }
       
       const results = await Promise.all(promises);
-      if (results[0]) setOrders(results[0]);
-      if (results[1]) setOrderItems(results[1]);
+      const toArray = (v) => {
+        if (Array.isArray(v)) return v;
+        if (v && Array.isArray(v.items)) return v.items;
+        if (v && Array.isArray(v.content)) return v.content;
+        if (v && Array.isArray(v.data)) return v.data;
+        return [];
+      };
+
+      if (results[0]) setOrders(toArray(results[0]));
+      if (results[1]) setOrderItems(toArray(results[1]));
       if (results[2] && (isInitial || customers.length === 0)) {
-        setCustomers(results[2]);
+        setCustomers(toArray(results[2]));
       }
-      const prodRes = results[3] || (results.length > 2 && cachedStandaloneKitchenProducts.length === 0 ? results[2] : null);
-      if (prodRes && Array.isArray(prodRes)) {
-        cachedStandaloneKitchenProducts = prodRes;
-        setProducts(prodRes);
+      const rawProd = results[3] || (results.length > 2 && cachedStandaloneKitchenProducts.length === 0 ? results[2] : null);
+      if (rawProd) {
+        const prodList = toArray(rawProd);
+        if (prodList.length > 0) {
+          cachedStandaloneKitchenProducts = prodList;
+          setProducts(prodList);
+        }
       }
     } catch (error) {
       if (isInitial) toast.error("Failed to load kitchen data.");
@@ -142,13 +153,18 @@ export default function KitchenDashboard() {
   };
 
   // Filter and enrich orders
-  const activeOrders = orders
+  const safeOrders = Array.isArray(orders) ? orders : (orders?.items || orders?.content || []);
+  const safeOrderItems = Array.isArray(orderItems) ? orderItems : (orderItems?.items || orderItems?.content || []);
+  const safeProducts = Array.isArray(products) ? products : (products?.items || products?.content || []);
+  const safeCustomers = Array.isArray(customers) ? customers : (customers?.items || customers?.content || []);
+
+  const activeOrders = safeOrders
     .filter(o => ["PENDING", "CONFIRMED", "PREPARING", "READY"].includes(o.status))
     .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
     .map(order => ({
       ...order,
-      items: orderItems.filter(item => String(item.order_id) === String(order.id)).map(item => {
-        const product = products.find(p => String(p.id) === String(item.product_id));
+      items: safeOrderItems.filter(item => String(item.order_id) === String(order.id)).map(item => {
+        const product = safeProducts.find(p => String(p.id) === String(item.product_id));
         return {
           ...item,
           product_name: product?.name || item.product_name,
@@ -164,7 +180,7 @@ export default function KitchenDashboard() {
   // Dynamic real revenue calculation
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
-  const todaysCompletedOrders = orders.filter(o => 
+  const todaysCompletedOrders = safeOrders.filter(o => 
     new Date(o.created_at) >= todayStart && 
     ['READY', 'COMPLETED', 'DELIVERED'].includes(o.status)
   );
@@ -260,9 +276,9 @@ export default function KitchenDashboard() {
                   todayRevenue={todayRevenue}
                 />
               ) : activeView === 'customers' ? (
-                <CustomersView customers={customers} orders={orders} />
+                <CustomersView customers={safeCustomers} orders={safeOrders} />
               ) : activeView === 'performance' ? (
-                <PerformanceView orders={orders} />
+                <PerformanceView orders={safeOrders} />
               ) : activeView === 'chef-profile' ? (
                 <ChefProfileView 
                   user={user} 

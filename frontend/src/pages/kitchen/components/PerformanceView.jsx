@@ -1,11 +1,13 @@
 import { LineChart, BarChart, Clock, CheckCircle2, TrendingUp, AlertTriangle } from "lucide-react";
 
 export function PerformanceView({ orders = [] }) {
+  const safeOrders = Array.isArray(orders) ? orders : (orders?.items || orders?.content || []);
+
   // Calculate real performance metrics
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  const todaysOrders = orders.filter(o => new Date(o.created_at) >= todayStart);
+  const todaysOrders = safeOrders.filter(o => new Date(o.created_at) >= todayStart);
   const completedToday = todaysOrders.filter(o => ['READY', 'COMPLETED', 'DELIVERED'].includes(o.status));
   const delayedOrders = todaysOrders.filter(o => o.status === 'PENDING' && (new Date() - new Date(o.created_at)) > 15 * 60 * 1000); // Pending > 15 mins
 
@@ -31,7 +33,7 @@ export function PerformanceView({ orders = [] }) {
 
   // Dynamic week graph (simplified to last 7 days count)
   const weekData = Array(7).fill(0);
-  orders.forEach(o => {
+  safeOrders.forEach(o => {
     const d = new Date(o.created_at);
     const dayIndex = (d.getDay() + 6) % 7; // Monday = 0
     if ((new Date() - d) < 7 * 24 * 60 * 60 * 1000) {

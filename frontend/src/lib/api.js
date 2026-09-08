@@ -255,7 +255,7 @@ export function list(resource, params = {}, options = {}) {
     if (params.headers || params.signal || params.method) {
       options = params;
     } else {
-      isExplicitPaginate = params.page !== undefined || params.limit !== undefined || Boolean(params.paginate);
+      isExplicitPaginate = Boolean(params.paginate) || params.page !== undefined;
       const searchParams = new URLSearchParams();
       Object.entries(params).forEach(([k, v]) => {
         if (v !== undefined && v !== null && v !== "") {
@@ -270,7 +270,9 @@ export function list(resource, params = {}, options = {}) {
     if (isExplicitPaginate) return res;
     if (res && Array.isArray(res.items)) return res.items;
     if (res && Array.isArray(res.content)) return res.content;
-    return res;
+    if (res && Array.isArray(res.data)) return res.data;
+    if (Array.isArray(res)) return res;
+    return [];
   });
 }
 
