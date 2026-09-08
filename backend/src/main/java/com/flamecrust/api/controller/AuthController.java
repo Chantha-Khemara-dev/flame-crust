@@ -966,11 +966,12 @@ public class AuthController {
             String cPhone = customer.containsKey("phone") && customer.get("phone") != null ? String.valueOf(customer.get("phone")) : (phone != null ? phone.trim() : "");
             String cEmail = customer.containsKey("email") && customer.get("email") != null ? String.valueOf(customer.get("email")) : (email != null ? email.trim() : "");
 
-            // 1. Fetch only this customer's orders (last 50) and batch embed order items in 1 query
+            // 1. Fetch only this customer's orders (last 50) with explicit columns and batch embed order items
             List<Map<String, Object>> orders = List.of();
             try {
                 orders = jdbc.queryForList(
-                        "SELECT * FROM orders WHERE customer_id = ? OR (customer_phone IS NOT NULL AND customer_phone != '' AND customer_phone = ?) OR (customer_email IS NOT NULL AND customer_email != '' AND customer_email = ?) ORDER BY id DESC LIMIT 50",
+                        "SELECT id, order_number, customer_id, address_id, status, subtotal, delivery_fee, total, discount_amount, order_type, notes, created_at, updated_at, driver_id " +
+                        "FROM orders WHERE customer_id = ? OR (customer_phone IS NOT NULL AND customer_phone != '' AND customer_phone = ?) OR (customer_email IS NOT NULL AND customer_email != '' AND customer_email = ?) ORDER BY id DESC LIMIT 50",
                         cid, cPhone, cEmail);
                 if (!orders.isEmpty()) {
                     List<Object> orderIds = new java.util.ArrayList<>();
@@ -981,7 +982,9 @@ public class AuthController {
                     if (!orderIds.isEmpty()) {
                         String inSql = String.join(",", java.util.Collections.nCopies(orderIds.size(), "?"));
                         List<Map<String, Object>> allItems = jdbc.queryForList(
-                                "SELECT * FROM order_items WHERE order_id IN (" + inSql + ") ORDER BY id ASC",
+                                "SELECT oi.id, oi.order_id, oi.product_id, oi.product_name, oi.quantity, oi.unit_price, oi.line_total, oi.options, oi.status, oi.item_notes, p.image AS product_image " +
+                                "FROM order_items oi INNER JOIN products p ON oi.product_id = p.id " +
+                                "WHERE oi.order_id IN (" + inSql + ") ORDER BY oi.id ASC",
                                 orderIds.toArray());
                         Map<String, List<Map<String, Object>>> itemsByOrderId = new HashMap<>();
                         for (Map<String, Object> item : allItems) {
@@ -996,18 +999,18 @@ public class AuthController {
                 }
             } catch (Exception ignored) {}
 
-            // 2. Fetch only this customer's addresses
+            // 2. Fetch only this customer's addresses with explicit columns
             List<Map<String, Object>> addresses = List.of();
             if (cid > 0) {
                 try {
-                    addresses = jdbc.queryForList("SELECT * FROM addresses WHERE customer_id = ? ORDER BY id DESC LIMIT 20", cid);
+                    addresses = jdbc.queryForList("SELECT id, customer_id, label, address_line, city, postal_code, notes, is_default, created_at FROM addresses WHERE customer_id = ? ORDER BY id DESC LIMIT 20", cid);
                 } catch (Exception ignored) {}
             }
 
-            // 3. Fetch active coupons
+            // 3. Fetch active unexpired coupons with explicit columns
             List<Map<String, Object>> coupons = List.of();
             try {
-                coupons = jdbc.queryForList("SELECT * FROM coupons WHERE active = 1 ORDER BY id DESC LIMIT 30");
+                coupons = jdbc.queryForList("SELECT id, code, discount_type, discount_value, min_order_amount, expires_at, active FROM coupons WHERE active = 1 AND (expires_at IS NULL OR expires_at > NOW()) ORDER BY id DESC LIMIT 30");
             } catch (Exception ignored) {}
 
             boolean hasPassword = false;
