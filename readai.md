@@ -106,7 +106,7 @@
 | `mobile-bottom-nav.jsx` | Mobile-only bottom app bar |
 | `search-modal.jsx` | `Cmd+K` search dialog with instant add-to-cart |
 | `payment-form.jsx` | Payment method selection + KHQR display |
-| `order-chat-modal.jsx` | Live chat: text, photo (Cloudinary), voice messages, typing indicators |
+| `order-chat-modal.jsx` | Live chat: text, photo (Cloudinary), live camera capture (ថតរូប), voice messages, typing indicators |
 | `online-call-modal.jsx` | WebRTC voice call modal with mute/timer/ringtone |
 | `floating-chat-head.jsx` | Draggable chat bubble with unread count |
 | `global-chat-head-manager.jsx` | Global listener spawning chat bubbles |

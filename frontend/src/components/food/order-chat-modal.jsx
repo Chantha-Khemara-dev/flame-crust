@@ -23,7 +23,9 @@ import {
   Mic,
   Play,
   Pause,
-  Volume2
+  Volume2,
+  Camera,
+  SwitchCamera
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
@@ -309,6 +311,129 @@ export function OrderChatModal({
   const [previewModalUrl, setPreviewModalUrl] = useState(null);
   const fileInputRef = useRef(null);
 
+  // Camera capture states & refs (ថតរូប)
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [cameraFacingMode, setCameraFacingMode] = useState("environment"); // "environment" (rear) or "user" (front)
+  const [cameraLoading, setCameraLoading] = useState(false);
+  const [cameraError, setCameraError] = useState(null);
+  const videoRef = useRef(null);
+  const cameraStreamRef = useRef(null);
+  const cameraInputRef = useRef(null);
+
+  const stopCameraStream = () => {
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach(t => t.stop());
+      cameraStreamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  };
+
+  const startCamera = async (facing = cameraFacingMode) => {
+    setCameraLoading(true);
+    setCameraError(null);
+    stopCameraStream();
+
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Browser does not support direct webcam access");
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: facing,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+
+      cameraStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => {});
+      }
+      setCameraLoading(false);
+    } catch (err) {
+      console.warn("Camera stream error:", err);
+      setCameraError(err.message || "Cannot access camera");
+      setCameraLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isCameraOpen) {
+      startCamera(cameraFacingMode);
+    } else {
+      stopCameraStream();
+    }
+    return () => {
+      stopCameraStream();
+    };
+  }, [isCameraOpen, cameraFacingMode]);
+
+  useEffect(() => {
+    if (!open && isCameraOpen) {
+      setIsCameraOpen(false);
+      stopCameraStream();
+    }
+  }, [open]);
+
+  const handleCapturePhoto = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      toast.error("កាមេរ៉ាមិនទាន់រួចរាល់នៅឡើយទេ (Camera not ready)");
+      return;
+    }
+
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+
+      if (cameraFacingMode === "user") {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          toast.error("បរាជ័យក្នុងការថតរូប (Failed to capture)");
+          return;
+        }
+        const file = new File([blob], `photo_${Date.now()}.jpg`, { type: "image/jpeg" });
+        setSelectedImageFile(file);
+        const localUrl = URL.createObjectURL(file);
+        setImagePreviewUrl(localUrl);
+
+        try {
+          if ("vibrate" in navigator) navigator.vibrate(60);
+        } catch (e) {}
+
+        setIsCameraOpen(false);
+        stopCameraStream();
+        toast.success("បានថតរូបជោគជ័យ! (Photo captured)");
+      }, "image/jpeg", 0.92);
+    } catch (e) {
+      toast.error("កំហុសក្នុងការថតរូប (Capture error)");
+    }
+  };
+
+  const handleToggleFacingMode = () => {
+    const nextMode = cameraFacingMode === "environment" ? "user" : "environment";
+    setCameraFacingMode(nextMode);
+  };
+
+  const handleOpenNativeCamera = () => {
+    setIsCameraOpen(false);
+    stopCameraStream();
+    cameraInputRef.current?.click();
+  };
+
   // Voice Chat / Voice Note ("void chat") states & refs
   const [isRecording, setIsRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
@@ -580,6 +705,7 @@ export function OrderChatModal({
       setImagePreviewUrl(null);
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
   };
 
   const handleSend = async (textToSend) => {
@@ -1056,15 +1182,36 @@ export function OrderChatModal({
               className="hidden" 
             />
 
+            {/* Hidden Native Camera Input (សម្រាប់ទូរស័ព្ទថតផ្ទាល់) */}
+            <input 
+              type="file" 
+              accept="image/*" 
+              capture="environment"
+              ref={cameraInputRef} 
+              onChange={handleFileSelected} 
+              className="hidden" 
+            />
+
             {/* Photo / Image Attachment Button */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={sending || uploadingImage || uploadingVoice}
               className="size-10 rounded-full bg-secondary hover:bg-secondary/80 text-muted-foreground hover:text-primary flex items-center justify-center transition-colors shrink-0 cursor-pointer active:scale-95"
-              title="Attach Photo"
+              title="ជ្រើសរូបភាពពីឯកសារ (Attach Photo)"
             >
               <ImageIcon className="size-4.5" />
+            </button>
+
+            {/* Take Photo / Camera Button (ថតរូប) */}
+            <button
+              type="button"
+              onClick={() => setIsCameraOpen(true)}
+              disabled={sending || uploadingImage || uploadingVoice}
+              className="size-10 rounded-full bg-secondary hover:bg-secondary/80 text-muted-foreground hover:text-amber-500 dark:hover:text-amber-400 flex items-center justify-center transition-colors shrink-0 cursor-pointer active:scale-95"
+              title="ថតរូប (Take Photo / Camera)"
+            >
+              <Camera className="size-4.5" />
             </button>
 
             {/* Voice Chat / Voice Note ("void chat") Button */}
@@ -1098,6 +1245,135 @@ export function OrderChatModal({
             </Button>
           </form>
         )}
+
+        {/* Live Camera Viewfinder Modal (ថតរូបផ្ទាល់) */}
+        <Dialog open={isCameraOpen} onOpenChange={(v) => {
+          if (!v) {
+            setIsCameraOpen(false);
+            stopCameraStream();
+          }
+        }}>
+          <DialogContent 
+            showCloseButton={false}
+            className="max-w-md p-0 overflow-hidden bg-zinc-950 border-zinc-800 text-white rounded-3xl z-[130] shadow-2xl"
+          >
+            <DialogHeader className="p-4 pb-2 flex flex-row items-center justify-between border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <div className="size-8 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center">
+                  <Camera className="size-4" />
+                </div>
+                <div>
+                  <DialogTitle className="text-sm font-bold text-white">ថតរូប (Take Photo)</DialogTitle>
+                  <DialogDescription className="text-[11px] text-zinc-400">
+                    {cameraFacingMode === "environment" ? "កាមេរ៉ាក្រោយ (Rear Camera)" : "កាមេរ៉ាមុខ (Front Camera)"}
+                  </DialogDescription>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCameraOpen(false);
+                  stopCameraStream();
+                }}
+                className="size-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-zinc-300 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            </DialogHeader>
+
+            {/* Viewfinder Frame */}
+            <div className="relative aspect-[4/3] sm:aspect-square bg-black flex items-center justify-center overflow-hidden">
+              {cameraLoading ? (
+                <div className="flex flex-col items-center gap-2 text-zinc-400 text-xs">
+                  <Loader2 className="size-7 animate-spin text-primary" />
+                  <span>កំពុងបើកកាមេរ៉ា...</span>
+                </div>
+              ) : cameraError ? (
+                <div className="p-6 text-center space-y-3">
+                  <div className="size-12 rounded-2xl bg-amber-500/15 text-amber-400 flex items-center justify-center mx-auto">
+                    <Camera className="size-6" />
+                  </div>
+                  <p className="text-xs text-zinc-300">មិនអាចបើក Web Camera បានទេ ({cameraError})</p>
+                  <Button
+                    type="button"
+                    onClick={handleOpenNativeCamera}
+                    className="bg-primary hover:bg-primary/90 text-white text-xs h-9 rounded-xl gap-2 font-medium cursor-pointer"
+                  >
+                    <Camera className="size-3.5" />
+                    ប្រើប្រាស់ម៉ាស៊ីនថតទូរស័ព្ទ (Phone Camera)
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <video 
+                    ref={videoRef} 
+                    autoPlay 
+                    playsInline 
+                    muted 
+                    className={cn(
+                      "size-full object-cover",
+                      cameraFacingMode === "user" && "-scale-x-100"
+                    )}
+                  />
+                  {/* Viewfinder crosshairs */}
+                  <div className="absolute inset-5 border border-white/20 rounded-2xl pointer-events-none flex flex-col justify-between p-3">
+                    <div className="flex justify-between">
+                      <span className="size-4 border-t-2 border-l-2 border-white/80 rounded-tl-sm" />
+                      <span className="size-4 border-t-2 border-r-2 border-white/80 rounded-tr-sm" />
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="size-4 border-b-2 border-l-2 border-white/80 rounded-bl-sm" />
+                      <span className="size-4 border-b-2 border-r-2 border-white/80 rounded-br-sm" />
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Bottom Camera Controls */}
+            <div className="p-4 bg-zinc-950 border-t border-white/10 flex items-center justify-around">
+              {/* Native device camera fallback */}
+              <button
+                type="button"
+                onClick={handleOpenNativeCamera}
+                className="flex flex-col items-center gap-1 text-[10px] text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                title="ប្រើប្រាស់ម៉ាស៊ីនថតប្រព័ន្ធទូរស័ព្ទ"
+              >
+                <div className="size-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white">
+                  <ImageIcon className="size-4" />
+                </div>
+                <span>Files / App</span>
+              </button>
+
+              {/* Shutter Button (ប៊ូតុងចុចថត) */}
+              <button
+                type="button"
+                onClick={handleCapturePhoto}
+                disabled={cameraLoading || Boolean(cameraError)}
+                className="size-16 rounded-full border-4 border-white/80 flex items-center justify-center p-1 bg-white/10 hover:bg-white/20 active:scale-95 transition-transform cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                title="ចុចថតរូប (Snap Photo)"
+              >
+                <div className="size-full rounded-full bg-white shadow-lg flex items-center justify-center">
+                  <div className="size-3.5 rounded-full bg-red-600 animate-pulse" />
+                </div>
+              </button>
+
+              {/* Flip Camera Toggle */}
+              <button
+                type="button"
+                onClick={handleToggleFacingMode}
+                disabled={cameraLoading || Boolean(cameraError)}
+                className="flex flex-col items-center gap-1 text-[10px] text-zinc-400 hover:text-white transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                title="ប្តូរកាមេរ៉ាមុខ/ក្រោយ"
+              >
+                <div className="size-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white">
+                  <SwitchCamera className="size-4.5" />
+                </div>
+                <span>ប្តូរមុខ/ក្រោយ</span>
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Fullscreen Photo Lightbox Modal */}
         <Dialog open={Boolean(previewModalUrl)} onOpenChange={(v) => !v && setPreviewModalUrl(null)}>

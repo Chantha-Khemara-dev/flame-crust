@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Pencil, Trash2, X, Loader2, LayoutGrid, List } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Loader2, LayoutGrid, List, Phone, Calendar, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -537,7 +537,122 @@ const generateNextSku = (items) => {
                       ))}
                     </div>
                   )
-                : undefined
+                : resource === "customers" && viewMode === "card"
+                  ? ({ data: gridData }) => (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
+                        {gridData.map((item, idx) => {
+                          const locked = item.locked_until && new Date(item.locked_until) > new Date();
+                          const active = (item.status || "ACTIVE") === "ACTIVE" && !locked;
+                          const initials = (item.name || "?").trim().charAt(0).toUpperCase() || "?";
+                          return (
+                            <div
+                              key={item.id ?? idx}
+                              className="group relative flex flex-col rounded-2xl border border-border/60 bg-card/70 p-4 shadow-sm backdrop-blur transition-all hover:-translate-y-0.5 hover:shadow-md"
+                            >
+                              {/* Header: avatar + identity */}
+                              <div className="flex items-start gap-3">
+                                <div className="relative shrink-0">
+                                  {item.avatar ? (
+                                    <img
+                                      src={item.avatar}
+                                      alt={item.name}
+                                      className="size-12 rounded-full object-cover ring-2 ring-border"
+                                    />
+                                  ) : (
+                                    <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-base font-black text-primary ring-2 ring-border">
+                                      {initials}
+                                    </div>
+                                  )}
+                                  <span
+                                    className={cn(
+                                      "absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full ring-2 ring-card",
+                                      active ? "bg-emerald-500" : "bg-amber-500"
+                                    )}
+                                  />
+                                </div>
+
+                                <div className="min-w-0 flex-1">
+                                  <h4 className="truncate text-sm font-bold text-foreground" title={item.name}>
+                                    {item.name || "Unnamed"}
+                                  </h4>
+                                  <p className="truncate text-xs text-muted-foreground" title={item.email}>
+                                    {item.email || "No email"}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Contact + joined */}
+                              <div className="mt-3 space-y-1.5 text-xs">
+                                {item.phone ? (
+                                  <a
+                                    href={`tel:${item.phone}`}
+                                    className="flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-primary"
+                                  >
+                                    <Phone className="size-3.5 shrink-0" />
+                                    <span className="truncate">{item.phone}</span>
+                                  </a>
+                                ) : (
+                                  <span className="flex items-center gap-1.5 text-muted-foreground/70">
+                                    <Phone className="size-3.5 shrink-0" /> No phone
+                                  </span>
+                                )}
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <Calendar className="size-3.5 shrink-0" />
+                                  <span>
+                                    {item.created_at
+                                      ? new Date(item.created_at).toLocaleDateString("en-GB")
+                                      : "—"}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Footer: status + rewards + actions */}
+                              <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/40 pt-3">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <span
+                                    className={cn(
+                                      "rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                                      active
+                                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                        : "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                    )}
+                                  >
+                                    {active ? "Active" : "Locked"}
+                                  </span>
+                                  {item.reward_points != null && Number(item.reward_points) > 0 && (
+                                    <span className="flex items-center gap-1 rounded-full border border-border/60 bg-secondary/60 px-2 py-0.5 text-[10px] font-bold text-foreground">
+                                      <Star className="size-3 text-amber-500" /> {item.reward_points}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-1.5">
+                                  <Button
+                                    size="icon"
+                                    variant="secondary"
+                                    className="size-8 rounded-lg border border-border/50 transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground"
+                                    onClick={() => openEdit(item.id)}
+                                    aria-label={`Edit ${item.name || "customer"}`}
+                                  >
+                                    <Pencil className="size-3.5" />
+                                  </Button>
+                                  <Button
+                                    size="icon"
+                                    variant="secondary"
+                                    className="size-8 rounded-lg border border-border/50 text-destructive transition-all hover:border-destructive hover:bg-destructive hover:text-destructive-foreground"
+                                    onClick={() => { setDeleteId(item.id); setDeleteOpen(true); }}
+                                    aria-label={`Delete ${item.name || "customer"}`}
+                                  >
+                                    <Trash2 className="size-3.5" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )
+                  : undefined
             }
           />
         )}
