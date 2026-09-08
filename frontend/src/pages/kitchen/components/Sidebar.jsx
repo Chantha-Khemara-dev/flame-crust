@@ -3,8 +3,6 @@ import {
   ChefHat, 
   Users, 
   LineChart, 
-  Bell, 
-  Settings,
   Flame,
   CheckCircle2,
   Clock,
@@ -104,43 +102,19 @@ function SidebarContent({ activeView, onSelectView, user, onClose, activeOrdersC
   );
 }
 
-export function KitchenSidebar({ activeView, setActiveView, user, mobileOpen, onCloseMobile, activeOrdersCount = 0 }) {
+export function KitchenSidebar({ activeView, setActiveView, user, activeOrdersCount = 0 }) {
   const handleSelect = (viewId) => {
     setActiveView(viewId);
-    if (onCloseMobile) onCloseMobile();
   };
 
   return (
-    <>
-      {/* Desktop Persistent Sidebar */}
-      <aside className="hidden lg:flex w-64 h-[calc(100vh-env(safe-area-inset-top,0px))] border-r border-slate-800 transition-colors shrink-0 overflow-hidden">
-        <SidebarContent 
-          activeView={activeView} 
-          onSelectView={handleSelect} 
-          user={user} 
-          activeOrdersCount={activeOrdersCount}
-        />
-      </aside>
-
-      {/* Mobile Drawer Overlay */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex">
-          <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-200"
-            onClick={onCloseMobile}
-            aria-hidden="true"
-          />
-          <div className="relative w-72 max-w-[85vw] h-[100dvh] max-h-[100dvh] shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-300">
-            <SidebarContent 
-              activeView={activeView} 
-              onSelectView={handleSelect} 
-              user={user} 
-              onClose={onCloseMobile}
-              activeOrdersCount={activeOrdersCount}
-            />
-          </div>
-        </div>
-      )}
-    </>
+    <aside className="hidden lg:flex w-64 h-[calc(100vh-env(safe-area-inset-top,0px))] border-r border-slate-800 transition-colors shrink-0 overflow-hidden">
+      <SidebarContent 
+        activeView={activeView} 
+        onSelectView={handleSelect} 
+        user={user} 
+        activeOrdersCount={activeOrdersCount}
+      />
+    </aside>
   );
 }

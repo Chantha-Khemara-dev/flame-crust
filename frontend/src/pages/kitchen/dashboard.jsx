@@ -40,7 +40,6 @@ export default function KitchenDashboard() {
   const [theme, setTheme] = useState(localStorage.getItem("kitchenTheme") || "light");
   const [activeView, setActiveView] = useState('dashboard');
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const toggleTheme = () => setTheme(t => t === 'light' ? 'dark' : 'light');
 
@@ -179,60 +178,60 @@ export default function KitchenDashboard() {
         activeView={activeView} 
         setActiveView={setActiveView} 
         user={user} 
-        mobileOpen={mobileMenuOpen}
-        onCloseMobile={() => setMobileMenuOpen(false)}
         activeOrdersCount={activeOrdersCount}
       />
       
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         {/* Top Header */}
-        <header className="h-[calc(env(safe-area-inset-top,0px)+3.75rem)] sm:h-[calc(env(safe-area-inset-top,0px)+4.25rem)] pt-[env(safe-area-inset-top,0px)] border-b border-slate-200/60 dark:border-white/10 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md flex items-center justify-between px-3 sm:px-6 md:px-8 shrink-0 z-20 transition-colors">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <button
-              onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-2 rounded-xl bg-white dark:bg-zinc-800 shadow-sm border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 transition-colors shrink-0"
-              aria-label="Open kitchen menu"
-            >
-              <Menu className="size-5" />
-            </button>
+        <header className="h-[calc(env(safe-area-inset-top,0px)+3.75rem)] sm:h-[calc(env(safe-area-inset-top,0px)+4.25rem)] pt-[env(safe-area-inset-top,0px)] border-b border-slate-200/60 dark:border-white/10 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md flex items-center justify-between px-3.5 sm:px-6 md:px-8 shrink-0 z-20 transition-colors">
+          <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+            <div className="size-9 sm:size-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-md shadow-orange-500/20 shrink-0">
+              <ChefHat className="size-5 text-white" />
+            </div>
             <div className="min-w-0">
-              <h1 className="text-base sm:text-xl font-black text-slate-900 dark:text-zinc-100 tracking-tight capitalize leading-tight truncate">
-                {activeView === 'dashboard' ? 'Kitchen Board' : activeView.replace('-', ' ')}
-              </h1>
-              <p className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-widest mt-0.5 truncate">
-                Live Kitchen Status
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h1 className="text-sm sm:text-lg font-black text-slate-900 dark:text-zinc-100 tracking-tight capitalize leading-tight truncate">
+                  {activeView === 'dashboard' ? 'Kitchen Board' : activeView.replace('-', ' ')}
+                </h1>
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live
+                </span>
+              </div>
+              <p className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider truncate">
+                {activeOrdersCount} {activeOrdersCount === 1 ? 'Order' : 'Orders'} in queue
               </p>
             </div>
           </div>
           
-          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             <button 
               onClick={toggleTheme}
-              className="p-2 sm:p-2.5 rounded-xl bg-white dark:bg-zinc-800 shadow-sm border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 transition-colors"
+              className="p-2 sm:p-2.5 rounded-xl bg-slate-100 dark:bg-zinc-800/80 border border-slate-200/80 dark:border-zinc-700/80 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 transition-colors"
               title="Toggle theme"
             >
-              {theme === 'dark' ? <Sun className="size-4 sm:size-5" /> : <Moon className="size-4 sm:size-5" />}
+              {theme === 'dark' ? <Sun className="size-4 sm:size-4.5" /> : <Moon className="size-4 sm:size-4.5" />}
             </button>
 
             <Button 
               variant="outline" 
               onClick={handleRefresh}
               disabled={refreshing}
-              className="rounded-xl h-9 sm:h-11 px-2.5 sm:px-4 font-bold text-slate-600 dark:text-zinc-300 bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 shadow-sm hover:bg-slate-50 dark:hover:bg-zinc-700"
+              className="rounded-xl h-9 sm:h-10 px-2.5 sm:px-3.5 font-bold text-slate-700 dark:text-zinc-200 bg-slate-100 dark:bg-zinc-800/80 border-slate-200/80 dark:border-zinc-700/80 hover:bg-slate-200 dark:hover:bg-zinc-700"
               title="Refresh orders"
             >
-              <RefreshCw className={cn("size-4 sm:mr-2", refreshing && "animate-spin text-blue-600")} />
-              <span className="hidden sm:inline">Refresh</span>
+              <RefreshCw className={cn("size-3.5 sm:mr-1.5", refreshing && "animate-spin text-orange-500")} />
+              <span className="hidden sm:inline text-xs">Sync</span>
             </Button>
 
             <Button 
               variant="outline" 
               onClick={handleSignOut}
-              className="rounded-xl h-9 sm:h-11 px-2.5 sm:px-4 text-slate-600 dark:text-zinc-300 font-bold bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 shadow-sm hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 hover:border-red-200"
+              className="rounded-xl h-9 sm:h-10 px-2.5 sm:px-3.5 text-slate-600 dark:text-zinc-400 font-bold bg-slate-100 dark:bg-zinc-800/80 border-slate-200/80 dark:border-zinc-700/80 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 hover:border-red-200"
               title="Sign Out"
             >
-              <LogOut className="size-4 sm:mr-2" />
-              <span className="hidden sm:inline">Sign Out</span>
+              <LogOut className="size-3.5 sm:mr-1.5" />
+              <span className="hidden sm:inline text-xs">Sign Out</span>
             </Button>
           </div>
         </header>
@@ -286,61 +285,65 @@ export default function KitchenDashboard() {
           )}
         </main>
 
-        {/* Mobile Bottom Quick Navigation Bar */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-white/10 px-1 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] flex items-center justify-around shadow-lg">
+        {/* Mobile Bottom Navigation Bar - Pure 4-tab portal */}
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl border-t border-slate-200/80 dark:border-white/10 px-2 pt-1.5 pb-[max(0.7rem,calc(env(safe-area-inset-bottom,0px)+0.2rem))] flex items-center justify-around shadow-[0_-4px_24px_rgba(0,0,0,0.06)]">
           <button
             onClick={() => setActiveView('dashboard')}
             className={cn(
-              "flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-bold transition-colors min-w-[56px] relative",
-              activeView === 'dashboard' ? "text-orange-500 font-black" : "text-slate-500 dark:text-zinc-400"
+              "flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl text-[11px] font-bold transition-all relative flex-1 max-w-[85px]",
+              activeView === 'dashboard' 
+                ? "bg-orange-500/15 text-orange-600 dark:text-orange-400 font-black shadow-sm" 
+                : "text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-300"
             )}
           >
             <div className="relative">
               <LayoutDashboard className="size-5 mb-0.5" />
               {activeOrdersCount > 0 && (
-                <span className="absolute -top-1 -right-2 bg-orange-500 text-white text-[9px] font-black size-4 rounded-full flex items-center justify-center shadow-sm">
+                <span className="absolute -top-1.5 -right-2.5 bg-gradient-to-r from-orange-500 to-red-500 text-white text-[9px] font-black min-w-[17px] h-[17px] px-1 rounded-full flex items-center justify-center shadow-sm shadow-orange-500/40 animate-pulse">
                   {activeOrdersCount}
                 </span>
               )}
             </div>
             <span>Board</span>
           </button>
+
           <button
             onClick={() => setActiveView('customers')}
             className={cn(
-              "flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-bold transition-colors min-w-[56px]",
-              activeView === 'customers' ? "text-blue-500 font-black" : "text-slate-500 dark:text-zinc-400"
+              "flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl text-[11px] font-bold transition-all relative flex-1 max-w-[85px]",
+              activeView === 'customers' 
+                ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 font-black shadow-sm" 
+                : "text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-300"
             )}
           >
             <Users className="size-5 mb-0.5" />
             <span>Customers</span>
           </button>
+
           <button
             onClick={() => setActiveView('performance')}
             className={cn(
-              "flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-bold transition-colors min-w-[56px]",
-              activeView === 'performance' ? "text-purple-500 font-black" : "text-slate-500 dark:text-zinc-400"
+              "flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl text-[11px] font-bold transition-all relative flex-1 max-w-[85px]",
+              activeView === 'performance' 
+                ? "bg-purple-500/15 text-purple-600 dark:text-purple-400 font-black shadow-sm" 
+                : "text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-300"
             )}
           >
             <LineChart className="size-5 mb-0.5" />
             <span>Analytics</span>
           </button>
+
           <button
             onClick={() => setActiveView('chef-profile')}
             className={cn(
-              "flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-bold transition-colors min-w-[56px]",
-              activeView === 'chef-profile' ? "text-emerald-500 font-black" : "text-slate-500 dark:text-zinc-400"
+              "flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl text-[11px] font-bold transition-all relative flex-1 max-w-[85px]",
+              activeView === 'chef-profile' 
+                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-black shadow-sm" 
+                : "text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-300"
             )}
           >
             <ChefHat className="size-5 mb-0.5" />
             <span>Profile</span>
-          </button>
-          <button
-            onClick={() => setMobileMenuOpen(true)}
-            className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-bold text-slate-500 dark:text-zinc-400 min-w-[56px]"
-          >
-            <Menu className="size-5 mb-0.5" />
-            <span>Menu</span>
           </button>
         </nav>
       </div>
