@@ -312,6 +312,10 @@ export function OrderChatModal({
   const fileInputRef = useRef(null);
 
   // Camera capture states & refs (ថតរូប)
+  const isMobile = typeof navigator !== "undefined" && (
+    /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || "") ||
+    (navigator.maxTouchPoints > 1 && /Macintosh/i.test(navigator.userAgent || ""))
+  );
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [cameraFacingMode, setCameraFacingMode] = useState("environment"); // "environment" (rear) or "user" (front)
   const [cameraLoading, setCameraLoading] = useState(false);
@@ -342,7 +346,7 @@ export function OrderChatModal({
 
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: facing,
+          facingMode: { ideal: facing },
           width: { ideal: 1280 },
           height: { ideal: 720 }
         },
@@ -352,6 +356,8 @@ export function OrderChatModal({
       cameraStreamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.setAttribute("playsinline", "true");
+        videoRef.current.setAttribute("webkit-playsinline", "true");
         await videoRef.current.play().catch(() => {});
       }
       setCameraLoading(false);
@@ -689,8 +695,14 @@ export function OrderChatModal({
   const handleFileSelected = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file (JPEG, PNG, WEBP)");
+
+    // Check if image (including iOS HEIC/HEIF and empty type fallbacks)
+    const isImage = (file.type && file.type.startsWith("image/")) || 
+                    /\.(jpe?g|png|webp|gif|heic|heif|bmp)$/i.test(file.name || "") ||
+                    !file.type; // On some iOS versions file.type is empty for camera captures
+
+    if (!isImage) {
+      toast.error("សូមជ្រើសរើស file រូបភាព (Please select an image file)");
       return;
     }
     setSelectedImageFile(file);
@@ -1175,21 +1187,24 @@ export function OrderChatModal({
           >
             {/* Hidden File Input */}
             <input 
+              id="chat-gallery-input"
               type="file" 
               accept="image/*" 
               ref={fileInputRef} 
               onChange={handleFileSelected} 
-              className="hidden" 
+              className="sr-only" 
             />
 
-            {/* Hidden Native Camera Input (សម្រាប់ទូរស័ព្ទថតផ្ទាល់) */}
+            {/* Hidden Native Camera Input (សម្រាប់ iPhone / Mobile ថតផ្ទាល់) */}
             <input 
+              id="chat-camera-capture-input"
               type="file" 
               accept="image/*" 
               capture="environment"
               ref={cameraInputRef} 
               onChange={handleFileSelected} 
-              className="hidden" 
+              onClick={(e) => { e.target.value = ""; }}
+              className="sr-only" 
             />
 
             {/* Photo / Image Attachment Button */}
@@ -1204,15 +1219,30 @@ export function OrderChatModal({
             </button>
 
             {/* Take Photo / Camera Button (ថតរូប) */}
-            <button
-              type="button"
-              onClick={() => setIsCameraOpen(true)}
-              disabled={sending || uploadingImage || uploadingVoice}
-              className="size-10 rounded-full bg-secondary hover:bg-secondary/80 text-muted-foreground hover:text-amber-500 dark:hover:text-amber-400 flex items-center justify-center transition-colors shrink-0 cursor-pointer active:scale-95"
-              title="ថតរូប (Take Photo / Camera)"
-            >
-              <Camera className="size-4.5" />
-            </button>
+            {isMobile ? (
+              <label
+                htmlFor="chat-camera-capture-input"
+                role="button"
+                tabIndex={0}
+                className={cn(
+                  "size-10 rounded-full bg-secondary hover:bg-secondary/80 text-muted-foreground hover:text-amber-500 dark:hover:text-amber-400 flex items-center justify-center transition-colors shrink-0 cursor-pointer active:scale-95 select-none",
+                  (sending || uploadingImage || uploadingVoice) && "opacity-50 pointer-events-none"
+                )}
+                title="ថតរូបផ្ទាល់ (Take Photo with Camera)"
+              >
+                <Camera className="size-4.5" />
+              </label>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsCameraOpen(true)}
+                disabled={sending || uploadingImage || uploadingVoice}
+                className="size-10 rounded-full bg-secondary hover:bg-secondary/80 text-muted-foreground hover:text-amber-500 dark:hover:text-amber-400 flex items-center justify-center transition-colors shrink-0 cursor-pointer active:scale-95"
+                title="ថតរូប (Take Photo / Camera)"
+              >
+                <Camera className="size-4.5" />
+              </button>
+            )}
 
             {/* Voice Chat / Voice Note ("void chat") Button */}
             <button
@@ -1294,14 +1324,18 @@ export function OrderChatModal({
                     <Camera className="size-6" />
                   </div>
                   <p className="text-xs text-zinc-300">មិនអាចបើក Web Camera បានទេ ({cameraError})</p>
-                  <Button
-                    type="button"
-                    onClick={handleOpenNativeCamera}
-                    className="bg-primary hover:bg-primary/90 text-white text-xs h-9 rounded-xl gap-2 font-medium cursor-pointer"
+                  <label
+                    htmlFor="chat-camera-capture-input"
+                    role="button"
+                    onClick={() => {
+                      setIsCameraOpen(false);
+                      stopCameraStream();
+                    }}
+                    className="inline-flex items-center justify-center bg-primary hover:bg-primary/90 text-white text-xs h-9 px-4 rounded-xl gap-2 font-medium cursor-pointer active:scale-95"
                   >
                     <Camera className="size-3.5" />
                     ប្រើប្រាស់ម៉ាស៊ីនថតទូរស័ព្ទ (Phone Camera)
-                  </Button>
+                  </label>
                 </div>
               ) : (
                 <>
@@ -1310,6 +1344,7 @@ export function OrderChatModal({
                     autoPlay 
                     playsInline 
                     muted 
+                    webkit-playsinline="true"
                     className={cn(
                       "size-full object-cover",
                       cameraFacingMode === "user" && "-scale-x-100"
@@ -1333,17 +1368,21 @@ export function OrderChatModal({
             {/* Bottom Camera Controls */}
             <div className="p-4 bg-zinc-950 border-t border-white/10 flex items-center justify-around">
               {/* Native device camera fallback */}
-              <button
-                type="button"
-                onClick={handleOpenNativeCamera}
+              <label
+                htmlFor="chat-camera-capture-input"
+                role="button"
+                onClick={() => {
+                  setIsCameraOpen(false);
+                  stopCameraStream();
+                }}
                 className="flex flex-col items-center gap-1 text-[10px] text-zinc-400 hover:text-white transition-colors cursor-pointer"
                 title="ប្រើប្រាស់ម៉ាស៊ីនថតប្រព័ន្ធទូរស័ព្ទ"
               >
                 <div className="size-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white">
                   <ImageIcon className="size-4" />
                 </div>
-                <span>Files / App</span>
-              </button>
+                <span>Phone App</span>
+              </label>
 
               {/* Shutter Button (ប៊ូតុងចុចថត) */}
               <button
