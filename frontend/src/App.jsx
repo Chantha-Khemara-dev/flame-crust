@@ -6,6 +6,7 @@ import { ScrollToTop } from "@/components/shared/scroll-to-top.jsx";
 import { ActiveOrderWidget } from "@/components/food/active-order-widget.jsx";
 import { FlyToCart } from "@/components/shared/fly-to-cart.jsx";
 import { MobileBottomNav } from "@/components/food/mobile-bottom-nav.jsx";
+import { LuckyDrawFloatingButton } from "@/components/food/lucky-draw-floating-btn.jsx";
 import { SplashScreen } from "@/components/shared/splash-screen.jsx";
 import { API_URL } from "@/lib/api";
 
@@ -162,6 +163,7 @@ export default function App() {
       <Toaster position="top-center" richColors closeButton />
       {!isStaff && <ActiveOrderWidget />}
       {!isStaff && <FlyToCart />}
+      {!isStaff && <LuckyDrawFloatingButton />}
       <MobileBottomNav />
       <RoleRedirectGuard>
         <Routes>

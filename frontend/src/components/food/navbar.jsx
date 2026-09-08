@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingBag, Search, Menu as MenuIcon, X, Moon, Sun, User, MapPin, Ticket, LogOut, ShieldCheck, LayoutDashboard, Clock, Package, Bike, ArrowLeft, MessageSquare } from "lucide-react";
+import { ShoppingBag, Search, Menu as MenuIcon, X, Moon, Sun, User, MapPin, Ticket, LogOut, ShieldCheck, LayoutDashboard, Clock, Package, Bike, ArrowLeft, MessageSquare, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { OrderChatModal } from "@/components/food/order-chat-modal";
@@ -511,6 +511,17 @@ function Navbar() {
             <Button
               variant="ghost"
               size="icon"
+              className="hidden sm:inline-flex size-10 sm:size-11 shrink-0 rounded-full text-amber-500 hover:text-amber-600 hover:bg-amber-500/10 transition-colors"
+              onClick={() => window.dispatchEvent(new CustomEvent("openLuckyDraw"))}
+              aria-label="Lucky Draw Spin Wheel"
+              title="Lucky Draw (Spin & Win)"
+            >
+              <Sparkles className="size-4 sm:size-5 animate-pulse" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
               className="hidden sm:inline-flex size-10 sm:size-11 shrink-0 rounded-full text-foreground/70 hover:text-primary"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
@@ -747,6 +758,22 @@ function Navbar() {
                 </div>
 
                 <div className="h-px bg-border/60 my-1 mx-2" />
+
+                {/* Lucky Draw in Mobile Drawer */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    window.dispatchEvent(new CustomEvent("openLuckyDraw"));
+                  }}
+                  className="px-4 py-2.5 text-sm font-medium rounded-xl transition-colors text-amber-500 hover:bg-amber-500/10 flex items-center justify-between cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="text-base">🎡</span>
+                    <span className="font-bold text-foreground">Lucky Draw (Spin & Win)</span>
+                  </span>
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">Free Daily</span>
+                </button>
 
                 {/* Theme Switcher in Mobile Drawer */}
                 <button
