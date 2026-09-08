@@ -13,18 +13,13 @@ import {
 import { cn } from "@/lib/utils";
 
 const menuItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'orders', label: 'Orders', icon: Clock },
-  { id: 'preparing', label: 'Preparing', icon: Flame },
-  { id: 'ready', label: 'Ready', icon: CheckCircle2 },
+  { id: 'dashboard', label: 'Kitchen Board', icon: LayoutDashboard, badgeKey: 'orders' },
   { id: 'customers', label: 'Customers', icon: Users },
+  { id: 'performance', label: 'Performance', icon: LineChart },
   { id: 'chef-profile', label: 'Chef Profile', icon: ChefHat },
-  { id: 'performance', label: 'Kitchen Performance', icon: LineChart },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
-function SidebarContent({ activeView, onSelectView, user, onClose }) {
+function SidebarContent({ activeView, onSelectView, user, onClose, activeOrdersCount = 0 }) {
   return (
     <div className="flex flex-col h-full bg-slate-900 dark:bg-zinc-950 text-slate-300">
       {/* Header */}
@@ -51,58 +46,56 @@ function SidebarContent({ activeView, onSelectView, user, onClose }) {
 
       {/* Navigation Items */}
       <div className="flex-1 py-4 px-3 flex flex-col gap-1 overflow-y-auto custom-scrollbar">
-        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 px-3">Main Menu</div>
-        {menuItems.slice(0, 4).map(item => (
-          <button
-            key={item.id}
-            onClick={() => onSelectView(item.id)}
-            className={cn(
-              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 text-left",
-              activeView === item.id 
-                ? "bg-orange-500/10 text-orange-500" 
-                : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
-            )}
-          >
-            <item.icon className={cn("size-5 shrink-0", activeView === item.id ? "text-orange-500" : "text-slate-500")} />
-            <span className="truncate">{item.label}</span>
-          </button>
-        ))}
-
-        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-5 mb-2 px-3">Management</div>
-        {menuItems.slice(4).map(item => (
-          <button
-            key={item.id}
-            onClick={() => onSelectView(item.id)}
-            className={cn(
-              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 text-left",
-              activeView === item.id 
-                ? "bg-blue-500/10 text-blue-400" 
-                : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
-            )}
-          >
-            <item.icon className={cn("size-5 shrink-0", activeView === item.id ? "text-blue-400" : "text-slate-500")} />
-            <span className="truncate">{item.label}</span>
-          </button>
-        ))}
+        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 px-3">Navigation</div>
+        {menuItems.map(item => {
+          const isActive = activeView === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => onSelectView(item.id)}
+              className={cn(
+                "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 text-left",
+                isActive 
+                  ? "bg-orange-500/15 text-orange-400 shadow-sm border border-orange-500/20" 
+                  : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
+              )}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <item.icon className={cn("size-5 shrink-0", isActive ? "text-orange-400" : "text-slate-500")} />
+                <span className="truncate">{item.label}</span>
+              </div>
+              {item.badgeKey === 'orders' && activeOrdersCount > 0 && (
+                <span className="bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shrink-0 shadow-sm shadow-orange-500/30">
+                  {activeOrdersCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Staff Profile Footer */}
       <div className="p-4 border-t border-slate-800 bg-slate-900/50 shrink-0">
         <div 
           onClick={() => onSelectView('chef-profile')}
-          className="flex items-center gap-3 bg-slate-800/50 p-2.5 sm:p-3 rounded-2xl border border-slate-700/50 hover:border-slate-600 transition-colors cursor-pointer"
+          className={cn(
+            "flex items-center gap-3 p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer",
+            activeView === 'chef-profile'
+              ? "bg-orange-500/15 border-orange-500/30"
+              : "bg-slate-800/50 border-slate-700/50 hover:border-slate-600 hover:bg-slate-800"
+          )}
         >
           <div className="relative shrink-0">
             <div className="size-10 rounded-full bg-slate-700 border-2 border-slate-800 overflow-hidden flex items-center justify-center text-slate-300 font-bold">
                {user?.name?.charAt(0) || 'C'}
             </div>
-            <div className="absolute -bottom-0.5 -right-0.5 size-3.5 bg-green-500 border-2 border-slate-800 rounded-full"></div>
+            <div className="absolute -bottom-0.5 -right-0.5 size-3.5 bg-emerald-500 border-2 border-slate-800 rounded-full"></div>
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-white truncate">{user?.name || 'Staff'}</p>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate flex items-center gap-1">
-              {user?.role_title || user?.role || 'Staff'}
-              <span className="text-green-500 ml-1">●</span>
+              {user?.role_title || user?.role || 'Chef'}
+              <span className="text-emerald-500 ml-1">●</span>
             </p>
           </div>
         </div>
@@ -111,7 +104,7 @@ function SidebarContent({ activeView, onSelectView, user, onClose }) {
   );
 }
 
-export function KitchenSidebar({ activeView, setActiveView, user, mobileOpen, onCloseMobile }) {
+export function KitchenSidebar({ activeView, setActiveView, user, mobileOpen, onCloseMobile, activeOrdersCount = 0 }) {
   const handleSelect = (viewId) => {
     setActiveView(viewId);
     if (onCloseMobile) onCloseMobile();
@@ -125,6 +118,7 @@ export function KitchenSidebar({ activeView, setActiveView, user, mobileOpen, on
           activeView={activeView} 
           onSelectView={handleSelect} 
           user={user} 
+          activeOrdersCount={activeOrdersCount}
         />
       </aside>
 
@@ -142,6 +136,7 @@ export function KitchenSidebar({ activeView, setActiveView, user, mobileOpen, on
               onSelectView={handleSelect} 
               user={user} 
               onClose={onCloseMobile}
+              activeOrdersCount={activeOrdersCount}
             />
           </div>
         </div>

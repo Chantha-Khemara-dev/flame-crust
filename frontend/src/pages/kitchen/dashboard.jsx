@@ -10,9 +10,9 @@ import {
   Moon, 
   Menu, 
   LayoutDashboard, 
-  Clock, 
-  Flame, 
-  CheckCircle2 
+  Users, 
+  LineChart, 
+  ChefHat 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -23,7 +23,7 @@ import { DashboardView } from "./components/DashboardView";
 import { CustomersView } from "./components/CustomersView";
 import { PerformanceView } from "./components/PerformanceView";
 import { OrderDetailsPanel } from "./components/OrderDetailsPanel";
-import { ChefProfileView, NotificationsView, SettingsView } from "./components/MiscViews";
+import { ChefProfileView } from "./components/MiscViews";
 
 let cachedStandaloneKitchenProducts = [];
 
@@ -167,7 +167,8 @@ export default function KitchenDashboard() {
     ['READY', 'COMPLETED', 'DELIVERED'].includes(o.status)
   );
   const totalOrdersToday = todaysCompletedOrders.length;
-  const todayRevenue = todaysCompletedOrders.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
+  const todayRevenue = todaysCompletedOrders.reduce((sum, o) => sum + (parseFloat(o.total || o.total_amount) || 0), 0);
+  const activeOrdersCount = pendingOrders.length + preparingOrders.length;
 
   if (!user) return null;
 
@@ -180,6 +181,7 @@ export default function KitchenDashboard() {
         user={user} 
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
+        activeOrdersCount={activeOrdersCount}
       />
       
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
@@ -195,7 +197,7 @@ export default function KitchenDashboard() {
             </button>
             <div>
               <h1 className="text-base sm:text-xl font-black text-slate-900 dark:text-zinc-100 tracking-tight capitalize leading-tight">
-                {activeView.replace('-', ' ')}
+                {activeView === 'dashboard' ? 'Kitchen Board' : activeView.replace('-', ' ')}
               </h1>
               <p className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-widest mt-0.5">
                 Live Kitchen Status
@@ -260,15 +262,25 @@ export default function KitchenDashboard() {
               ) : activeView === 'performance' ? (
                 <PerformanceView orders={orders} />
               ) : activeView === 'chef-profile' ? (
-                <ChefProfileView user={user} />
-              ) : activeView === 'notifications' ? (
-                <NotificationsView />
-              ) : activeView === 'settings' ? (
-                <SettingsView />
+                <ChefProfileView 
+                  user={user} 
+                  totalOrdersToday={totalOrdersToday} 
+                  activeOrdersCount={activeOrdersCount} 
+                  onRefresh={fetchData}
+                  onSignOut={handleSignOut}
+                />
               ) : (
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-slate-500 font-bold">This section is coming soon.</p>
-                </div>
+                <DashboardView 
+                  activeView="dashboard"
+                  setActiveView={setActiveView}
+                  pendingOrders={pendingOrders}
+                  preparingOrders={preparingOrders}
+                  readyOrders={readyOrders}
+                  updateOrderStatus={updateOrderStatus}
+                  onOrderClick={setSelectedOrder}
+                  totalOrdersToday={totalOrdersToday}
+                  todayRevenue={todayRevenue}
+                />
               )}
             </>
           )}
@@ -279,70 +291,56 @@ export default function KitchenDashboard() {
           <button
             onClick={() => setActiveView('dashboard')}
             className={cn(
-              "flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-bold transition-colors min-w-[56px]",
+              "flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-bold transition-colors min-w-[56px] relative",
               activeView === 'dashboard' ? "text-orange-500 font-black" : "text-slate-500 dark:text-zinc-400"
             )}
           >
-            <LayoutDashboard className="size-5 mb-0.5" />
+            <div className="relative">
+              <LayoutDashboard className="size-5 mb-0.5" />
+              {activeOrdersCount > 0 && (
+                <span className="absolute -top-1 -right-2 bg-orange-500 text-white text-[9px] font-black size-4 rounded-full flex items-center justify-center shadow-sm">
+                  {activeOrdersCount}
+                </span>
+              )}
+            </div>
             <span>Board</span>
           </button>
           <button
-            onClick={() => setActiveView('orders')}
+            onClick={() => setActiveView('customers')}
             className={cn(
-              "flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-bold transition-colors min-w-[56px] relative",
-              activeView === 'orders' ? "text-blue-500 font-black" : "text-slate-500 dark:text-zinc-400"
+              "flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-bold transition-colors min-w-[56px]",
+              activeView === 'customers' ? "text-blue-500 font-black" : "text-slate-500 dark:text-zinc-400"
             )}
           >
-            <div className="relative">
-              <Clock className="size-5 mb-0.5" />
-              {pendingOrders.length > 0 && (
-                <span className="absolute -top-1 -right-2 bg-blue-500 text-white text-[9px] font-black size-4 rounded-full flex items-center justify-center">
-                  {pendingOrders.length}
-                </span>
-              )}
-            </div>
-            <span>New</span>
+            <Users className="size-5 mb-0.5" />
+            <span>Customers</span>
           </button>
           <button
-            onClick={() => setActiveView('preparing')}
+            onClick={() => setActiveView('performance')}
             className={cn(
-              "flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-bold transition-colors min-w-[56px] relative",
-              activeView === 'preparing' ? "text-orange-500 font-black" : "text-slate-500 dark:text-zinc-400"
+              "flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-bold transition-colors min-w-[56px]",
+              activeView === 'performance' ? "text-purple-500 font-black" : "text-slate-500 dark:text-zinc-400"
             )}
           >
-            <div className="relative">
-              <Flame className="size-5 mb-0.5" />
-              {preparingOrders.length > 0 && (
-                <span className="absolute -top-1 -right-2 bg-orange-500 text-white text-[9px] font-black size-4 rounded-full flex items-center justify-center">
-                  {preparingOrders.length}
-                </span>
-              )}
-            </div>
-            <span>Cooking</span>
+            <LineChart className="size-5 mb-0.5" />
+            <span>Analytics</span>
           </button>
           <button
-            onClick={() => setActiveView('ready')}
+            onClick={() => setActiveView('chef-profile')}
             className={cn(
-              "flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-bold transition-colors min-w-[56px] relative",
-              activeView === 'ready' ? "text-green-500 font-black" : "text-slate-500 dark:text-zinc-400"
+              "flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-bold transition-colors min-w-[56px]",
+              activeView === 'chef-profile' ? "text-emerald-500 font-black" : "text-slate-500 dark:text-zinc-400"
             )}
           >
-            <div className="relative">
-              <CheckCircle2 className="size-5 mb-0.5" />
-              {readyOrders.length > 0 && (
-                <span className="absolute -top-1 -right-2 bg-green-500 text-white text-[9px] font-black size-4 rounded-full flex items-center justify-center">
-                  {readyOrders.length}
-                </span>
-              )}
-            </div>
-            <span>Ready</span>
+            <ChefHat className="size-5 mb-0.5" />
+            <span>Profile</span>
           </button>
           <button
             onClick={() => setMobileMenuOpen(true)}
             className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-bold text-slate-500 dark:text-zinc-400 min-w-[56px]"
           >
             <Menu className="size-5 mb-0.5" />
-            <span>More</span>
+            <span>Menu</span>
           </button>
         </nav>
       </div>
@@ -353,6 +351,7 @@ export default function KitchenDashboard() {
         onClose={() => setSelectedOrder(null)} 
         user={user}
         customers={customers}
+        updateOrderStatus={updateOrderStatus}
       />
     </div>
   );

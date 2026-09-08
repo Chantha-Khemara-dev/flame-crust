@@ -1,15 +1,69 @@
-import { X, Phone, MessageCircle, Clock, ShoppingBag, MapPin, ChefHat, CheckCircle2, Users } from "lucide-react";
+import { X, Phone, MessageCircle, Clock, ShoppingBag, MapPin, ChefHat, CheckCircle2, Users, Flame, Printer, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getImageUrl } from "@/lib/food-api";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { OrderChatModal } from "@/components/food/order-chat-modal";
 
-export function OrderDetailsPanel({ order, onClose, user, customers = [] }) {
+export function OrderDetailsPanel({ order, onClose, user, customers = [], updateOrderStatus }) {
+  const [chatOpen, setChatOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   if (!order) return null;
 
   const customer = customers.find(c => String(c.id) === String(order.customer_id)) || null;
-  const [chatOpen, setChatOpen] = useState(false);
+
+  const handlePrintTicket = () => {
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    if (!printWindow) return;
+    const itemsHtml = (order.items || []).map(item => `
+      <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px;">
+        <span><strong>${item.quantity}x</strong> ${item.product_name}</span>
+      </div>
+      ${item.options && item.options !== '{}' ? `<div style="font-size:11px; color:#666; margin-bottom:6px; padding-left:14px;">${item.options}</div>` : ''}
+    `).join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>KOT - Order #${order.order_number || order.id}</title>
+          <style>
+            body { font-family: monospace; padding: 20px; color: #000; }
+            h2 { margin: 0 0 4px 0; font-size: 18px; }
+            .meta { font-size: 12px; border-bottom: 1px dashed #000; padding-bottom: 8px; margin-bottom: 12px; }
+            .notes { background: #f0f0f0; padding: 8px; margin: 10px 0; border: 1px solid #ccc; font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <h2>🔥 Flame & Crust - KITCHEN TICKET</h2>
+          <div class="meta">
+            <div><strong>ORDER #${order.order_number ? (order.order_number.length > 8 ? order.order_number.slice(-6) : order.order_number) : order.id}</strong></div>
+            <div>Type: ${order.order_type || 'DELIVERY'}</div>
+            <div>Time: ${new Date(order.created_at).toLocaleTimeString()}</div>
+            <div>Customer: ${customer?.name || order.customer_name || 'Guest'}</div>
+          </div>
+          ${order.notes ? `<div class="notes">NOTE: ${order.notes}</div>` : ''}
+          <div style="margin-top:12px;">${itemsHtml}</div>
+          <div style="margin-top:20px; border-top:1px dashed #000; padding-top:8px; font-size:11px; text-align:center;">
+            *** KITCHEN ORDER COPY ***
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex justify-end">
@@ -40,13 +94,23 @@ export function OrderDetailsPanel({ order, onClose, user, customers = [] }) {
               </span>
             </div>
           </div>
-          <button 
-            onClick={onClose}
-            className="p-2 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-500 rounded-full transition-colors border border-slate-200 dark:border-white/5 shadow-sm shrink-0"
-            aria-label="Close details"
-          >
-            <X className="size-5 sm:size-6" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handlePrintTicket}
+              className="p-2 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 rounded-full transition-colors border border-slate-200 dark:border-white/5 shadow-sm flex items-center justify-center"
+              title="Print KOT Ticket"
+              aria-label="Print KOT Ticket"
+            >
+              <Printer className="size-4 sm:size-5" />
+            </button>
+            <button 
+              onClick={onClose}
+              className="p-2 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-500 rounded-full transition-colors border border-slate-200 dark:border-white/5 shadow-sm"
+              aria-label="Close details"
+            >
+              <X className="size-5 sm:size-6" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 space-y-6 sm:space-y-8 bg-white dark:bg-zinc-950">
@@ -95,6 +159,16 @@ export function OrderDetailsPanel({ order, onClose, user, customers = [] }) {
               </div>
             )}
           </section>
+
+          {/* Customer Notes / Special Instructions */}
+          {order.notes && (
+            <section className="bg-amber-500/10 border border-amber-500/25 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-sm">
+              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-black text-xs uppercase tracking-wider mb-1.5">
+                <AlertCircle className="size-4 shrink-0" /> Special Customer Instructions
+              </div>
+              <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-zinc-100">{order.notes}</p>
+            </section>
+          )}
 
           {/* Kitchen Timeline */}
           <section>
@@ -171,6 +245,46 @@ export function OrderDetailsPanel({ order, onClose, user, customers = [] }) {
           </section>
 
         </div>
+
+        {/* Sticky Action Footer */}
+        {updateOrderStatus && (
+          <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-white/10 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md shrink-0 flex items-center gap-3">
+            {(order.status === 'PENDING' || order.status === 'CONFIRMED') && (
+              <Button 
+                onClick={() => updateOrderStatus(order.id, 'PREPARING')}
+                className="flex-1 h-12 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-black text-sm sm:text-base shadow-lg shadow-orange-500/25 transition-all"
+              >
+                <Flame className="size-5 mr-2" /> Start Preparing Ticket
+              </Button>
+            )}
+            {order.status === 'PREPARING' && (
+              <Button 
+                onClick={() => updateOrderStatus(order.id, 'READY')}
+                className="flex-1 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm sm:text-base shadow-lg shadow-emerald-500/25 transition-all"
+              >
+                <CheckCircle2 className="size-5 mr-2" /> Mark as Ready for Pickup
+              </Button>
+            )}
+            {order.status === 'READY' && (
+              <div className="flex-1 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-black text-xs sm:text-sm flex items-center justify-center gap-2 border border-emerald-500/20">
+                <CheckCircle2 className="size-4" /> Order Prepared • Waiting for Driver / Delivery
+              </div>
+            )}
+            {['DELIVERED', 'COMPLETED'].includes(order.status) && (
+              <div className="flex-1 h-12 rounded-2xl bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 font-black text-xs sm:text-sm flex items-center justify-center gap-2 border border-slate-200 dark:border-zinc-700">
+                <CheckCircle2 className="size-4 text-emerald-500" /> Order Completed
+              </div>
+            )}
+            <Button 
+              variant="outline" 
+              onClick={handlePrintTicket}
+              className="h-12 px-4 rounded-2xl border-slate-200 dark:border-white/10 font-bold shrink-0 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800"
+            >
+              <Printer className="size-4 sm:mr-2" />
+              <span className="hidden sm:inline">Print KOT</span>
+            </Button>
+          </div>
+        )}
 
       </div>
       

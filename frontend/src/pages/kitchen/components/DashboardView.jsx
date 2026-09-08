@@ -44,90 +44,100 @@ export function DashboardView({
   todayRevenue = 0, 
   totalOrdersToday = 0 
 }) {
-  const [mobileTab, setMobileTab] = useState(() => {
-    if (activeView === 'orders') return 'pending';
-    if (activeView === 'preparing') return 'preparing';
-    if (activeView === 'ready') return 'ready';
-    return 'all';
-  });
+  const [selectedColumn, setSelectedColumn] = useState('all');
 
-  useEffect(() => {
-    if (activeView === 'orders') setMobileTab('pending');
-    else if (activeView === 'preparing') setMobileTab('preparing');
-    else if (activeView === 'ready') setMobileTab('ready');
-  }, [activeView]);
+  // Dynamic calculations
+  const delayedOrdersCount = pendingOrders.filter(o => {
+    if (!o.created_at) return false;
+    return (Date.now() - new Date(o.created_at).getTime()) > 15 * 60 * 1000;
+  }).length;
+
+  let totalPrepSecs = 0;
+  let prepCount = 0;
+  readyOrders.forEach(o => {
+    if (o.created_at && o.updated_at) {
+      const diff = Math.floor((new Date(o.updated_at) - new Date(o.created_at)) / 1000);
+      if (diff > 0 && diff < 7200) {
+        totalPrepSecs += diff;
+        prepCount++;
+      }
+    }
+  });
+  const avgPrepText = prepCount > 0 ? `${Math.round(totalPrepSecs / prepCount / 60)} min` : "12 min";
+  const totalActive = pendingOrders.length + preparingOrders.length + readyOrders.length;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Top Statistics Cards - Horizontal scroll on mobile, grid on sm+ */}
-      <div className="flex sm:grid overflow-x-auto sm:overflow-visible no-scrollbar grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4 mb-3 sm:mb-6 shrink-0 pb-1 sm:pb-0">
+      <div className="flex sm:grid overflow-x-auto sm:overflow-visible no-scrollbar grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4 mb-3 sm:mb-4 shrink-0 pb-1 sm:pb-0">
         <StatCard title="Today's Orders" value={totalOrdersToday} icon={ShoppingBag} color="blue" />
         <StatCard title="Preparing" value={preparingOrders.length} icon={Flame} color="orange" />
         <StatCard title="Ready" value={readyOrders.length} icon={CheckCircle2} color="green" />
-        <StatCard title="Delayed" value="0" icon={Clock} color="red" />
-        <StatCard title="Avg Prep Time" value="14 min" icon={Utensils} color="indigo" />
+        <StatCard title="Delayed (>15m)" value={delayedOrdersCount} icon={Clock} color={delayedOrdersCount > 0 ? "red" : "blue"} />
+        <StatCard title="Avg Prep Time" value={avgPrepText} icon={Utensils} color="indigo" />
         <StatCard title="Revenue Today" value={`$${Number(todayRevenue || 0).toFixed(2)}`} icon={DollarSign} color="emerald" />
       </div>
 
-      {/* Mobile Column Switcher (Visible on small screens) */}
-      <div className="md:hidden flex items-center gap-1 p-1 bg-slate-200/80 dark:bg-zinc-900 rounded-2xl mb-3 shrink-0">
+      {/* Station / Column Filter Bar - Functional across mobile and desktop */}
+      <div className="flex items-center gap-1.5 p-1 bg-slate-200/80 dark:bg-zinc-900 rounded-2xl mb-3 shrink-0 overflow-x-auto no-scrollbar">
         <button
-          onClick={() => setMobileTab('all')}
+          onClick={() => setSelectedColumn('all')}
           className={cn(
-            "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all text-center",
-            mobileTab === 'all'
+            "py-1.5 px-3 rounded-xl text-xs font-bold transition-all text-center whitespace-nowrap shrink-0",
+            selectedColumn === 'all'
               ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm"
               : "text-slate-600 dark:text-zinc-400 hover:text-slate-900"
           )}
         >
-          All ({pendingOrders.length + preparingOrders.length + readyOrders.length})
+          All Stages ({totalActive})
         </button>
         <button
-          onClick={() => setMobileTab('pending')}
+          onClick={() => setSelectedColumn('pending')}
           className={cn(
-            "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all text-center",
-            mobileTab === 'pending'
+            "py-1.5 px-3 rounded-xl text-xs font-bold transition-all text-center whitespace-nowrap shrink-0 flex items-center gap-1.5",
+            selectedColumn === 'pending'
               ? "bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-sm"
               : "text-slate-600 dark:text-zinc-400 hover:text-slate-900"
           )}
         >
-          New ({pendingOrders.length})
+          <Clock className="size-3" /> To Prepare ({pendingOrders.length})
         </button>
         <button
-          onClick={() => setMobileTab('preparing')}
+          onClick={() => setSelectedColumn('preparing')}
           className={cn(
-            "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all text-center",
-            mobileTab === 'preparing'
+            "py-1.5 px-3 rounded-xl text-xs font-bold transition-all text-center whitespace-nowrap shrink-0 flex items-center gap-1.5",
+            selectedColumn === 'preparing'
               ? "bg-white dark:bg-zinc-800 text-orange-600 dark:text-orange-400 shadow-sm"
               : "text-slate-600 dark:text-zinc-400 hover:text-slate-900"
           )}
         >
-          Cooking ({preparingOrders.length})
+          <Flame className="size-3" /> Cooking ({preparingOrders.length})
         </button>
         <button
-          onClick={() => setMobileTab('ready')}
+          onClick={() => setSelectedColumn('ready')}
           className={cn(
-            "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all text-center",
-            mobileTab === 'ready'
+            "py-1.5 px-3 rounded-xl text-xs font-bold transition-all text-center whitespace-nowrap shrink-0 flex items-center gap-1.5",
+            selectedColumn === 'ready'
               ? "bg-white dark:bg-zinc-800 text-green-600 dark:text-green-400 shadow-sm"
               : "text-slate-600 dark:text-zinc-400 hover:text-slate-900"
           )}
         >
-          Ready ({readyOrders.length})
+          <CheckCircle2 className="size-3" /> Ready ({readyOrders.length})
         </button>
       </div>
 
       {/* Kanban Board Columns - Responsive Layout */}
       <div className={cn(
         "flex-1 overflow-hidden",
-        "md:grid md:grid-cols-3 md:gap-6",
-        mobileTab === 'all' ? "flex flex-col gap-4 overflow-y-auto pb-4 md:pb-0" : "flex flex-col"
+        selectedColumn === 'all' 
+          ? "flex flex-col md:grid md:grid-cols-3 md:gap-6 gap-4 overflow-y-auto pb-4 md:pb-0" 
+          : "flex flex-col"
       )}>
         
         {/* NEW / TO PREPARE */}
         <div className={cn(
           "h-full",
-          mobileTab !== 'all' && mobileTab !== 'pending' && "hidden md:block"
+          selectedColumn !== 'all' && selectedColumn !== 'pending' && "hidden"
         )}>
           <Column 
             title="To Prepare" 
@@ -158,7 +168,7 @@ export function DashboardView({
         {/* PREPARING */}
         <div className={cn(
           "h-full",
-          mobileTab !== 'all' && mobileTab !== 'preparing' && "hidden md:block"
+          selectedColumn !== 'all' && selectedColumn !== 'preparing' && "hidden"
         )}>
           <Column 
             title="Preparing" 
@@ -190,7 +200,7 @@ export function DashboardView({
         {/* READY */}
         <div className={cn(
           "h-full",
-          mobileTab !== 'all' && mobileTab !== 'ready' && "hidden md:block"
+          selectedColumn !== 'all' && selectedColumn !== 'ready' && "hidden"
         )}>
           <Column 
             title="Ready" 
@@ -319,6 +329,11 @@ function OrderCard({ order, onClick, action, showTimer }) {
       )}
 
       <div className="flex-1 space-y-2 mb-3 sm:mb-4">
+        {order.notes && (
+          <div className="px-2 py-1 bg-amber-500/10 border border-amber-500/25 rounded-lg text-[11px] font-bold text-amber-700 dark:text-amber-300 line-clamp-2">
+            ⚠️ Note: {order.notes}
+          </div>
+        )}
         {order.items?.map((item, idx) => (
           <div key={idx} className="flex gap-2 items-center">
             <div className="bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 px-1.5 py-0.5 rounded text-xs font-black min-w-[24px] text-center shrink-0">
