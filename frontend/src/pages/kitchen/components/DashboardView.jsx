@@ -1,505 +1,705 @@
-import { useState, useEffect } from "react";
-import { 
-  Clock, 
-  Flame, 
-  CheckCircle2, 
-  ShoppingBag, 
-  TrendingUp, 
-  DollarSign, 
+import { useMemo } from "react";
+import {
+  Clock3,
+  Flame,
+  CheckCircle2,
+  ShoppingBag,
+  DollarSign,
   Utensils,
-  Inbox
+  AlertTriangle,
+  Inbox,
+  ChefHat,
+  Search,
+  Leaf,
+  User,
+  Timer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getImageUrl } from "@/lib/food-api";
 import { cn } from "@/lib/utils";
+import {
+  STAGES,
+  StatTile,
+  TicketProgress,
+  TicketTimer,
+  URGENCY_STYLE,
+  clockOf,
+  elapsedFrom,
+  formatDuration,
+  formatMinutes,
+  formatMoney,
+  parseOptions,
+  playChime,
+  shortOrderNo,
+  urgencyOf,
+  useNow,
+} from "./kitchen-ui";
 
-// Helper component for elapsed time
-function ElapsedTimer({ startTime }) {
-  const [elapsed, setElapsed] = useState('');
+const STAGE_ORDER = ["pending", "preparing", "ready"];
 
-  useEffect(() => {
-    const calc = () => {
-      const now = new Date();
-      const start = new Date(startTime);
-      const diffInSecs = Math.max(0, Math.floor((now - start) / 1000));
-      const m = Math.floor(diffInSecs / 60);
-      const s = diffInSecs % 60;
-      setElapsed(`${m}:${s.toString().padStart(2, '0')}`);
-    };
-    calc();
-    const intv = setInterval(calc, 1000);
-    return () => clearInterval(intv);
-  }, [startTime]);
-
-  return <span className="font-mono">{elapsed}</span>;
-}
-
-export function DashboardView({ 
-  activeView = 'dashboard',
-  setActiveView,
-  pendingOrders = [], 
-  preparingOrders = [], 
-  readyOrders = [], 
-  updateOrderStatus, 
-  onOrderClick, 
-  todayRevenue = 0, 
-  totalOrdersToday = 0 
+export function DashboardView({
+  pendingOrders = [],
+  preparingOrders = [],
+  readyOrders = [],
+  updateOrderStatus,
+  onOrderClick,
+  stats = {},
+  revenue = 0,
+  totalOrdersToday = 0,
+  stageFilter = "all",
+  onStageFilterChange,
+  query = "",
+  onClearQuery,
+  onSearchMobile,
+  targetPrepMinutes = 12,
+  density = "comfortable",
+  showImages = true,
+  syncing = false,
+  error = null,
 }) {
-  const [selectedColumn, setSelectedColumn] = useState('all');
+  const now = useNow();
+  const compact = density === "compact";
 
-  const safePending = Array.isArray(pendingOrders) ? pendingOrders : [];
-  const safePreparing = Array.isArray(preparingOrders) ? preparingOrders : [];
-  const safeReady = Array.isArray(readyOrders) ? readyOrders : [];
-
-  // Dynamic calculations
-  const delayedOrdersCount = safePending.filter(o => {
-    if (!o.created_at) return false;
-    return (Date.now() - new Date(o.created_at).getTime()) > 15 * 60 * 1000;
-  }).length;
-
-  let totalPrepSecs = 0;
-  let prepCount = 0;
-  safeReady.forEach(o => {
-    if (o.created_at && o.updated_at) {
-      const diff = Math.floor((new Date(o.updated_at) - new Date(o.created_at)) / 1000);
-      if (diff > 0 && diff < 7200) {
-        totalPrepSecs += diff;
-        prepCount++;
-      }
-    }
-  });
-  const avgPrepText = prepCount > 0 ? `${Math.round(totalPrepSecs / prepCount / 60)} min` : "12 min";
-  const totalActive = safePending.length + safePreparing.length + safeReady.length;
-
-  return (
-    <div className="flex flex-col h-full overflow-hidden">
-      {/* Top Statistics Cards - Hero Theme Aesthetic */}
-      <div className="flex sm:grid overflow-x-auto sm:overflow-visible no-scrollbar grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3.5 mb-3.5 sm:mb-4 shrink-0 pb-1 sm:pb-0">
-        <StatCard 
-          title="Today's Orders" 
-          value={totalOrdersToday} 
-          icon={ShoppingBag} 
-          theme="amber"
-        />
-        <StatCard 
-          title="In Oven" 
-          value={safePreparing.length} 
-          icon={Flame} 
-          theme="flame"
-          highlight={safePreparing.length > 0} 
-        />
-        <StatCard 
-          title="Ready for Pickup" 
-          value={safeReady.length} 
-          icon={CheckCircle2} 
-          theme="emerald"
-        />
-        <StatCard 
-          title="Delayed (>15m)" 
-          value={delayedOrdersCount} 
-          icon={Clock} 
-          theme="alert"
-          isAlert={delayedOrdersCount > 0} 
-        />
-        <StatCard 
-          title="Avg Prep Time" 
-          value={avgPrepText} 
-          icon={Utensils} 
-          theme="orange"
-        />
-        <StatCard 
-          title="Today's Revenue" 
-          value={`$${Number(todayRevenue || 0).toFixed(2)}`} 
-          icon={DollarSign} 
-          theme="gold"
-        />
-      </div>
-
-      {/* Station / Column Segment Bar - Sleek Frosted Floating Capsule */}
-      <div className="grid grid-cols-4 p-1.5 bg-card/85 dark:bg-zinc-900/85 backdrop-blur-xl rounded-full mb-3.5 sm:mb-4 shrink-0 gap-1 border border-border/80 shadow-warm ring-1 ring-black/[0.03] dark:ring-white/[0.05]">
-        <button
-          onClick={() => setSelectedColumn('all')}
-          className={cn(
-            "py-2 sm:py-2.5 px-1 sm:px-3 rounded-full text-xs transition-all text-center flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 active:scale-95",
-            selectedColumn === 'all'
-              ? "bg-gradient-to-r from-primary via-orange-600 to-amber-600 text-white shadow-warm font-serif font-bold"
-              : "text-muted-foreground hover:text-foreground hover:bg-secondary/70 font-semibold"
-          )}
-        >
-          <span>All Stages</span>
-          <span className={cn(
-            "text-[10px] px-2 py-0.5 rounded-full font-bold font-sans",
-            selectedColumn === 'all' ? "bg-white/25 text-white backdrop-blur-sm" : "bg-secondary text-muted-foreground border border-border/60"
-          )}>
-            {totalActive}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setSelectedColumn('pending')}
-          className={cn(
-            "py-2 sm:py-2.5 px-1 sm:px-3 rounded-full text-xs transition-all text-center flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 active:scale-95",
-            selectedColumn === 'pending'
-              ? "bg-gradient-to-r from-primary via-orange-600 to-amber-600 text-white shadow-warm font-serif font-bold"
-              : "text-muted-foreground hover:text-foreground hover:bg-secondary/70 font-semibold"
-          )}
-        >
-          <span className="hidden sm:inline"><Clock className="size-3.5" /></span>
-          <span>To Prepare</span>
-          <span className={cn(
-            "text-[10px] px-2 py-0.5 rounded-full font-bold font-sans",
-            selectedColumn === 'pending' ? "bg-white/25 text-white backdrop-blur-sm" : "bg-secondary text-muted-foreground border border-border/60"
-          )}>
-            {safePending.length}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setSelectedColumn('preparing')}
-          className={cn(
-            "py-2 sm:py-2.5 px-1 sm:px-3 rounded-full text-xs transition-all text-center flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 active:scale-95",
-            selectedColumn === 'preparing'
-              ? "bg-gradient-to-r from-primary via-orange-600 to-amber-600 text-white shadow-warm font-serif font-bold"
-              : "text-muted-foreground hover:text-foreground hover:bg-secondary/70 font-semibold"
-          )}
-        >
-          <span className="hidden sm:inline"><Flame className="size-3.5 animate-pulse" /></span>
-          <span>Cooking</span>
-          <span className={cn(
-            "text-[10px] px-2 py-0.5 rounded-full font-bold font-sans",
-            selectedColumn === 'preparing' ? "bg-white/25 text-white backdrop-blur-sm" : "bg-secondary text-muted-foreground border border-border/60"
-          )}>
-            {safePreparing.length}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setSelectedColumn('ready')}
-          className={cn(
-            "py-2 sm:py-2.5 px-1 sm:px-3 rounded-full text-xs transition-all text-center flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 active:scale-95",
-            selectedColumn === 'ready'
-              ? "bg-gradient-to-r from-primary via-orange-600 to-amber-600 text-white shadow-warm font-serif font-bold"
-              : "text-muted-foreground hover:text-foreground hover:bg-secondary/70 font-semibold"
-          )}
-        >
-          <span className="hidden sm:inline"><CheckCircle2 className="size-3.5" /></span>
-          <span>Ready</span>
-          <span className={cn(
-            "text-[10px] px-2 py-0.5 rounded-full font-bold font-sans",
-            selectedColumn === 'ready' ? "bg-white/25 text-white backdrop-blur-sm" : "bg-secondary text-muted-foreground border border-border/60"
-          )}>
-            {safeReady.length}
-          </span>
-        </button>
-      </div>
-
-      {/* Kanban Board Columns - Responsive Artisanal Layout */}
-      <div className={cn(
-        "flex-1 overflow-hidden",
-        selectedColumn === 'all' 
-          ? "flex flex-col md:grid md:grid-cols-3 md:gap-5 gap-3.5 overflow-y-auto pb-4 md:pb-0 custom-scrollbar" 
-          : "flex flex-col"
-      )}>
-        
-        {/* STATION 1: TO PREPARE */}
-        <div className={cn(
-          "h-full",
-          selectedColumn !== 'all' && selectedColumn !== 'pending' && "hidden"
-        )}>
-          <Column 
-            title="To Prepare" 
-            subtitle="Station 1 • Prep & Dough"
-            count={safePending.length} 
-            icon={Clock}
-            iconBg="bg-amber-500/15 text-amber-600 border-amber-500/25"
-            emptyTitle="All Tickets Prepared"
-            emptyText="No incoming tickets waiting in queue. Expediter is clear."
-            isAllViewOnMobile={selectedColumn === 'all'}
-          >
-            {safePending.map(order => (
-              <OrderCard 
-                key={order.id} 
-                order={order} 
-                stage="pending"
-                onClick={() => onOrderClick(order)}
-                action={
-                  <Button 
-                    onClick={(e) => { e.stopPropagation(); updateOrderStatus(order.id, "PREPARING"); }}
-                    className="w-full h-11 sm:h-12 rounded-full bg-gradient-to-r from-primary via-orange-500 to-amber-500 hover:brightness-105 text-white font-serif font-bold shadow-warm transition-all active:scale-[0.98] text-xs sm:text-sm group"
-                  >
-                    <Flame className="size-4 mr-2 group-hover:scale-125 transition-transform" /> Start Cooking in Oven
-                  </Button>
-                }
-              />
-            ))}
-          </Column>
-        </div>
-
-        {/* STATION 2: COOKING IN OVEN */}
-        <div className={cn(
-          "h-full",
-          selectedColumn !== 'all' && selectedColumn !== 'preparing' && "hidden"
-        )}>
-          <Column 
-            title="Cooking in Oven" 
-            subtitle="Station 2 • Wood-Fired Stone Oven (800°F)"
-            count={safePreparing.length} 
-            icon={Flame} 
-            iconBg="bg-gradient-to-br from-primary via-orange-500 to-amber-500 text-white shadow-warm ring-2 ring-primary/20"
-            emptyTitle="Oven is Clear & Hot"
-            emptyText="Stone oven is preheated at 800°F, ready for incoming artisan pizzas."
-            isAllViewOnMobile={selectedColumn === 'all'}
-          >
-            {safePreparing.map(order => (
-              <OrderCard 
-                key={order.id} 
-                order={order} 
-                stage="preparing"
-                onClick={() => onOrderClick(order)}
-                showTimer
-                action={
-                  <Button 
-                    onClick={(e) => { e.stopPropagation(); updateOrderStatus(order.id, "READY"); }}
-                    className="w-full h-11 sm:h-12 rounded-full bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:brightness-105 text-white font-serif font-bold shadow-warm transition-all active:scale-[0.98] text-xs sm:text-sm group"
-                  >
-                    <CheckCircle2 className="size-4 mr-2 group-hover:scale-125 transition-transform" /> Mark as Baked & Ready
-                  </Button>
-                }
-              />
-            ))}
-          </Column>
-        </div>
-
-        {/* STATION 3: READY FOR PICKUP */}
-        <div className={cn(
-          "h-full",
-          selectedColumn !== 'all' && selectedColumn !== 'ready' && "hidden"
-        )}>
-          <Column 
-            title="Ready for Pickup" 
-            subtitle="Station 3 • Expediter & Dispatch"
-            count={safeReady.length} 
-            icon={CheckCircle2} 
-            iconBg="bg-emerald-500/15 text-emerald-600 border-emerald-500/25"
-            emptyTitle="Pickup Station Clear"
-            emptyText="All finished orders have been handed over to drivers or customers."
-            isAllViewOnMobile={selectedColumn === 'all'}
-          >
-            {safeReady.map(order => (
-              <OrderCard 
-                key={order.id} 
-                order={order} 
-                stage="ready"
-                onClick={() => onOrderClick(order)}
-                action={
-                  <div className="w-full h-11 sm:h-12 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-serif font-bold text-xs sm:text-sm border border-emerald-500/30 shadow-2xs">
-                    <ShoppingBag className="size-4 mr-2 text-emerald-600 dark:text-emerald-400" /> Awaiting Driver Pickup
-                  </div>
-                }
-              />
-            ))}
-          </Column>
-        </div>
-
-      </div>
-    </div>
+  const buckets = useMemo(
+    () => ({
+      pending: Array.isArray(pendingOrders) ? pendingOrders : [],
+      preparing: Array.isArray(preparingOrders) ? preparingOrders : [],
+      ready: Array.isArray(readyOrders) ? readyOrders : [],
+    }),
+    [pendingOrders, preparingOrders, readyOrders]
   );
-}
 
-function StatCard({ title, value, icon: Icon, theme = "amber", highlight = false, isAlert = false }) {
-  const themeStyles = {
-    amber: {
-      card: "border-border/80 hover:border-amber-500/40 bg-gradient-to-br from-card via-card to-amber-500/[0.03]",
-      icon: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-    },
-    flame: {
-      card: "border-primary/40 bg-gradient-to-br from-card via-card to-primary/[0.07] ring-1 ring-primary/15 hover:border-primary/70",
-      icon: "bg-gradient-to-br from-primary via-orange-500 to-amber-500 text-white shadow-warm ring-2 ring-primary/20"
-    },
-    emerald: {
-      card: "border-border/80 hover:border-emerald-500/40 bg-gradient-to-br from-card via-card to-emerald-500/[0.03]",
-      icon: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-    },
-    alert: {
-      card: isAlert 
-        ? "border-destructive/50 bg-destructive/5 ring-1 ring-destructive/20 animate-pulse" 
-        : "border-border/80 hover:border-destructive/40 bg-gradient-to-br from-card via-card to-destructive/[0.02]",
-      icon: isAlert 
-        ? "bg-destructive/15 text-destructive border-destructive/30" 
-        : "bg-secondary text-muted-foreground border-border/70"
-    },
-    orange: {
-      card: "border-border/80 hover:border-orange-500/40 bg-gradient-to-br from-card via-card to-orange-500/[0.03]",
-      icon: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20"
-    },
-    gold: {
-      card: "border-border/80 hover:border-amber-500/40 bg-gradient-to-br from-card via-card to-amber-500/[0.04]",
-      icon: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-    }
+  const totalActive = buckets.pending.length + buckets.preparing.length + buckets.ready.length;
+
+  const avgPrep = useMemo(() => {
+    let total = 0;
+    let count = 0;
+    buckets.ready.forEach((order) => {
+      if (!order.created_at || !order.updated_at) return;
+      const diff = new Date(order.updated_at) - new Date(order.created_at);
+      if (diff > 0 && diff < 7200000) {
+        total += diff;
+        count += 1;
+      }
+    });
+    return count > 0 ? formatMinutes(total / count) : "—";
+  }, [buckets.ready]);
+
+  const oldestWait = (list) => {
+    if (!list.length) return null;
+    return list.reduce((max, order) => {
+      const ms = elapsedFrom(order.created_at, now);
+      return ms !== null && (max === null || ms > max) ? ms : max;
+    }, null);
   };
 
-  const currentTheme = themeStyles[theme] || themeStyles.amber;
+  const stageMeta = (stage) => {
+    const list = buckets[stage];
+    const oldest = oldestWait(list);
+    const late = list.filter(
+      (o) => stage !== "ready" && (elapsedFrom(o.created_at, now) || 0) > targetPrepMinutes * 60000
+    ).length;
+    return { list, oldest, late };
+  };
+
+  const filters = [
+    { id: "all", label: "All Stages", count: totalActive, icon: ChefHat },
+    { id: "pending", label: "To Prepare", count: buckets.pending.length, icon: Clock3 },
+    { id: "preparing", label: "Cooking", count: buckets.preparing.length, icon: Flame },
+    { id: "ready", label: "Ready", count: buckets.ready.length, icon: CheckCircle2 },
+  ];
 
   return (
-    <div className={cn(
-      "p-3.5 sm:p-4.5 rounded-3xl border shadow-warm hover:shadow-warm-lg hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between min-w-[130px] sm:min-w-0 shrink-0 sm:shrink relative overflow-hidden backdrop-blur-xl group",
-      currentTheme.card
-    )}>
-      <div className="flex items-center justify-between gap-1.5 mb-2">
-        <span className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider truncate">{title}</span>
-        <div className={cn(
-          "size-7 sm:size-8 rounded-xl flex items-center justify-center shrink-0 border transition-transform duration-200 group-hover:scale-110",
-          currentTheme.icon
-        )}>
-          <Icon className={cn("size-3.5 sm:size-4", theme === 'flame' && highlight && "animate-flicker")} />
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="relative mb-3 shrink-0 sm:mb-4">
+        <div className="flex snap-x snap-mandatory grid-cols-2 gap-2.5 overflow-x-auto pb-1 no-scrollbar sm:grid sm:grid-cols-3 sm:snap-none sm:overflow-visible sm:pb-0 lg:grid-cols-6">
+        <StatTile
+          label="Today's Tickets"
+          value={totalOrdersToday}
+          icon={ShoppingBag}
+          tone="amber"
+          className="min-w-[124px] shrink-0 snap-start sm:min-w-0 sm:shrink"
+          hint={`${stats.completedToday || 0} completed`}
+        />
+        <StatTile
+          label="In the Oven"
+          value={buckets.preparing.length}
+          icon={Flame}
+          tone="flame"
+          className="min-w-[124px] shrink-0 snap-start sm:min-w-0 sm:shrink"
+          hint={buckets.preparing.length ? "Fire in progress" : "Oven clear"}
+        />
+        <StatTile
+          label="Ready for Pickup"
+          value={buckets.ready.length}
+          icon={CheckCircle2}
+          tone="emerald"
+          className="min-w-[124px] shrink-0 snap-start sm:min-w-0 sm:shrink"
+          hint={buckets.ready.length ? "Expediter has work" : "Pass is clear"}
+        />
+        <StatTile
+          label="Running Late"
+          value={stats.delayed || 0}
+          icon={AlertTriangle}
+          tone={stats.delayed > 0 ? "destructive" : "muted"}
+          className={cn(
+            "min-w-[124px] shrink-0 snap-start sm:min-w-0 sm:shrink",
+            stats.delayed > 0 && "border-destructive/40 ring-1 ring-destructive/20"
+          )}
+          hint={`Target ${targetPrepMinutes} min`}
+        />
+        <StatTile
+          label="Avg Prep Time"
+          value={avgPrep}
+          icon={Utensils}
+          tone="sky"
+          className="min-w-[124px] shrink-0 snap-start sm:min-w-0 sm:shrink"
+          hint="Ticket → ready"
+        />
+        <StatTile
+          label="Today's Revenue"
+          value={formatMoney(revenue)}
+          icon={DollarSign}
+          tone="amber"
+          className="min-w-[124px] shrink-0 snap-start sm:min-w-0 sm:shrink"
+          hint="Completed tickets"
+        />
         </div>
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background via-background/70 to-transparent sm:hidden" />
       </div>
-      <div className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-foreground tracking-tight truncate">{value}</div>
-    </div>
-  );
-}
 
-function Column({ title, subtitle, count, icon: Icon, iconBg, emptyTitle, emptyText, isAllViewOnMobile, children }) {
-  const hasChildren = Array.isArray(children) ? children.length > 0 : Boolean(children);
+      <div className="mb-3.5 flex shrink-0 items-center gap-2 sm:mb-4">
+        <div className="grid flex-1 grid-cols-4 gap-1 rounded-full border border-border/70 bg-card/85 p-1.5 shadow-warm ring-1 ring-black/[0.03] backdrop-blur-xl dark:bg-zinc-900/85 dark:ring-white/[0.05]">
+          {filters.map((filter) => {
+            const isActive = stageFilter === filter.id;
+            return (
+              <button
+                key={filter.id}
+                type="button"
+                onClick={() => {
+                  playChime("tap");
+                  onStageFilterChange?.(filter.id);
+                }}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 rounded-full px-1 py-2 text-center text-xs transition-all active:scale-95 sm:gap-2 sm:px-3 sm:py-2.5",
+                  isActive
+                    ? "bg-gradient-to-r from-primary via-orange-600 to-amber-600 font-serif font-bold text-white shadow-warm"
+                    : "font-semibold text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
+                )}
+              >
+                <filter.icon className={cn("size-4 sm:size-3.5", isActive && "text-white/90")} />
+                <span className="hidden truncate sm:inline">{filter.label}</span>
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 font-sans text-[10px] font-bold tabular-nums",
+                    isActive
+                      ? "bg-white/25 text-white backdrop-blur-sm"
+                      : "border border-border/60 bg-secondary text-muted-foreground"
+                  )}
+                >
+                  {filter.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
 
-  return (
-    <div className={cn(
-      "flex flex-col rounded-3xl border border-border/80 bg-card/65 dark:bg-zinc-900/50 backdrop-blur-xl overflow-hidden transition-all shadow-warm ring-1 ring-black/[0.03] dark:ring-white/[0.04]",
-      isAllViewOnMobile ? "min-h-[200px] md:h-full" : "h-full min-h-[300px]"
-    )}>
-      {/* Column Header */}
-      <div className="px-4.5 sm:px-5 py-3.5 sm:py-4 border-b border-border/70 bg-card/85 dark:bg-card/45 backdrop-blur-xl flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className={cn("size-8 sm:size-9 rounded-2xl flex items-center justify-center shrink-0 border", iconBg || "bg-primary/10 text-primary border-primary/20")}>
-            <Icon className="size-4 sm:size-4.5" />
-          </div>
-          <div className="min-w-0">
-            <h2 className="font-serif font-bold text-sm sm:text-base text-foreground tracking-tight truncate leading-tight">
-              {title}
-            </h2>
-            {subtitle && (
-              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider truncate">
-                {subtitle}
-              </p>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={onSearchMobile}
+          className="size-10 shrink-0 rounded-full border-border/70 bg-card text-muted-foreground shadow-xs transition-all hover:border-primary/40 hover:text-primary active:scale-95 md:hidden"
+          title="Search tickets"
+        >
+          <Search className="size-4" />
+        </Button>
+      </div>
+
+      {error && !syncing && (
+        <div className="mb-3 flex shrink-0 items-center gap-2 rounded-2xl border border-destructive/30 bg-destructive/8 px-3.5 py-2 text-xs font-semibold text-destructive">
+          <AlertTriangle className="size-4 shrink-0" />
+          <span className="truncate">Live sync paused — {error}. Showing last known board.</span>
+        </div>
+      )}
+
+      {query && totalActive === 0 ? (
+        <div className="flex flex-1 items-center justify-center">
+          <div className="max-w-sm rounded-3xl border border-dashed border-border/70 bg-card/60 p-8 text-center backdrop-blur-xl">
+            <span className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl border border-border/70 bg-secondary text-muted-foreground">
+              <Search className="size-6" />
+            </span>
+            <h3 className="font-serif text-lg font-bold text-foreground">No tickets match “{query}”</h3>
+            <p className="mt-1 text-xs font-medium text-muted-foreground">
+              Try an order number, guest name or dish name.
+            </p>
+            {onClearQuery && (
+              <Button
+                variant="outline"
+                onClick={onClearQuery}
+                className="mt-5 rounded-full border-border/70 bg-card font-serif text-xs font-bold shadow-xs hover:bg-secondary"
+              >
+                Clear search
+              </Button>
             )}
           </div>
         </div>
+      ) : stageFilter === "all" ? (
+        <>
+          <div className="flex flex-1 flex-col gap-5 overflow-y-auto pb-2 custom-scrollbar md:hidden">
+            {STAGE_ORDER.map((stage) => {
+              const { list, oldest, late } = stageMeta(stage);
+              const config = STAGES[stage];
+              return (
+                <section key={stage} className="shrink-0">
+                  <FeedStageHeader stage={stage} count={list.length} oldest={oldest} late={late} />
+                  <div className="mt-2.5 flex flex-col gap-3">
+                    {list.length === 0 ? (
+                      <div className="flex items-center gap-2.5 rounded-2xl border border-dashed border-border/60 bg-secondary/20 px-3.5 py-3">
+                        <config.icon className="size-4 shrink-0 text-muted-foreground/70" />
+                        <span className="truncate text-[11px] font-semibold text-muted-foreground">
+                          {stage === "pending"
+                            ? "Rail clear — no incoming tickets"
+                            : stage === "preparing"
+                              ? "Oven hot & idle"
+                              : "Pass empty — nothing waiting"}
+                        </span>
+                      </div>
+                    ) : (
+                      list.map((order) => (
+                        <TicketCard
+                          key={order.id}
+                          order={order}
+                          stage={stage}
+                          compact={compact}
+                          showImages={showImages}
+                          targetPrepMinutes={targetPrepMinutes}
+                          onOpen={() => onOrderClick?.(order)}
+                          onAdvance={() => updateOrderStatus?.(order.id, config.nextStatus)}
+                        />
+                      ))
+                    )}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
 
-        <span className="bg-secondary/90 border border-border/80 text-xs sm:text-sm font-serif font-bold px-3 py-0.5 rounded-full text-foreground shadow-2xs shrink-0">
+          <div className="hidden flex-1 gap-5 overflow-hidden md:grid md:grid-cols-3">
+            {STAGE_ORDER.map((stage) => {
+              const { list, oldest, late } = stageMeta(stage);
+              return (
+                <StationColumn
+                  key={stage}
+                  stage={stage}
+                  list={list}
+                  oldest={oldest}
+                  late={late}
+                  targetPrepMinutes={targetPrepMinutes}
+                  compact={compact}
+                  showImages={showImages}
+                  updateOrderStatus={updateOrderStatus}
+                  onOrderClick={onOrderClick}
+                  stacked
+                />
+              );
+            })}
+          </div>
+        </>
+      ) : (
+        (() => {
+          const { list, oldest, late } = stageMeta(stageFilter);
+          return (
+            <StationColumn
+              stage={stageFilter}
+              list={list}
+              oldest={oldest}
+              late={late}
+              targetPrepMinutes={targetPrepMinutes}
+              compact={compact}
+              showImages={showImages}
+              updateOrderStatus={updateOrderStatus}
+              onOrderClick={onOrderClick}
+              expanded
+            />
+          );
+        })()
+      )}
+    </div>
+  );
+}
+
+function StationColumn({
+  stage,
+  list,
+  oldest,
+  late,
+  targetPrepMinutes,
+  compact,
+  showImages,
+  updateOrderStatus,
+  onOrderClick,
+  stacked = false,
+  expanded = false,
+}) {
+  const config = STAGES[stage];
+  const Icon = config.icon;
+
+  return (
+    <section
+      className={cn(
+        "flex flex-col overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-b shadow-warm ring-1 ring-black/[0.03] transition-colors dark:ring-white/[0.04]",
+        config.columnTint,
+        stacked ? "min-h-[220px] md:h-full" : "h-full min-h-[320px]"
+      )}
+    >
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border/60 bg-card/70 px-4 py-3.5 backdrop-blur-xl sm:px-5 dark:bg-card/40">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span
+            className={cn(
+              "flex size-9 shrink-0 items-center justify-center rounded-2xl border sm:size-10",
+              config.iconBox
+            )}
+          >
+            <Icon className={cn("size-4.5", stage === "preparing" && "animate-flicker")} />
+          </span>
+          <div className="min-w-0">
+            <h2 className="truncate font-serif text-sm font-bold leading-tight tracking-tight text-foreground sm:text-base">
+              {config.label}
+            </h2>
+            <p className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {config.station} • {config.note}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          {late > 0 && (
+            <span className="hidden items-center gap-1 rounded-full border border-destructive/30 bg-destructive/12 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-destructive sm:inline-flex">
+              <AlertTriangle className="size-3" /> {late} late
+            </span>
+          )}
+          {oldest !== null && (
+            <span className="hidden items-center gap-1 rounded-full border border-border/60 bg-secondary/70 px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums text-muted-foreground lg:inline-flex">
+              <Timer className="size-3" /> {formatDuration(oldest)}
+            </span>
+          )}
+          <span className="rounded-full border border-border/70 bg-secondary/90 px-2.5 py-0.5 font-serif text-xs font-bold tabular-nums text-foreground shadow-2xs sm:text-sm">
+            {list.length}
+          </span>
+        </div>
+      </header>
+
+      <div
+        className={cn(
+          "flex flex-col gap-3 p-3 custom-scrollbar sm:gap-3.5 sm:p-4",
+          stacked ? "max-h-[460px] overflow-y-auto md:max-h-none md:flex-1" : "flex-1 overflow-y-auto",
+          expanded && "md:grid md:grid-cols-2 md:content-start md:gap-4 xl:grid-cols-3"
+        )}
+      >
+        {list.length === 0 ? (
+          <ColumnEmpty stage={stage} expanded={expanded} />
+        ) : (
+          list.map((order) => (
+            <TicketCard
+              key={order.id}
+              order={order}
+              stage={stage}
+              compact={compact}
+              showImages={showImages}
+              targetPrepMinutes={targetPrepMinutes}
+              onOpen={() => onOrderClick?.(order)}
+              onAdvance={() => updateOrderStatus?.(order.id, config.nextStatus)}
+            />
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
+function FeedStageHeader({ stage, count, oldest, late }) {
+  const config = STAGES[stage];
+  const Icon = config.icon;
+
+  return (
+    <div className="sticky top-0 z-10 -mx-0.5 flex items-center justify-between gap-2 rounded-2xl border border-border/60 bg-card/90 px-3 py-2 shadow-xs backdrop-blur-xl">
+      <div className="flex min-w-0 items-center gap-2">
+        <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-xl border", config.iconBox)}>
+          <Icon className="size-3.5" />
+        </span>
+        <span className="truncate font-serif text-sm font-bold text-foreground">{config.label}</span>
+        {late > 0 && (
+          <span className="flex shrink-0 items-center gap-1 rounded-full border border-destructive/30 bg-destructive/12 px-1.5 py-px text-[9px] font-extrabold uppercase text-destructive">
+            {late} late
+          </span>
+        )}
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        {oldest !== null && (
+          <span className="flex items-center gap-1 rounded-full border border-border/60 bg-secondary/70 px-2 py-0.5 font-mono text-[10px] font-bold text-muted-foreground tabular-nums">
+            <Timer className="size-3" /> {formatDuration(oldest)}
+          </span>
+        )}
+        <span className="rounded-full border border-border/70 bg-secondary/90 px-2 py-0.5 font-serif text-xs font-bold text-foreground tabular-nums">
           {count}
         </span>
       </div>
-
-      {/* Column Body */}
-      <div className={cn(
-        "p-3 sm:p-4 custom-scrollbar flex flex-col gap-3 sm:gap-4",
-        isAllViewOnMobile ? "max-h-[440px] md:max-h-none overflow-y-auto md:flex-1" : "flex-1 overflow-y-auto"
-      )}>
-        {hasChildren ? (
-          children
-        ) : (
-          <div className="flex-1 min-h-[170px] flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-border/60 rounded-3xl bg-secondary/20 dark:bg-zinc-900/20 my-auto">
-            <div className="size-13 rounded-3xl bg-card border border-border/80 flex items-center justify-center mb-3 shadow-xs text-primary/80">
-              <Icon className="size-6 opacity-75" />
-            </div>
-            <p className="font-serif text-sm font-bold text-foreground mb-1">{emptyTitle || "Station is Clear"}</p>
-            <p className="text-xs font-medium text-muted-foreground max-w-xs">{emptyText || "No active tickets."}</p>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
 
-function OrderCard({ order, onClick, action, showTimer, stage = "pending" }) {
-  const isDelayed = stage === "pending" && order.created_at && (Date.now() - new Date(order.created_at).getTime()) > 15 * 60 * 1000;
-
-  const stageAccent = {
-    pending: isDelayed ? "border-destructive/60 bg-destructive/5" : "border-border/80 hover:border-amber-500/50",
-    preparing: "border-primary/50 hover:border-primary/80 ring-1 ring-primary/20",
-    ready: "border-emerald-500/40 hover:border-emerald-500/70"
-  };
-
-  const topStripe = {
-    pending: isDelayed ? "bg-destructive" : "bg-gradient-to-r from-amber-500 to-orange-500",
-    preparing: "bg-gradient-to-r from-primary via-orange-500 to-amber-500 animate-pulse",
-    ready: "bg-gradient-to-r from-emerald-500 to-teal-500"
-  };
+function ColumnEmpty({ stage, expanded }) {
+  const config = STAGES[stage];
+  const Icon = config.icon;
+  const copy = {
+    pending: {
+      title: "Rail is clear",
+      text: "Every incoming ticket has been fired. New orders land here automatically.",
+    },
+    preparing: {
+      title: "Oven is hot & idle",
+      text: "Stone oven holding at 800°F. Nothing cooking right now.",
+    },
+    ready: {
+      title: "Pass is empty",
+      text: "All finished tickets were handed to drivers or guests.",
+    },
+  }[stage];
 
   return (
-    <div 
-      onClick={onClick}
+    <div
       className={cn(
-        "bg-card dark:bg-zinc-900/90 rounded-3xl p-4.5 sm:p-5 shadow-warm hover:shadow-warm-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer flex flex-col group relative border overflow-hidden",
-        stageAccent[stage]
+        "my-auto flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-border/60 bg-secondary/20 p-6 text-center",
+        expanded ? "min-h-[240px] md:col-span-2 xl:col-span-3" : "min-h-[180px] flex-1"
       )}
     >
-      {/* Artisanal Top Accent Stripe */}
-      <div className={cn("absolute top-0 inset-x-0 h-1.5", topStripe[stage])} />
+      <span className="mb-3 flex size-13 items-center justify-center rounded-3xl border border-border/70 bg-card text-primary/80 shadow-xs">
+        <Icon className="size-6 opacity-80" />
+      </span>
+      <p className="font-serif text-sm font-bold text-foreground sm:text-base">{copy.title}</p>
+      <p className="mt-1 max-w-xs text-xs font-medium text-muted-foreground">{copy.text}</p>
+      <span className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+        <Inbox className="size-3" /> Station clear
+      </span>
+    </div>
+  );
+}
 
-      {/* Header */}
-      <div className="flex justify-between items-start mb-3 border-b border-border/60 pb-3 pt-1">
-        <div>
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <span className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-widest">Ticket</span>
-            {isDelayed && (
-              <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-destructive/15 text-destructive border border-destructive/25 animate-pulse">
-                Delayed
+function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOpen, onAdvance }) {
+  const now = useNow();
+  const config = STAGES[stage];
+  const items = Array.isArray(order.items) ? order.items : [];
+  const itemCount = items.reduce((sum, item) => sum + (parseInt(item.quantity) || 1), 0);
+  const waited = elapsedFrom(stage === "preparing" ? order.updated_at || order.created_at : order.created_at, now) || 0;
+  const urgency = urgencyOf(stage, waited, targetPrepMinutes);
+  const tone = URGENCY_STYLE[urgency.tone];
+  const totalWait = elapsedFrom(order.created_at, now) || 0;
+  const options = useMemo(() => {
+    const seen = new Set();
+    return items.flatMap((item) =>
+      parseOptions(item.options).filter((opt) => {
+        const key = `${item.id}:${opt}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+    );
+  }, [items]);
+
+  return (
+    <article
+      onClick={onOpen}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen?.();
+        }
+      }}
+      className={cn(
+        "group relative flex cursor-pointer flex-col overflow-hidden rounded-3xl border bg-card shadow-warm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-warm-lg focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none dark:bg-zinc-900/90",
+        tone.border,
+        compact ? "p-3.5" : "p-4 sm:p-4.5",
+        urgency.level >= 3 && "ring-1 ring-destructive/25"
+      )}
+    >
+      <div className={cn("absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r", config.stripe)} />
+      {urgency.level >= 2 && (
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-full bg-gradient-to-b from-destructive/[0.06] to-transparent" />
+      )}
+
+      <header className="mb-3 flex items-start justify-between gap-2 border-b border-border/60 pb-3 pt-1">
+        <div className="min-w-0">
+          <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">
+              Ticket
+            </span>
+            {order.order_type && (
+              <span className="rounded-full border border-border/70 bg-secondary px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-foreground/80">
+                {order.order_type.replace(/_/g, " ")}
               </span>
             )}
-            {order.order_type && (
-              <span className="text-[9px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-secondary text-foreground/80 border border-border/70">
-                {order.order_type}
+            {urgency.level >= 2 && (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide",
+                  tone.chip,
+                  urgency.level >= 3 && "animate-pulse"
+                )}
+              >
+                <AlertTriangle className="size-2.5" />
+                {urgency.level >= 3 ? "Critical" : "Late"}
               </span>
             )}
           </div>
-          <h3 className="font-serif text-lg sm:text-xl font-bold text-foreground leading-tight tracking-tight">
-            #{order.order_number ? (order.order_number.length > 8 ? order.order_number.slice(-6) : order.order_number) : order.id}
+          <h3
+            className={cn(
+              "truncate font-serif font-bold leading-tight tracking-tight text-foreground",
+              compact ? "text-base" : "text-lg sm:text-xl"
+            )}
+          >
+            #{shortOrderNo(order)}
           </h3>
+          <p className="mt-1 flex items-center gap-1.5 truncate text-[11px] font-semibold text-muted-foreground">
+            <User className="size-3 shrink-0" />
+            <span className="truncate">{order.customer_name || "Guest"}</span>
+            <span className="text-border">•</span>
+            <Clock3 className="size-3 shrink-0" />
+            <span className="tabular-nums">{clockOf(order.created_at)}</span>
+          </p>
         </div>
 
-        <div className="text-right flex flex-col items-end">
-          {showTimer ? (
-             <div className="flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-serif font-bold border border-primary/25 shadow-2xs">
-               <Flame className="size-3.5 animate-pulse text-primary fill-primary/20" />
-               <ElapsedTimer startTime={order.updated_at || order.created_at} />
-             </div>
-          ) : (
-            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground bg-secondary/80 px-2.5 py-1 rounded-full border border-border/60">
-              <Clock className="size-3 text-muted-foreground" />
-              {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </div>
-          )}
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <TicketTimer
+            startTime={stage === "preparing" ? order.updated_at || order.created_at : order.created_at}
+            stage={stage}
+            targetPrepMinutes={targetPrepMinutes}
+          />
+          <span className="text-[10px] font-semibold text-muted-foreground tabular-nums">
+            {formatMinutes(totalWait)} total
+          </span>
         </div>
-      </div>
+      </header>
 
-      {showTimer && (
-        <div className="mb-3">
-           <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-             <div className="h-full bg-gradient-to-r from-primary via-orange-500 to-amber-500 rounded-full w-[70%] relative overflow-hidden animate-pulse" />
-           </div>
+      {stage !== "ready" && (
+        <TicketProgress
+          startTime={stage === "preparing" ? order.updated_at || order.created_at : order.created_at}
+          stage={stage}
+          targetPrepMinutes={targetPrepMinutes}
+          className="mb-3"
+        />
+      )}
+
+      {order.notes && (
+        <div className="mb-3 flex items-start gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
+          <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <span className={cn("line-clamp-2", compact && "line-clamp-1")}>{order.notes}</span>
         </div>
       )}
 
-      {/* Order items list */}
-      <div className="flex-1 space-y-2 mb-3.5">
-        {order.notes && (
-          <div className="px-3 py-2 bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 rounded-2xl text-xs font-medium text-amber-900 dark:text-amber-200 line-clamp-2">
-            ⚠️ {order.notes}
+      <ul className={cn("mb-3.5 flex-1 space-y-2", compact && "space-y-1.5")}>
+        {items.length === 0 && (
+          <li className="rounded-2xl border border-dashed border-border/60 px-3 py-2.5 text-center text-[11px] font-semibold text-muted-foreground">
+            No items on this ticket
+          </li>
+        )}
+        {items.map((item, index) => (
+          <li key={item.id ?? index} className="flex items-start gap-2.5">
+            {showImages && item.product_image && (
+              <img
+                src={getImageUrl(item.product_image)}
+                alt=""
+                loading="lazy"
+                className={cn(
+                  "shrink-0 rounded-xl border border-border/60 object-cover shadow-2xs",
+                  compact ? "size-8" : "size-9 sm:size-10"
+                )}
+              />
+            )}
+            <span
+              className={cn(
+                "flex shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 font-serif font-bold text-primary shadow-2xs",
+                compact ? "size-6 text-[11px]" : "size-6.5 text-xs"
+              )}
+            >
+              {item.quantity}×
+            </span>
+            <span className="min-w-0 flex-1">
+              <span
+                className={cn(
+                  "block truncate font-semibold text-foreground",
+                  compact ? "text-[11.5px]" : "text-xs sm:text-[13px]"
+                )}
+              >
+                {item.product_name || "Item"}
+              </span>
+              <span className="mt-0.5 flex flex-wrap items-center gap-1">
+                {item.product_spicy && (
+                  <span className="inline-flex items-center gap-0.5 rounded-full border border-primary/25 bg-primary/10 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-primary">
+                    <Flame className="size-2.5" /> Spicy
+                  </span>
+                )}
+                {item.product_vegetarian && (
+                  <span className="inline-flex items-center gap-0.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+                    <Leaf className="size-2.5" /> Veg
+                  </span>
+                )}
+                {parseOptions(item.options).map((opt, i) => (
+                  <span
+                    key={i}
+                    className="rounded-md border border-border/60 bg-secondary/60 px-1.5 py-px text-[9.5px] font-semibold text-muted-foreground"
+                  >
+                    {opt}
+                  </span>
+                ))}
+                {item.item_notes && (
+                  <span className="truncate text-[9.5px] font-semibold text-amber-700 italic dark:text-amber-400">
+                    “{item.item_notes}”
+                  </span>
+                )}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {options.length > 0 && !compact && (
+        <p className="mb-3 truncate text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {options.length} modification{options.length > 1 ? "s" : ""} on this ticket
+        </p>
+      )}
+
+      <footer className="mt-auto flex items-center gap-2 pt-1">
+        <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-border/60 bg-secondary/60 px-2.5 py-1 text-[10px] font-bold text-muted-foreground sm:inline-flex">
+          <ShoppingBag className="size-3" /> {itemCount} item{itemCount === 1 ? "" : "s"}
+        </span>
+        {config.nextStatus ? (
+          <Button
+            onClick={(event) => {
+              event.stopPropagation();
+              onAdvance?.();
+            }}
+            className={cn(
+              "group/btn flex-1 rounded-full bg-gradient-to-r text-white font-serif font-bold shadow-warm transition-all hover:brightness-105 active:scale-[0.98]",
+              config.action,
+              compact ? "h-10 text-xs" : "h-11 text-xs sm:h-12 sm:text-sm"
+            )}
+          >
+            <config.icon className="mr-2 size-4 transition-transform group-hover/btn:scale-125" />
+            {stage === "pending" ? "Start Cooking" : "Mark as Ready"}
+          </Button>
+        ) : (
+          <div
+            className={cn(
+              "flex flex-1 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 font-serif font-bold text-emerald-700 shadow-2xs dark:bg-emerald-500/18 dark:text-emerald-300",
+              compact ? "h-10 text-[11px]" : "h-11 text-xs sm:h-12 sm:text-sm"
+            )}
+          >
+            <CheckCircle2 className="mr-2 size-4" /> Awaiting Pickup
           </div>
         )}
-        {order.items?.map((item, idx) => (
-          <div key={idx} className="flex gap-2.5 items-center text-xs">
-            <span className="size-6 sm:size-6.5 rounded-xl bg-primary/10 text-primary font-serif font-bold flex items-center justify-center text-xs shrink-0 border border-primary/20 shadow-2xs">
-              {item.quantity}x
-            </span>
-            <span className="font-semibold text-foreground truncate flex-1">{item.product_name}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-auto pt-1">
-        {action}
-      </div>
-    </div>
+      </footer>
+    </article>
   );
 }

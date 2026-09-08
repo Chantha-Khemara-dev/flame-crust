@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Routes, Route, Navigate, useNavigate, useLocation, Link } from "react-router-dom";
 import { Menu as MenuIcon, X, Sun, Moon, Store, ShieldCheck, ChevronRight, KeyRound, LogOut, PanelLeftClose, PanelLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/theme-provider.jsx";
 import AdminSidebar from "./sidebar.jsx";
 import AdminResourcePage from "./resource-page.jsx";
@@ -125,16 +126,29 @@ function AdminLayout() {
 
           {/* Right Header Actions */}
           <div className="flex items-center gap-2.5">
-            {/* Theme Toggle */}
+            {/* Theme Toggle with Spring Morph Animation */}
             <Button
               variant="outline"
               size="icon"
-              className="size-9 rounded-xl border-border/60 text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors cursor-pointer relative overflow-hidden"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              aria-label="Toggle theme"
+              className="size-9 rounded-xl border-border/70 text-muted-foreground hover:text-foreground hover:bg-secondary/70 transition-all cursor-pointer relative overflow-hidden group shadow-2xs hover:shadow-warm active:scale-95"
+              onClick={(e) => setTheme(theme === "dark" ? "light" : "dark", e)}
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              title={theme === "dark" ? "Light Mode" : "Dark Mode"}
             >
-              <Sun className="size-4 text-amber-500 rotate-0 scale-100 transition-transform duration-300 dark:-rotate-90 dark:scale-0" />
-              <Moon className="size-4 absolute text-indigo-400 rotate-90 scale-0 transition-transform duration-300 dark:rotate-0 dark:scale-100" />
+              <div className="relative size-4 flex items-center justify-center">
+                <Sun className={cn(
+                  "size-4 text-amber-500 transition-all duration-500 absolute",
+                  theme === "dark" 
+                    ? "-rotate-90 scale-0 opacity-0" 
+                    : "rotate-0 scale-100 opacity-100 animate-theme-spin drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]"
+                )} />
+                <Moon className={cn(
+                  "size-4 text-indigo-400 transition-all duration-500 absolute",
+                  theme === "dark" 
+                    ? "rotate-0 scale-100 opacity-100 animate-theme-spin drop-shadow-[0_0_8px_rgba(129,140,248,0.5)]" 
+                    : "rotate-90 scale-0 opacity-0"
+                )} />
+              </div>
             </Button>
 
             {/* Sign Out Button */}

@@ -1,363 +1,337 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { list, update } from "@/lib/api";
 import { toast } from "sonner";
-import { 
-  ChefHat, 
-  Clock, 
-  CheckCircle2, 
-  ShoppingBag,
+import {
+  ChefHat,
   RefreshCw,
+  Search,
+  X,
+  ExternalLink,
   Flame,
-  ArrowRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ErrorState } from "@/components/shared/error-state";
 import { cn } from "@/lib/utils";
+import { DashboardView } from "./../kitchen/components/DashboardView";
+import { OrderDetailsPanel } from "./../kitchen/components/OrderDetailsPanel";
+import {
+  KdsBoardSkeleton,
+  StatusDot,
+  formatMoney,
+  shortOrderNo,
+  useKitchenPrefs,
+  useNow,
+} from "./../kitchen/components/kitchen-ui";
 
 let cachedKitchenProducts = [];
 
-export default function KitchenDashboard() {
+const toArray = (value) => {
+  if (Array.isArray(value)) return value;
+  if (value && Array.isArray(value.items)) return value.items;
+  if (value && Array.isArray(value.content)) return value.content;
+  if (value && Array.isArray(value.data)) return value.data;
+  return [];
+};
+
+export default function AdminKitchenDashboard() {
+  const prefs = useKitchenPrefs();
+  const now = useNow();
+
   const [orders, setOrders] = useState([]);
   const [orderItems, setOrderItems] = useState([]);
+  const [orderHistory, setOrderHistory] = useState([]);
   const [products, setProducts] = useState(() => cachedKitchenProducts);
+  const [customers, setCustomers] = useState([]);
+  const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [mobileTab, setMobileTab] = useState("all");
+  const [error, setError] = useState(null);
+  const [stageFilter, setStageFilter] = useState("all");
+  const [query, setQuery] = useState("");
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [adminUser, setAdminUser] = useState(null);
 
-  const fetchData = async (isInitial = false) => {
+  const searchRef = useRef(null);
+
+  useEffect(() => {
     try {
-      const promises = [
-        list("orders"),
-        list("order_items")
+      setAdminUser(JSON.parse(localStorage.getItem("adminAuth") || "null"));
+    } catch {
+      setAdminUser(null);
+    }
+  }, []);
+
+  const fetchData = useCallback(async (isInitial = false) => {
+    try {
+      const wanted = [
+        ["orders", list("orders", { limit: 100, sort: "id", dir: "desc" })],
+        ["order_items", list("order_items", { limit: 250, sort: "id", dir: "desc" })],
+        ["order_status_history", list("order_status_history", { limit: 400, sort: "id", dir: "desc" })],
       ];
-      if (cachedKitchenProducts.length === 0 || isInitial) {
-        promises.push(list("products"));
+      if (isInitial) {
+        wanted.push(["customers", list("customers", { limit: 100, sort: "id", dir: "desc" })]);
+        wanted.push(["addresses", list("addresses", { limit: 200, sort: "id", dir: "desc" })]);
       }
-      
-      const results = await Promise.all(promises);
-      setOrders(results[0] || []);
-      setOrderItems(results[1] || []);
-      if (results[2]) {
-        cachedKitchenProducts = results[2];
-        setProducts(results[2]);
+      if (isInitial || cachedKitchenProducts.length === 0) {
+        wanted.push(["products", list("products", { limit: 100 })]);
       }
-    } catch (error) {
+
+      const responses = await Promise.all(wanted.map(([, promise]) => promise));
+      const payload = {};
+      wanted.forEach(([key], index) => {
+        payload[key] = toArray(responses[index]);
+      });
+
+      if (payload.orders) setOrders(payload.orders);
+      if (payload.order_items) setOrderItems(payload.order_items);
+      if (payload.order_status_history) setOrderHistory(payload.order_status_history);
+      if (payload.customers) setCustomers(payload.customers);
+      if (payload.addresses) setAddresses(payload.addresses);
+      if (payload.products?.length > 0) {
+        cachedKitchenProducts = payload.products;
+        setProducts(payload.products);
+      }
+      setError(null);
+    } catch (err) {
+      setError(err?.message || "Unable to reach the kitchen server.");
       if (isInitial) toast.error("Failed to load kitchen data.");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchData(true);
     const interval = setInterval(() => fetchData(false), 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchData]);
 
   const handleRefresh = () => {
     setRefreshing(true);
-    fetchData();
+    fetchData(false);
   };
 
   const updateOrderStatus = async (orderId, newStatus) => {
+    const known = toArray(orders).find((o) => String(o.id) === String(orderId));
     try {
       await update("orders", orderId, { status: newStatus });
-      toast.success(`Order #${orderId} moved to ${newStatus.replace(/_/g, " ")}`);
-      fetchData();
-    } catch (err) {
+      toast.success(
+        `Ticket #${known ? shortOrderNo(known) : orderId} → ${newStatus.replace(/_/g, " ")}`
+      );
+      setSelectedOrder((prev) =>
+        prev && String(prev.id) === String(orderId) ? { ...prev, status: newStatus } : prev
+      );
+      fetchData(false);
+    } catch {
       toast.error("Failed to update status");
     }
   };
 
-  // Filter and enrich orders
-  const activeOrders = orders
-    .filter(o => ["PENDING", "CONFIRMED", "PREPARING", "READY"].includes(o.status))
-    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-    .map(order => ({
-      ...order,
-      items: orderItems.filter(item => String(item.order_id) === String(order.id)).map(item => {
-        const product = products.find(p => String(p.id) === String(item.product_id));
+  const safeOrders = useMemo(() => toArray(orders), [orders]);
+  const safeItems = useMemo(() => toArray(orderItems), [orderItems]);
+  const safeProducts = useMemo(() => toArray(products), [products]);
+  const safeCustomers = useMemo(() => toArray(customers), [customers]);
+  const safeAddresses = useMemo(() => toArray(addresses), [addresses]);
+  const safeHistory = useMemo(() => toArray(orderHistory), [orderHistory]);
+
+  const activeOrders = useMemo(() => {
+    const itemsByOrder = new Map();
+    safeItems.forEach((item) => {
+      const key = String(item.order_id);
+      if (!itemsByOrder.has(key)) itemsByOrder.set(key, []);
+      itemsByOrder.get(key).push(item);
+    });
+    const productById = new Map(safeProducts.map((p) => [String(p.id), p]));
+    const customerById = new Map(safeCustomers.map((c) => [String(c.id), c]));
+    const addressById = new Map(safeAddresses.map((a) => [String(a.id), a]));
+
+    return safeOrders
+      .filter((o) => ["PENDING", "CONFIRMED", "PREPARING", "READY"].includes(o.status))
+      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+      .map((order) => {
+        const customer = customerById.get(String(order.customer_id)) || null;
         return {
-          ...item,
-          product_name: product?.name || item.product_name,
-          image: product?.image || null,
+          ...order,
+          customer_name: customer?.name || order.customer_name || null,
+          address: addressById.get(String(order.address_id)) || null,
+          items: (itemsByOrder.get(String(order.id)) || []).map((item) => {
+            const product = productById.get(String(item.product_id));
+            return {
+              ...item,
+              product_name: product?.name || item.product_name,
+              product_image: product?.image || null,
+              product_spicy: product?.spicy || false,
+              product_vegetarian: product?.vegetarian || false,
+            };
+          }),
         };
-      })
-    }));
+      });
+  }, [safeOrders, safeItems, safeProducts, safeCustomers, safeAddresses]);
 
-  const pendingOrders = activeOrders.filter(o => o.status === "PENDING" || o.status === "CONFIRMED");
-  const preparingOrders = activeOrders.filter(o => o.status === "PREPARING");
-  const readyOrders = activeOrders.filter(o => o.status === "READY");
+  const historyByOrder = useMemo(() => {
+    const map = new Map();
+    safeHistory.forEach((entry) => {
+      const key = String(entry.order_id);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(entry);
+    });
+    map.forEach((entries) => entries.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
+    return map;
+  }, [safeHistory]);
 
-  const OrderCard = ({ order }) => (
-    <div className="group bg-card/80 backdrop-blur-2xl rounded-3xl p-5 shadow-sm border border-border/50 hover:shadow-lg hover:border-primary/40 transition-all duration-300 flex flex-col relative overflow-hidden">
-      {/* Glow Effect */}
-      <div className="absolute -right-8 -top-8 size-32 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors pointer-events-none" />
-      
-      <div className="flex items-start justify-between mb-4 border-b border-border/50 pb-4 relative z-10">
-        <div>
-          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">
-            Order Tag
-          </span>
-          <h3 className="text-2xl font-black text-foreground tracking-tight leading-none group-hover:text-primary transition-colors">
-            #{order.order_number ? (order.order_number.length > 8 ? order.order_number.slice(-6) : order.order_number) : order.id}
-          </h3>
-        </div>
-        <div className="text-right">
-          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">
-            Time In
-          </span>
-          <div className="flex items-center justify-end gap-1.5 text-xs font-bold text-foreground bg-secondary/80 px-2.5 py-1 rounded-xl">
-            <Clock className="size-3.5 text-primary" />
-            {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </div>
-        </div>
-      </div>
+  const filteredOrders = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    if (!term) return activeOrders;
+    return activeOrders.filter((order) =>
+      [order.order_number, order.id, order.customer_name, order.notes, order.order_type, ...(order.items || []).map((i) => i.product_name)]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(term)
+    );
+  }, [activeOrders, query]);
 
-      <div className="flex-1 overflow-y-auto max-h-[300px] mb-5 space-y-4 custom-scrollbar pr-2 relative z-10">
-        {order.items.map((item, idx) => (
-          <div key={idx} className="flex gap-3.5 items-center">
-            {item.image ? (
-              <div className="relative size-12 shrink-0 rounded-2xl overflow-hidden border border-border/50 shadow-sm">
-                <img src={item.image} alt={item.product_name} className="w-full h-full object-cover" />
-                <div className="absolute top-0 right-0 bg-primary/90 text-primary-foreground text-[10px] font-black px-1.5 py-0.5 rounded-bl-lg">
-                  {item.quantity}x
-                </div>
-              </div>
-            ) : (
-              <div className="bg-primary/10 text-primary px-3 py-2 rounded-2xl font-black text-lg min-w-[48px] text-center shrink-0 border border-primary/20 shadow-sm shadow-primary/5 group-hover:scale-105 transition-transform">
-                {item.quantity}x
-              </div>
-            )}
-            <div className="flex-1 leading-tight">
-              <span className="font-bold text-sm sm:text-base text-foreground line-clamp-1">{item.product_name}</span>
-              {item.options && item.options !== "{}" && (
-                <div className="text-xs font-semibold text-muted-foreground mt-1.5 flex flex-wrap gap-1.5">
-                  {(() => {
-                    try {
-                      return Object.values(JSON.parse(item.options)).map((opt, i) => (
-                         <span key={i} className="bg-secondary/60 px-2 py-0.5 rounded-md border border-border/50">{opt}</span>
-                      ));
-                    } catch (e) {
-                      return <span className="bg-secondary/60 px-2 py-0.5 rounded-md border border-border/50">{String(item.options)}</span>;
-                    }
-                  })()}
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+  const pendingOrders = filteredOrders.filter((o) => o.status === "PENDING" || o.status === "CONFIRMED");
+  const preparingOrders = filteredOrders.filter((o) => o.status === "PREPARING");
+  const readyOrders = filteredOrders.filter((o) => o.status === "READY");
 
-      <div className="mt-auto pt-4 border-t border-border/50 relative z-10">
-        {order.status === "PENDING" && (
-          <Button 
-            onClick={() => updateOrderStatus(order.id, "CONFIRMED")}
-            className="w-full h-12 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-all font-bold border border-blue-500/20 group/btn"
-          >
-            Confirm Ticket <ArrowRight className="size-4 ml-2 opacity-50 group-hover/btn:opacity-100 group-hover/btn:translate-x-1 transition-all" />
-          </Button>
-        )}
-        {order.status === "CONFIRMED" && (
-          <Button 
-            onClick={() => updateOrderStatus(order.id, "PREPARING")}
-            className="w-full h-12 rounded-2xl bg-orange-500/10 text-orange-600 dark:text-orange-400 hover:bg-orange-500/20 transition-all font-bold border border-orange-500/20 group/btn"
-          >
-            <Flame className="size-4 mr-2 opacity-70 group-hover/btn:scale-110 group-hover/btn:text-orange-500 transition-all" />
-            Start Preparing
-          </Button>
-        )}
-        {order.status === "PREPARING" && (
-          <Button 
-            onClick={() => updateOrderStatus(order.id, "READY")}
-            className="w-full h-12 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 transition-all font-bold text-base group/btn"
-          >
-            <CheckCircle2 className="size-5 mr-2 group-hover/btn:scale-110 transition-transform" />
-            Mark as Ready
-          </Button>
-        )}
-        {order.status === "READY" && (
-          <div className="w-full h-12 rounded-2xl bg-secondary/50 text-muted-foreground text-sm font-bold flex items-center justify-center gap-2 border border-border/50">
-            <ShoppingBag className="size-4 opacity-70" />
-            Waiting for Dispatch
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  const stats = useMemo(() => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todays = safeOrders.filter((o) => new Date(o.created_at) >= todayStart);
+    const completed = todays.filter((o) =>
+      ["READY", "OUT_FOR_DELIVERY", "DELIVERED", "COMPLETED"].includes(o.status)
+    );
+    const revenue = completed.reduce((sum, o) => sum + (parseFloat(o.total || o.total_amount) || 0), 0);
+    const delayed = activeOrders.filter(
+      (o) => o.created_at && now - new Date(o.created_at).getTime() > prefs.targetPrepMinutes * 60000
+    ).length;
+
+    return {
+      totalOrdersToday: todays.length,
+      completedToday: completed.length,
+      revenue,
+      delayed,
+      queue: pendingOrders.length + preparingOrders.length,
+    };
+  }, [safeOrders, activeOrders, pendingOrders.length, preparingOrders.length, now, prefs.targetPrepMinutes]);
 
   return (
-    <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)] w-full transition-colors relative">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-1">
-        <div>
-          <h1 className="font-serif text-2xl sm:text-3xl font-black flex items-center gap-2 text-foreground tracking-tight">
-            <ChefHat className="size-8 text-primary" /> Kitchen KDS
-          </h1>
-          <p className="text-xs sm:text-sm font-semibold text-muted-foreground mt-1 tracking-wide">
-            LIVE ORDER PREPARATION QUEUE
-          </p>
+    <div className="flex w-full flex-col gap-4 sm:gap-5">
+      <header className="flex flex-col gap-3 rounded-[28px] border border-border/70 bg-card/85 p-4 shadow-warm backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <div className="flex min-w-0 items-center gap-3.5">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-orange-500 to-amber-500 text-white shadow-warm ring-2 ring-primary/20">
+            <ChefHat className="size-5.5" />
+          </span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate font-serif text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+                Kitchen KDS
+              </h1>
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                <StatusDot tone="emerald" />
+                Live queue
+              </span>
+            </div>
+            <p className="mt-0.5 flex items-center gap-2 truncate text-xs font-semibold text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <Flame className="size-3.5 text-primary" />
+                {stats.queue} ticket{stats.queue === 1 ? "" : "s"} on the rail
+              </span>
+              {stats.delayed > 0 && (
+                <span className="flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-px text-[10px] font-extrabold text-destructive">
+                  {stats.delayed} late
+                </span>
+              )}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3">
-          <Button 
-            variant="outline" 
+
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <div className="relative order-last w-full md:order-none md:w-auto">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/70" />
+            <Input
+              ref={searchRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search tickets…"
+              className="h-10 w-full rounded-full border-border/70 bg-background/60 pl-10 pr-9 text-sm shadow-xs focus-visible:border-primary/50 focus-visible:ring-primary/25 md:w-52 lg:w-64"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
+          </div>
+
+          <Button
+            variant="outline"
             onClick={() => window.open("/kitchen/dashboard", "_blank")}
-            className="rounded-xl shrink-0 h-10 sm:h-11 px-3 sm:px-4 border-border/50 hover:bg-primary/5 text-foreground hover:text-primary font-bold shadow-sm transition-all text-xs sm:text-sm"
+            className="h-10 shrink-0 rounded-full border-border/70 bg-card px-3.5 font-serif text-xs font-bold text-foreground shadow-xs transition-all hover:border-primary/40 hover:bg-secondary hover:text-primary active:scale-95 sm:px-4 sm:text-sm"
           >
-            <ChefHat className="size-4 mr-1.5 sm:mr-2 opacity-70" />
-            Standalone KDS
+            <ExternalLink className="size-3.5 sm:mr-1.5" />
+            <span className="hidden sm:inline">Standalone KDS</span>
           </Button>
-          <Button 
-            variant="outline" 
+
+          <Button
+            variant="outline"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="rounded-xl shrink-0 h-10 sm:h-11 px-3 sm:px-4 font-bold border-border/50 bg-secondary/30 hover:bg-secondary/80 transition-all text-xs sm:text-sm"
+            className="h-10 shrink-0 rounded-full border-border/70 bg-card px-3.5 font-serif text-xs font-bold text-foreground shadow-xs transition-all hover:border-primary/40 hover:bg-secondary active:scale-95 sm:px-4 sm:text-sm"
           >
-            <RefreshCw className={cn("size-4 mr-1.5 sm:mr-2 opacity-70", refreshing && "animate-spin text-primary opacity-100")} />
-            Sync
+            <RefreshCw className={cn("size-3.5 sm:mr-1.5", refreshing && "animate-spin text-primary")} />
+            <span className="hidden sm:inline">Sync</span>
           </Button>
         </div>
+      </header>
+
+      <div className="md:h-[calc(100dvh-16.5rem)] md:min-h-[560px]">
+        {loading ? (
+          <KdsBoardSkeleton />
+        ) : error && activeOrders.length === 0 ? (
+          <div className="flex h-full min-h-[320px] items-center justify-center rounded-[28px] border border-border/70 bg-card/70">
+            <ErrorState title="Kitchen feed unavailable" description={error} onRetry={handleRefresh} />
+          </div>
+        ) : (
+          <DashboardView
+            pendingOrders={pendingOrders}
+            preparingOrders={preparingOrders}
+            readyOrders={readyOrders}
+            updateOrderStatus={updateOrderStatus}
+            onOrderClick={setSelectedOrder}
+            stats={stats}
+            revenue={stats.revenue}
+            totalOrdersToday={stats.totalOrdersToday}
+            stageFilter={stageFilter}
+            onStageFilterChange={setStageFilter}
+            query={query}
+            onClearQuery={() => setQuery("")}
+            onSearchMobile={() => searchRef.current?.focus()}
+            targetPrepMinutes={prefs.targetPrepMinutes}
+            density={prefs.density}
+            showImages={prefs.showImages}
+            syncing={refreshing}
+            error={error}
+          />
+        )}
       </div>
 
-      {/* Mobile Column Tab Switcher */}
-      <div className="md:hidden flex items-center gap-1 p-1 bg-secondary/40 rounded-2xl shrink-0">
-        <button
-          onClick={() => setMobileTab('all')}
-          className={cn(
-            "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all text-center",
-            mobileTab === 'all'
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          All ({pendingOrders.length + preparingOrders.length + readyOrders.length})
-        </button>
-        <button
-          onClick={() => setMobileTab('pending')}
-          className={cn(
-            "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all text-center",
-            mobileTab === 'pending'
-              ? "bg-card text-blue-600 dark:text-blue-400 shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          To Prepare ({pendingOrders.length})
-        </button>
-        <button
-          onClick={() => setMobileTab('preparing')}
-          className={cn(
-            "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all text-center",
-            mobileTab === 'preparing'
-              ? "bg-card text-orange-600 dark:text-orange-400 shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Cooking ({preparingOrders.length})
-        </button>
-        <button
-          onClick={() => setMobileTab('ready')}
-          className={cn(
-            "flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all text-center",
-            mobileTab === 'ready'
-              ? "bg-card text-green-600 dark:text-green-400 shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Ready ({readyOrders.length})
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="size-10 rounded-full border-4 border-primary/30 border-t-primary animate-spin" />
-        </div>
-      ) : (
-        <div className={cn(
-          "flex-1 overflow-hidden pb-4",
-          "md:grid md:grid-cols-3 md:gap-6",
-          mobileTab === 'all' ? "flex flex-col gap-4 overflow-y-auto" : "flex flex-col"
-        )}>
-          
-          {/* New / Confirmed Column */}
-          <div className={cn(
-            "flex flex-col bg-card/40 backdrop-blur-3xl rounded-[32px] border border-border/40 overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.04)] relative h-full min-h-[260px]",
-            mobileTab !== 'all' && mobileTab !== 'pending' && "hidden md:flex"
-          )}>
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 to-indigo-500 opacity-80" />
-            <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-border/50 bg-secondary/20 flex items-center justify-between backdrop-blur-md shrink-0">
-              <h2 className="font-black text-base sm:text-lg text-foreground flex items-center gap-2.5">
-                <Clock className="size-4 sm:size-5 text-blue-500" /> To Prepare
-              </h2>
-              <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-xs sm:text-sm font-black px-3 py-0.5 sm:py-1 rounded-full shadow-sm">
-                {pendingOrders.length}
-              </span>
-            </div>
-            <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-5 custom-scrollbar">
-              {pendingOrders.length === 0 ? (
-                <div className="h-full min-h-[140px] flex flex-col items-center justify-center text-muted-foreground/60 space-y-3">
-                  <Clock className="size-8 sm:size-10 opacity-20" />
-                  <p className="text-xs sm:text-sm font-bold tracking-wide">Queue is empty</p>
-                </div>
-              ) : (
-                pendingOrders.map(order => <OrderCard key={order.id} order={order} />)
-              )}
-            </div>
-          </div>
-
-          {/* Preparing Column */}
-          <div className={cn(
-            "flex flex-col bg-card/40 backdrop-blur-3xl rounded-[32px] border border-border/40 overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.04)] relative h-full min-h-[260px]",
-            mobileTab !== 'all' && mobileTab !== 'preparing' && "hidden md:flex"
-          )}>
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-400 to-amber-500 opacity-80" />
-            <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-border/50 bg-secondary/20 flex items-center justify-between backdrop-blur-md shrink-0">
-              <h2 className="font-black text-base sm:text-lg text-foreground flex items-center gap-2.5">
-                <Flame className="size-4 sm:size-5 text-orange-500" /> Preparing
-              </h2>
-              <span className="bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20 text-xs sm:text-sm font-black px-3 py-0.5 sm:py-1 rounded-full shadow-sm">
-                {preparingOrders.length}
-              </span>
-            </div>
-            <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-5 custom-scrollbar">
-              {preparingOrders.length === 0 ? (
-                <div className="h-full min-h-[140px] flex flex-col items-center justify-center text-muted-foreground/60 space-y-3">
-                  <Flame className="size-8 sm:size-10 opacity-20" />
-                  <p className="text-xs sm:text-sm font-bold tracking-wide">No active fires</p>
-                </div>
-              ) : (
-                preparingOrders.map(order => <OrderCard key={order.id} order={order} />)
-              )}
-            </div>
-          </div>
-
-          {/* Ready Column */}
-          <div className={cn(
-            "flex flex-col bg-card/40 backdrop-blur-3xl rounded-[32px] border border-border/40 overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.04)] relative h-full min-h-[260px]",
-            mobileTab !== 'all' && mobileTab !== 'ready' && "hidden md:flex"
-          )}>
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-teal-500 opacity-80" />
-            <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-border/50 bg-secondary/20 flex items-center justify-between backdrop-blur-md shrink-0">
-              <h2 className="font-black text-base sm:text-lg text-foreground flex items-center gap-2.5">
-                <CheckCircle2 className="size-4 sm:size-5 text-emerald-500" /> Ready
-              </h2>
-              <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs sm:text-sm font-black px-3 py-0.5 sm:py-1 rounded-full shadow-sm">
-                {readyOrders.length}
-              </span>
-            </div>
-            <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-5 custom-scrollbar">
-              {readyOrders.length === 0 ? (
-                <div className="h-full min-h-[140px] flex flex-col items-center justify-center text-muted-foreground/60 space-y-3">
-                  <CheckCircle2 className="size-8 sm:size-10 opacity-20" />
-                  <p className="text-xs sm:text-sm font-bold tracking-wide">All clear</p>
-                </div>
-              ) : (
-                readyOrders.map(order => <OrderCard key={order.id} order={order} />)
-              )}
-            </div>
-          </div>
-
-        </div>
-      )}
+      <OrderDetailsPanel
+        order={selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+        user={adminUser || { name: "Admin", role: "ADMIN" }}
+        customers={safeCustomers}
+        history={selectedOrder ? historyByOrder.get(String(selectedOrder.id)) || [] : []}
+        updateOrderStatus={updateOrderStatus}
+        targetPrepMinutes={prefs.targetPrepMinutes}
+      />
     </div>
   );
 }

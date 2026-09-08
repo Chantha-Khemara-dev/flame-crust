@@ -27,10 +27,13 @@ import {
   KeyRound,
   PanelLeft,
   PanelLeftClose,
-  X
+  X,
+  Sun,
+  Moon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useTheme } from "@/components/theme-provider.jsx";
 import {
   Tooltip,
   TooltipContent,
@@ -118,6 +121,7 @@ const navGroups = [
 ];
 
 function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
+  const { theme, setTheme } = useTheme();
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [adminAuth, setAdminAuth] = useState(() => {
     try {
@@ -415,6 +419,22 @@ function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
                 <span className="text-xs text-muted-foreground font-normal">{adminAuth?.email || "admin@flamecrust.com"}</span>
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-border/50" />
+              <DropdownMenuItem 
+                onClick={(e) => setTheme(theme === "dark" ? "light" : "dark", e)} 
+                className="rounded-lg cursor-pointer font-bold focus:bg-primary/10 focus:text-primary transition-colors flex items-center justify-between"
+              >
+                <span className="flex items-center gap-2">
+                  {theme === "dark" ? (
+                    <Sun className="size-4 text-amber-500 animate-theme-spin" />
+                  ) : (
+                    <Moon className="size-4 text-indigo-400 animate-theme-spin" />
+                  )}
+                  <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+                </span>
+                <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border/60">
+                  {theme}
+                </span>
+              </DropdownMenuItem>
               <DropdownMenuItem asChild className="rounded-lg cursor-pointer font-bold focus:bg-primary/10 focus:text-primary transition-colors">
                 <Link to="/" replace>
                   <Store className="size-4 mr-2" /> Live Storefront

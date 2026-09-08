@@ -1,225 +1,587 @@
-import { Users, Search, Mail, Phone, ShoppingBag, Clock, X, ExternalLink } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import {
+  Users,
+  ShoppingBag,
+  Phone,
+  Mail,
+  Crown,
+  Clock3,
+  UtensilsCrossed,
+  Wallet,
+  History,
+  Star,
+  ArrowUpRight,
+} from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { EmptyState } from "@/components/shared/empty-state";
+import { SearchInput } from "@/components/shared/search-input";
+import { cn } from "@/lib/utils";
+import {
+  AvatarButton,
+  CoverBanner,
+  PhotoViewer,
+  SectionHeading,
+  StatTile,
+  formatMoney,
+  parseOptions,
+  timeAgo,
+  useNow,
+} from "./kitchen-ui";
 
-export function CustomersView({ customers = [], orders = [] }) {
-  const [searchTerm, setSearchTerm] = useState("");
+const SORTS = [
+  { id: "recent", label: "Recent" },
+  { id: "spend", label: "Top spend" },
+  { id: "orders", label: "Most orders" },
+  { id: "name", label: "A → Z" },
+];
+
+const TIER = {
+  VIP: {
+    label: "VIP",
+    icon: Crown,
+    chip: "border-amber-500/30 bg-amber-500/12 text-amber-700 dark:text-amber-400",
+  },
+  Regular: {
+    label: "Regular",
+    icon: Star,
+    chip: "border-border/70 bg-secondary text-muted-foreground",
+  },
+  New: {
+    label: "New",
+    icon: ArrowUpRight,
+    chip: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-400",
+  },
+};
+
+export function CustomersView({ customers = [], orders = [], orderItems = [] }) {
+  const now = useNow();
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState("recent");
   const [activeCustomer, setActiveCustomer] = useState(null);
+  const [photoTarget, setPhotoTarget] = useState(null);
 
-  const safeCustomers = Array.isArray(customers) ? customers : (customers?.items || customers?.content || []);
-  const safeOrders = Array.isArray(orders) ? orders : (orders?.items || orders?.content || []);
+  const safeCustomers = Array.isArray(customers) ? customers : [];
+  const safeOrders = Array.isArray(orders) ? orders : [];
+  const safeItems = Array.isArray(orderItems) ? orderItems : [];
 
-  // Enrich customers with their order history
-  const enrichedCustomers = safeCustomers.map(customer => {
-    const customerOrders = safeOrders.filter(o => String(o.customer_id) === String(customer.id));
-    
-    // Total Orders
-    const totalOrders = customerOrders.length;
-    
-    // Total Spent
-    const totalSpent = customerOrders.reduce((sum, order) => {
-      const amount = parseFloat(order.total || order.total_amount) || 0;
-      return sum + amount;
-    }, 0);
-
-    // Favorite Product (simplified: get most frequent product name from order items)
-    let favorite = "N/A";
-    const itemCounts = {};
-    customerOrders.forEach(o => {
-      o.items?.forEach(item => {
-        itemCounts[item.product_name] = (itemCounts[item.product_name] || 0) + (parseInt(item.quantity) || 1);
-      });
+  const itemsByOrder = useMemo(() => {
+    const map = new Map();
+    safeItems.forEach((item) => {
+      const key = String(item.order_id);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(item);
     });
-    if (Object.keys(itemCounts).length > 0) {
-      favorite = Object.keys(itemCounts).reduce((a, b) => itemCounts[a] > itemCounts[b] ? a : b);
-    }
+    return map;
+  }, [safeItems]);
 
-    // Last Order Time
-    const lastOrderDate = customerOrders.length > 0 
-      ? new Date(Math.max(...customerOrders.map(o => new Date(o.created_at))))
-      : null;
-    
-    const lastOrderString = lastOrderDate 
-      ? lastOrderDate.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-      : "No orders";
+  const allRows = useMemo(() => {
+    return safeCustomers.map((customer) => {
+      const customerOrders = safeOrders.filter((o) => String(o.customer_id) === String(customer.id));
+      const totalOrders = customerOrders.length;
+      const spent = customerOrders.reduce(
+        (sum, order) => sum + (parseFloat(order.total || order.total_amount) || 0),
+        0
+      );
+
+      const tally = new Map();
+      customerOrders.forEach((order) => {
+        (itemsByOrder.get(String(order.id)) || []).forEach((item) => {
+          if (!item.product_name) return;
+          tally.set(item.product_name, (tally.get(item.product_name) || 0) + (parseInt(item.quantity) || 1));
+        });
+      });
+      const favorite = tally.size > 0 ? [...tally.entries()].sort((a, b) => b[1] - a[1])[0][0] : null;
+
+      const lastOrderAt = customerOrders.length
+        ? Math.max(...customerOrders.map((o) => new Date(o.created_at).getTime()))
+        : null;
+
+      return {
+        ...customer,
+        name: customer.name || "Unknown Guest",
+        handle: `@${(customer.name || "guest").toLowerCase().replace(/\s+/g, "")}`,
+        tier: totalOrders >= 8 ? "VIP" : totalOrders === 0 ? "New" : "Regular",
+        ordersCount: totalOrders,
+        spent,
+        favorite,
+        lastOrderAt,
+        avgTicket: totalOrders > 0 ? spent / totalOrders : 0,
+      };
+    });
+  }, [safeCustomers, safeOrders, itemsByOrder]);
+
+  const enriched = useMemo(() => {
+    const term = query.trim().toLowerCase();
+
+    const filtered = term
+      ? allRows.filter((row) =>
+          [row.name, row.email, row.phone, row.favorite]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+            .includes(term)
+        )
+      : allRows;
+
+    return filtered.sort((a, b) => {
+      if (sort === "spend") return b.spent - a.spent;
+      if (sort === "orders") return b.ordersCount - a.ordersCount;
+      if (sort === "name") return a.name.localeCompare(b.name);
+      return (b.lastOrderAt || 0) - (a.lastOrderAt || 0);
+    });
+  }, [allRows, query, sort]);
+
+  const summary = useMemo(() => {
+    const guests = allRows.length;
+    const vips = allRows.filter((row) => row.tier === "VIP").length;
+    const totalSpend = allRows.reduce((sum, row) => sum + row.spent, 0);
+    const repeat = allRows.filter((row) => row.ordersCount > 1).length;
 
     return {
-      ...customer,
-      name: customer.name || 'Unknown Customer',
-      username: `@${(customer.name || 'user').toLowerCase().replace(/\s+/g, '')}`,
-      type: totalOrders >= 5 ? 'VIP' : 'Regular',
-      ordersCount: totalOrders,
-      spent: totalSpent.toFixed(2),
-      favorite,
-      lastOrder: lastOrderString
+      guests,
+      vips,
+      avgSpend: guests ? totalSpend / guests : 0,
+      repeatRate: guests ? Math.round((repeat / guests) * 100) : 0,
     };
-  }).filter(c => 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.phone?.includes(searchTerm)
-  );
+  }, [allRows]);
+
+  const activeOrders = activeCustomer
+    ? safeOrders
+        .filter((o) => String(o.customer_id) === String(activeCustomer.id))
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    : [];
+
+  const activeTier = activeCustomer ? TIER[activeCustomer.tier] || TIER.Regular : null;
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 sm:mb-6 shrink-0">
-        <div>
-          <h2 className="font-serif text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2.5 sm:gap-3">
-            <Users className="size-5 sm:size-6 text-primary" /> Customers Directory
-          </h2>
-          <p className="text-xs sm:text-sm font-medium text-muted-foreground mt-0.5">Manage and view customer profiles and order history</p>
-        </div>
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <input 
-            type="text" 
-            placeholder="Search customers..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-card border border-border/70 rounded-full pl-10 pr-4 py-2 text-sm font-medium text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-xs"
+    <div className="flex h-full flex-col overflow-hidden">
+      <SectionHeading
+        icon={Users}
+        title="Guest Directory"
+        description="Order history, spend and favourite dishes for every guest"
+        className="shrink-0"
+      >
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <SearchInput
+            value={query}
+            onChange={setQuery}
+            placeholder="Search name, phone, dish…"
+            className="flex-1 sm:w-72 sm:flex-initial"
           />
         </div>
+      </SectionHeading>
+
+      <div className="relative mb-3.5 shrink-0 sm:mb-5">
+        <div className="flex gap-2.5 overflow-x-auto pb-1 no-scrollbar sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-4">
+          <StatTile
+            label="Guests"
+            value={summary.guests}
+            icon={Users}
+            tone="amber"
+            hint="Registered profiles"
+            className="min-w-[132px] shrink-0 sm:min-w-0 sm:shrink"
+          />
+          <StatTile
+            label="VIP Guests"
+            value={summary.vips}
+            icon={Crown}
+            tone="flame"
+            hint="8+ completed orders"
+            className="min-w-[132px] shrink-0 sm:min-w-0 sm:shrink"
+          />
+          <StatTile
+            label="Avg Lifetime Spend"
+            value={formatMoney(summary.avgSpend)}
+            icon={Wallet}
+            tone="emerald"
+            hint="Per guest"
+            className="min-w-[132px] shrink-0 sm:min-w-0 sm:shrink"
+          />
+          <StatTile
+            label="Repeat Rate"
+            value={`${summary.repeatRate}%`}
+            icon={History}
+            tone="sky"
+            hint="Ordered more than once"
+            className="min-w-[132px] shrink-0 sm:min-w-0 sm:shrink"
+          />
+        </div>
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background via-background/70 to-transparent sm:hidden" />
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar pb-6">
-        {enrichedCustomers.length === 0 ? (
-          <div className="h-64 flex items-center justify-center">
-            <EmptyState 
+      <div className="mb-3.5 flex shrink-0 items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+        <span className="shrink-0 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+          Sort
+        </span>
+        {SORTS.map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            onClick={() => setSort(option.id)}
+            className={cn(
+              "shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-bold transition-all active:scale-95",
+              sort === option.id
+                ? "border-primary/30 bg-primary/12 text-primary shadow-xs"
+                : "border-border/70 bg-card text-muted-foreground hover:border-primary/25 hover:text-foreground"
+            )}
+          >
+            {option.label}
+          </button>
+        ))}
+        <span className="ml-auto shrink-0 text-[11px] font-semibold text-muted-foreground tabular-nums">
+          {enriched.length} shown
+        </span>
+      </div>
+
+      <div className="flex-1 overflow-y-auto pb-4 custom-scrollbar">
+        {enriched.length === 0 ? (
+          <div className="flex h-full min-h-[280px] items-center justify-center rounded-3xl border border-dashed border-border/70 bg-card/50">
+            <EmptyState
               icon={Users}
-              title="No customers found" 
-              description="No customers match your search term." 
+              title={query ? "No guests match your search" : "No guests yet"}
+              description={
+                query
+                  ? "Try a different name, phone number or dish."
+                  : "Guests appear here once they register or place an order."
+              }
+              actionLabel={query ? "Clear search" : undefined}
+              onAction={query ? () => setQuery("") : undefined}
             />
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {enrichedCustomers.map(customer => (
-              <div 
-                key={customer.id} 
-                onClick={() => setActiveCustomer(customer)}
-                className="bg-card rounded-3xl p-5 border border-border/70 shadow-warm hover:shadow-warm-lg hover:border-primary/40 transition-all cursor-pointer group"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="size-12 rounded-full bg-secondary flex items-center justify-center overflow-hidden border border-border/60 shadow-xs">
-                      {customer.avatar ? (
-                        <img src={customer.avatar.startsWith('http') ? customer.avatar : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(customer.name)}&backgroundColor=cbd5e1&textColor=334155`} alt={customer.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(customer.name)}&backgroundColor=cbd5e1&textColor=334155`} alt={customer.name} className="w-full h-full object-cover" />
+          <>
+          <ul className="flex flex-col gap-2.5 sm:hidden">
+            {enriched.map((customer) => {
+              const tier = TIER[customer.tier] || TIER.Regular;
+              return (
+                <li key={customer.id}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveCustomer(customer)}
+                    className="flex w-full items-center gap-3 rounded-2xl border border-border/70 bg-card p-3 text-left shadow-xs transition-all hover:border-primary/35 active:scale-[0.99]"
+                  >
+                    <AvatarButton
+                      name={customer.name}
+                      src={customer.avatar}
+                      onOpen={() => setPhotoTarget(customer)}
+                      className="size-12 rounded-2xl"
+                      fallbackClass="text-sm"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-1.5">
+                        <span className="truncate font-serif text-sm font-bold text-foreground">
+                          {customer.name}
+                        </span>
+                        <tier.icon
+                          className={cn(
+                            "size-3 shrink-0",
+                            customer.tier === "VIP"
+                              ? "fill-amber-500/20 text-amber-500"
+                              : "text-muted-foreground/50"
+                          )}
+                        />
+                      </span>
+                      <span className="mt-0.5 block truncate text-[11px] font-medium text-muted-foreground">
+                        {customer.phone || customer.favorite || customer.handle}
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 flex-col items-end gap-0.5">
+                      <span className="font-serif text-sm font-bold text-emerald-600 tabular-nums dark:text-emerald-400">
+                        {formatMoney(customer.spent)}
+                      </span>
+                      <span className="text-[10px] font-semibold text-muted-foreground tabular-nums">
+                        {customer.ordersCount} order{customer.ordersCount === 1 ? "" : "s"}
+                        {customer.lastOrderAt ? ` • ${timeAgo(customer.lastOrderAt, now)}` : ""}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="hidden grid-cols-1 gap-3.5 sm:grid sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+            {enriched.map((customer) => {
+              const tier = TIER[customer.tier] || TIER.Regular;
+              return (
+                <article
+                  key={customer.id}
+                  onClick={() => setActiveCustomer(customer)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setActiveCustomer(customer);
+                    }
+                  }}
+                  className="group flex cursor-pointer flex-col overflow-hidden rounded-3xl border border-border/70 bg-card shadow-warm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-warm-lg focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                >
+                  <CoverBanner src={customer.cover_photo} className="h-24 shrink-0 sm:h-28">
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "absolute right-3 top-3 gap-1 rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide shadow-xs backdrop-blur-md",
+                        tier.chip
                       )}
-                    </div>
-                    <div>
-                      <h3 className="font-serif font-bold text-foreground truncate max-w-[130px]">{customer.name}</h3>
-                      <p className="text-xs font-medium text-muted-foreground">{customer.username}</p>
-                    </div>
-                  </div>
-                  <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md border shrink-0 ${
-                    customer.type === 'VIP' ? 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20' : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
-                  }`}>
-                    {customer.type}
-                  </span>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="bg-slate-50 dark:bg-zinc-950 rounded-xl p-3 border border-slate-100 dark:border-white/5">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Total Orders</span>
-                    <div className="flex items-center gap-1.5 font-black text-slate-800 dark:text-zinc-200">
-                      <ShoppingBag className="size-3.5 text-blue-500" /> {customer.ordersCount}
-                    </div>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-zinc-950 rounded-xl p-3 border border-slate-100 dark:border-white/5">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Spent</span>
-                    <div className="flex items-center gap-1.5 font-black text-slate-800 dark:text-zinc-200">
-                       <span className="text-emerald-500">$</span> {customer.spent}
-                    </div>
-                  </div>
-                </div>
+                    >
+                      <tier.icon className="size-2.5" /> {tier.label}
+                    </Badge>
+                  </CoverBanner>
 
-                <div className="space-y-2 text-sm font-bold text-slate-600 dark:text-zinc-400 mb-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400 dark:text-zinc-500 shrink-0">Favorite:</span>
-                    <span className="truncate ml-2">{customer.favorite}</span>
+                  <div className="relative z-10 -mt-9 flex items-end gap-3 px-4 sm:-mt-10 sm:px-5">
+                    <AvatarButton
+                      name={customer.name}
+                      src={customer.avatar}
+                      status={
+                        customer.lastOrderAt && now - customer.lastOrderAt < 3600000
+                          ? "online"
+                          : undefined
+                      }
+                      onOpen={() => setPhotoTarget(customer)}
+                      className="size-[4.25rem] rounded-3xl border-[3px] border-card shadow-warm sm:size-[4.75rem]"
+                      fallbackClass="text-xl"
+                      radiusClass="rounded-3xl"
+                    />
+                    <div className="min-w-0 flex-1 pb-1.5">
+                      <h3 className="truncate font-serif text-base font-bold text-foreground sm:text-lg">
+                        {customer.name}
+                      </h3>
+                      <p className="truncate text-xs font-medium text-muted-foreground">
+                        {customer.phone || customer.handle}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400 dark:text-zinc-500 shrink-0">Last Order:</span>
-                    <span className="truncate ml-2">{customer.lastOrder}</span>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-2 pt-4 border-t border-slate-100 dark:border-white/5" onClick={(e) => e.stopPropagation()}>
-                  {customer.email && (
-                    <a href={`mailto:${customer.email}`} className="flex-1 bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors">
-                      <Mail className="size-3.5" /> Email
-                    </a>
-                  )}
-                  {customer.phone && (
-                    <a href={`tel:${customer.phone}`} className="flex-1 bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors">
-                      <Phone className="size-3.5" /> Call
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))}
+                  <div className="flex flex-1 flex-col px-4 pb-4 pt-3.5 sm:px-5 sm:pb-5">
+                  <div className="mb-3.5 grid grid-cols-2 gap-2.5">
+                    <div className="rounded-2xl border border-border/60 bg-secondary/35 p-3">
+                      <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Orders
+                      </span>
+                      <span className="flex items-center gap-1.5 font-serif text-lg font-bold text-foreground tabular-nums">
+                        <ShoppingBag className="size-3.5 text-primary" />
+                        {customer.ordersCount}
+                      </span>
+                    </div>
+                    <div className="rounded-2xl border border-border/60 bg-secondary/35 p-3">
+                      <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Lifetime spend
+                      </span>
+                      <span className="flex items-center gap-1.5 font-serif text-lg font-bold text-emerald-600 tabular-nums dark:text-emerald-400">
+                        <Wallet className="size-3.5" />
+                        {formatMoney(customer.spent)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <dl className="mb-4 space-y-1.5 text-xs font-semibold">
+                    <div className="flex items-center justify-between gap-2">
+                      <dt className="flex shrink-0 items-center gap-1.5 text-muted-foreground">
+                        <UtensilsCrossed className="size-3.5" /> Favourite
+                      </dt>
+                      <dd className="truncate text-foreground">{customer.favorite || "No orders yet"}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <dt className="flex shrink-0 items-center gap-1.5 text-muted-foreground">
+                        <Clock3 className="size-3.5" /> Last order
+                      </dt>
+                      <dd className="truncate text-foreground">
+                        {customer.lastOrderAt ? timeAgo(customer.lastOrderAt, now) : "—"}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <Separator className="mb-3.5 bg-border/60" />
+
+                  <div className="mt-auto flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
+                    {customer.email && (
+                      <Button
+                        asChild
+                        variant="outline"
+                        className="h-9 flex-1 rounded-xl border-border/70 bg-secondary/40 font-serif text-[11px] font-bold text-foreground shadow-xs transition-all hover:border-primary/35 hover:bg-secondary active:scale-95"
+                      >
+                        <a href={`mailto:${customer.email}`}>
+                          <Mail className="mr-1.5 size-3.5" /> Email
+                        </a>
+                      </Button>
+                    )}
+                    {customer.phone && (
+                      <Button
+                        asChild
+                        variant="outline"
+                        className="h-9 flex-1 rounded-xl border-border/70 bg-secondary/40 font-serif text-[11px] font-bold text-foreground shadow-xs transition-all hover:border-emerald-500/35 hover:bg-secondary active:scale-95"
+                      >
+                        <a href={`tel:${customer.phone}`}>
+                          <Phone className="mr-1.5 size-3.5" /> Call
+                        </a>
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setActiveCustomer(customer)}
+                      className="size-9 shrink-0 rounded-xl border-border/70 bg-secondary/40 text-muted-foreground shadow-xs transition-all hover:border-primary/35 hover:text-primary active:scale-95"
+                      title="Order history"
+                    >
+                      <History className="size-3.5" />
+                    </Button>
+                  </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
+          </>
         )}
       </div>
 
-      {/* Customer Orders Modal Dialog */}
       <Dialog open={Boolean(activeCustomer)} onOpenChange={(open) => !open && setActiveCustomer(null)}>
-        <DialogContent className="sm:max-w-md max-h-[85vh] flex flex-col p-6 rounded-3xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-              <Users className="size-5 text-blue-500" />
-              {activeCustomer?.name}
-            </DialogTitle>
+        <DialogContent className="flex max-h-[85dvh] flex-col gap-0 overflow-hidden rounded-3xl border-border/70 p-0 shadow-warm-lg max-sm:top-0 max-sm:left-0 max-sm:h-dvh max-sm:max-h-dvh max-sm:w-full max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none max-sm:pt-[env(safe-area-inset-top,0px)] max-sm:pb-[env(safe-area-inset-bottom,0px)] [&>button]:top-[max(1rem,env(safe-area-inset-top,0px))] [&>button]:rounded-full [&>button]:bg-card/85 [&>button]:p-1.5 [&>button]:opacity-100 [&>button]:shadow-xs [&>button]:backdrop-blur-md [&>button]:hover:bg-card">
+          <DialogHeader className="relative shrink-0 border-b border-border/60 p-0">
+            <CoverBanner src={activeCustomer?.cover_photo} className="h-20 sm:h-24" />
+            <div className="relative z-10 -mt-8 flex items-end gap-3 px-5 pb-4">
+              <AvatarButton
+                name={activeCustomer?.name}
+                src={activeCustomer?.avatar}
+                onOpen={() => setPhotoTarget(activeCustomer)}
+                className="size-16 rounded-3xl border-[3px] border-card shadow-warm"
+                fallbackClass="text-lg"
+                radiusClass="rounded-3xl"
+              />
+              <DialogTitle className="min-w-0 flex-1 pb-0.5 text-left font-serif text-lg font-bold tracking-tight text-foreground sm:text-xl">
+                <span className="block truncate">{activeCustomer?.name}</span>
+                <span className="mt-0.5 block truncate text-xs font-semibold text-muted-foreground">
+                  {activeCustomer?.email || "No email"} • {activeCustomer?.phone || "No phone"}
+                </span>
+              </DialogTitle>
+              {activeTier && (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "mb-1 hidden shrink-0 gap-1 rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide sm:inline-flex",
+                    activeTier.chip
+                  )}
+                >
+                  <activeTier.icon className="size-2.5" /> {activeTier.label}
+                </Badge>
+              )}
+            </div>
           </DialogHeader>
 
-          <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-zinc-900 rounded-2xl border border-slate-200/60 dark:border-zinc-800 my-2">
-            <div className="flex-1">
-              <p className="text-xs text-slate-500 dark:text-zinc-400 font-bold">{activeCustomer?.email || 'No email'}</p>
-              <p className="text-xs text-slate-500 dark:text-zinc-400 font-bold">{activeCustomer?.phone || 'No phone'}</p>
+          <div className="grid shrink-0 grid-cols-3 gap-2.5 border-b border-border/60 bg-secondary/25 p-4">
+            <div className="rounded-2xl border border-border/60 bg-card p-3 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Orders</p>
+              <p className="font-serif text-lg font-bold text-foreground tabular-nums">
+                {activeCustomer?.ordersCount || 0}
+              </p>
             </div>
-            <div className="text-right">
-              <span className="text-xs font-bold text-slate-400 uppercase block">Total Orders</span>
-              <span className="text-base font-black text-slate-900 dark:text-white">{activeCustomer?.ordersCount}</span>
+            <div className="rounded-2xl border border-border/60 bg-card p-3 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Lifetime</p>
+              <p className="font-serif text-lg font-bold text-emerald-600 tabular-nums dark:text-emerald-400">
+                {formatMoney(activeCustomer?.spent)}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border/60 bg-card p-3 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Avg ticket</p>
+              <p className="font-serif text-lg font-bold text-foreground tabular-nums">
+                {formatMoney(activeCustomer?.avgTicket)}
+              </p>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 mt-2 pr-1">
-            <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">Order History</h4>
-            {safeOrders.filter(o => String(o.customer_id) === String(activeCustomer?.id)).length === 0 ? (
-              <p className="text-xs font-bold text-slate-400 text-center py-6">No previous orders found for this customer.</p>
+          <div className="flex-1 space-y-3 overflow-y-auto p-4 custom-scrollbar sm:p-5">
+            <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
+              Order history
+            </h4>
+            {activeOrders.length === 0 ? (
+              <p className="rounded-2xl border border-dashed border-border/70 bg-secondary/20 py-8 text-center text-xs font-semibold text-muted-foreground">
+                No orders recorded for this guest yet.
+              </p>
             ) : (
-              safeOrders
-                .filter(o => String(o.customer_id) === String(activeCustomer?.id))
-                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-                .map(o => (
-                  <div key={o.id} className="p-3 bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-2xl flex items-center justify-between shadow-sm">
-                    <div>
-                      <span className="text-xs font-black text-slate-900 dark:text-white block">
-                        Order #{o.order_number ? (o.order_number.length > 8 ? o.order_number.slice(-6) : o.order_number) : o.id}
-                      </span>
-                      <span className="text-[10px] font-bold text-slate-400">
-                        {new Date(o.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })} • {new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
+              activeOrders.map((order) => {
+                const items = itemsByOrder.get(String(order.id)) || [];
+                return (
+                  <div
+                    key={order.id}
+                    className="rounded-2xl border border-border/70 bg-card p-3.5 shadow-xs transition-colors hover:border-primary/30"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-serif text-sm font-bold text-foreground">
+                          Order #{order.order_number || order.id}
+                        </p>
+                        <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
+                          {new Date(order.created_at).toLocaleDateString([], {
+                            month: "short",
+                            day: "numeric",
+                          })}{" "}
+                          • {timeAgo(order.created_at, now)} •{" "}
+                          {(order.order_type || "DELIVERY").replace(/_/g, " ")}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide",
+                            order.status === "DELIVERED"
+                              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                              : order.status === "CANCELLED"
+                                ? "border-destructive/30 bg-destructive/10 text-destructive"
+                                : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                          )}
+                        >
+                          {order.status.replace(/_/g, " ")}
+                        </Badge>
+                        <span className="font-serif text-sm font-bold text-foreground tabular-nums">
+                          {formatMoney(order.total || order.total_amount)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right flex items-center gap-2">
-                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${
-                        o.status === 'READY' ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400' :
-                        o.status === 'PREPARING' ? 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-500/10 dark:text-orange-400' :
-                        'bg-slate-100 text-slate-600 border-slate-200 dark:bg-zinc-800 dark:text-zinc-400'
-                      }`}>
-                        {o.status}
-                      </span>
-                      <span className="text-xs font-black text-slate-900 dark:text-white">
-                        ${Number(o.total || o.total_amount || 0).toFixed(2)}
-                      </span>
-                    </div>
+
+                    {items.length > 0 && (
+                      <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-border/50 pt-2.5">
+                        {items.slice(0, 4).map((item, index) => (
+                          <span
+                            key={item.id ?? index}
+                            className="rounded-md border border-border/60 bg-secondary/40 px-2 py-0.5 text-[10.5px] font-semibold text-muted-foreground"
+                          >
+                            {item.quantity}× {item.product_name}
+                            {parseOptions(item.options).length ? " •" : ""}
+                          </span>
+                        ))}
+                        {items.length > 4 && (
+                          <span className="rounded-md px-1.5 py-0.5 text-[10.5px] font-bold text-primary">
+                            +{items.length - 4} more
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                ))
+                );
+              })
             )}
           </div>
         </DialogContent>
       </Dialog>
+
+      <PhotoViewer
+        open={Boolean(photoTarget)}
+        onClose={() => setPhotoTarget(null)}
+        src={photoTarget?.avatar}
+        name={photoTarget?.name}
+        subtitle={
+          photoTarget
+            ? [photoTarget.phone, `${photoTarget.ordersCount} orders`]
+                .filter(Boolean)
+                .join(" • ")
+            : undefined
+        }
+      />
     </div>
   );
 }

@@ -76,13 +76,16 @@
 
 | Route | Page File | Description |
 |:---|:---|:---|
-| `/kitchen/dashboard` | `pages/kitchen/dashboard.jsx` | KDS root: auto-refresh 10s, status progression |
-| — | `pages/kitchen/components/DashboardView.jsx` | Kanban: Pending → Preparing → Ready columns |
-| — | `pages/kitchen/components/OrderDetailsPanel.jsx` | Order detail slide-over panel |
-| — | `pages/kitchen/components/Sidebar.jsx` | Kitchen nav sidebar |
-| — | `pages/kitchen/components/CustomersView.jsx` | Customer directory |
-| — | `pages/kitchen/components/PerformanceView.jsx` | Prep time analytics |
-| — | `pages/kitchen/components/MiscViews.jsx` | ChefProfile, Notifications, Settings |
+| `/kitchen/dashboard` | `pages/kitchen/dashboard.jsx` | KDS root: 10s auto-sync + countdown ring, live clock, ticket search, keyboard shortcuts, sound/delay alerts |
+| — | `pages/kitchen/components/kitchen-ui.jsx` | Shared KDS kit: `STAGES` tokens, `useNow()`, `TicketTimer`, `TicketProgress`, `StatTile`, `PersonAvatar`, `CountdownRing`, `KdsBoardSkeleton`, prefs store (`useKitchenPrefs`/`setKitchenPref` → `flame-crust-kitchen-prefs`), WebAudio `playChime()` |
+| — | `pages/kitchen/components/DashboardView.jsx` | Kanban: To Prepare → In the Oven → Ready, urgency escalation vs target prep time, stage filter, ticket cards w/ options & dish photos |
+| — | `pages/kitchen/components/OrderDetailsPanel.jsx` | Shadcn `Sheet` slide-over: guest card, delivery address, timeline from `order_status_history`, items, bill summary, KOT print |
+| — | `pages/kitchen/components/Sidebar.jsx` | Kitchen nav sidebar + clickable live queue per station |
+| — | `pages/kitchen/components/CustomersView.jsx` | Guest directory: search, sort, VIP/Regular/New tiers, lifetime spend, order-history dialog |
+| — | `pages/kitchen/components/PerformanceView.jsx` | Recharts analytics: hourly flow, 7-day volume, prep-time spread, real review ratings |
+| — | `pages/kitchen/components/MiscViews.jsx` | ChefProfile: shift metrics + station preferences (sound, target prep, density, photos) + shortcut reference |
+
+**Kitchen keyboard shortcuts:** `1`/`2`/`3` station columns, `0` all stages, `B`/`G`/`P`/`C` views, `R` sync, `/` search, `M` mute, `T` theme, `Esc` close.
 
 ### 2.3 Components
 

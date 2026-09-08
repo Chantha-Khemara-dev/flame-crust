@@ -1,84 +1,286 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { getDashboard } from "@/lib/api";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  CartesianGrid,
+  Cell,
+  ComposedChart,
+  Pie,
+  PieChart as RechartsPie,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { getDashboard, list } from "@/lib/api";
+import { getImageUrl } from "@/lib/food-api";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { EmptyState } from "@/components/shared/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn, formatTime } from "@/lib/utils";
 import {
   DollarSign,
   ShoppingBag,
   Bike,
   Package,
-  TrendingUp,
   Store,
   Plus,
   ArrowRight,
-  ClipboardList,
-  Users,
-  Ticket,
-  Clock,
-  Sparkles,
   ArrowUpRight,
-  ChevronRight,
+  ClipboardList,
+  Ticket,
+  Clock3,
+  Sparkles,
   ShieldCheck,
-  CheckCircle2,
-  AlertCircle,
   Truck,
   Flame,
-  Calendar,
+  CalendarDays,
   Layers,
   ChefHat,
-  PieChart,
+  PieChart as PieIcon,
   MessageSquare,
   AlertTriangle,
-  Star
+  Star,
+  Wallet,
+  ReceiptText,
+  CircleDollarSign,
+  Target,
+  GitCommitHorizontal,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { cn, formatTime, formatDate } from "@/lib/utils";
-import { PieChart as RechartsPie, Pie, Cell } from "recharts";
 
-// SWR-style in-memory cache for instant dashboard rendering
 let memoryDashboardCache = null;
 try {
   const stored = localStorage.getItem("flame_admin_dashboard_cache");
-  if (stored) {
-    memoryDashboardCache = JSON.parse(stored);
-  }
-} catch (e) {}
+  if (stored) memoryDashboardCache = JSON.parse(stored);
+} catch {
+  memoryDashboardCache = null;
+}
+
+const WEEKLY_GOAL = 3500;
+
+const PIE_COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+];
+
+const revenueChartConfig = {
+  revenue: { label: "Revenue", color: "var(--chart-1)" },
+  orders: { label: "Orders", color: "var(--chart-2)" },
+};
+
+const PIPELINE = [
+  { status: "PENDING", label: "Pending", bar: "bg-primary" },
+  { status: "CONFIRMED", label: "Confirmed", bar: "bg-sky-500" },
+  { status: "PREPARING", label: "Preparing", bar: "bg-amber-500" },
+  { status: "READY", label: "Ready", bar: "bg-emerald-500" },
+  { status: "OUT_FOR_DELIVERY", label: "Dispatched", bar: "bg-indigo-500" },
+  { status: "DELIVERED", label: "Delivered", bar: "bg-teal-500" },
+];
+
+const STATUS_STYLE = {
+  PENDING: "border-primary/25 bg-primary/10 text-primary",
+  CONFIRMED: "border-sky-500/25 bg-sky-500/10 text-sky-600 dark:text-sky-400",
+  PREPARING: "border-amber-500/25 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  READY: "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  OUT_FOR_DELIVERY: "border-indigo-500/25 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+  DELIVERED: "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  COMPLETED: "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  CANCELLED: "border-destructive/30 bg-destructive/10 text-destructive",
+};
+
+function toArray(value) {
+  if (Array.isArray(value)) return value;
+  if (value && Array.isArray(value.items)) return value.items;
+  if (value && Array.isArray(value.content)) return value.content;
+  if (value && Array.isArray(value.data)) return value.data;
+  return [];
+}
+
+function money(value) {
+  return `$${Number(value || 0).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function timeAgo(input) {
+  if (!input) return "—";
+  const then = new Date(input).getTime();
+  if (Number.isNaN(then)) return "—";
+  const mins = Math.floor((Date.now() - then) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(input).toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
+function greeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+function useCountUp(target, duration = 900) {
+  const [value, setValue] = useState(0);
+  const fromRef = useRef(0);
+
+  useEffect(() => {
+    const from = fromRef.current;
+    const to = Number(target) || 0;
+    if (from === to) {
+      setValue(to);
+      return undefined;
+    }
+    let raf;
+    const start = performance.now();
+    const tick = (time) => {
+      const progress = Math.min(1, (time - start) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(from + (to - from) * eased);
+      if (progress < 1) raf = requestAnimationFrame(tick);
+      else fromRef.current = to;
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+
+  return value;
+}
+
+function Sparkline({ data, tone = "revenue", className }) {
+  const config = { value: { label: "trend", color: `var(--chart-${tone === "orders" ? 2 : 1})` } };
+  return (
+    <ChartContainer config={config} className={cn("h-9 w-full", className)}>
+      <AreaChart data={data} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
+        <Area
+          type="monotone"
+          dataKey="value"
+          stroke="var(--color-value)"
+          strokeWidth={2}
+          fill="var(--color-value)"
+          fillOpacity={0.16}
+        />
+      </AreaChart>
+    </ChartContainer>
+  );
+}
+
+function GoalRing({ progress, className }) {
+  const radius = 16;
+  const circumference = 2 * Math.PI * radius;
+  const clamped = Math.max(0, Math.min(1, progress));
+  return (
+    <span className={cn("relative flex size-11 items-center justify-center", className)}>
+      <svg className="absolute inset-0 size-full -rotate-90" viewBox="0 0 40 40">
+        <circle cx="20" cy="20" r={radius} fill="none" strokeWidth="3.5" className="stroke-white/25" />
+        <circle
+          cx="20"
+          cy="20"
+          r={radius}
+          fill="none"
+          strokeWidth="3.5"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference * (1 - clamped)}
+          className="stroke-white transition-[stroke-dashoffset] duration-1000"
+        />
+      </svg>
+      <Target className="size-4 text-white/90" />
+    </span>
+  );
+}
 
 function AdminDashboardSkeleton() {
   return (
-    <div className="space-y-6 w-full animate-pulse">
-      {/* Welcome Banner Skeleton */}
-      <div className="rounded-3xl border border-border/50 bg-card p-6 sm:p-8 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-3">
-          <div className="h-5 w-32 bg-secondary/80 rounded-full" />
-          <div className="h-8 w-64 sm:w-80 bg-secondary rounded-2xl" />
-          <div className="h-4 w-48 sm:w-64 bg-secondary/60 rounded-md" />
-        </div>
-        <div className="h-11 w-36 bg-secondary rounded-2xl" />
-      </div>
-
-      {/* 4 KPI Cards Grid Skeleton */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="rounded-3xl border border-border/50 bg-card p-5 sm:p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="h-4 w-24 bg-secondary/80 rounded-md" />
-              <div className="size-10 rounded-2xl bg-secondary/60" />
-            </div>
-            <div className="h-8 sm:h-9 w-28 bg-secondary rounded-xl" />
-            <div className="h-4 w-20 bg-secondary/60 rounded-md" />
-          </div>
+    <div className="w-full space-y-5 sm:space-y-6">
+      <Skeleton className="h-48 rounded-[28px] sm:h-52" />
+      <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 sm:gap-5 xl:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-[132px] rounded-3xl" />
         ))}
       </div>
-
-      {/* Chart Skeleton */}
-      <div className="rounded-3xl border border-border/50 bg-card p-6 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="h-5 w-48 bg-secondary rounded-md" />
-          <div className="h-8 w-28 bg-secondary rounded-xl" />
-        </div>
-        <div className="h-[280px] w-full bg-secondary/30 rounded-2xl" />
+      <Skeleton className="h-24 rounded-3xl" />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 sm:gap-6">
+        <Skeleton className="h-[340px] rounded-[28px] lg:col-span-2" />
+        <Skeleton className="h-[340px] rounded-[28px]" />
       </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 sm:gap-6">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-[280px] rounded-[28px]" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function KpiCard({ label, value, hint, icon: Icon, tone = "primary", spark, delay = 0 }) {
+  const tones = {
+    primary: "border-primary/20 bg-primary/10 text-primary",
+    emerald: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    amber: "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    sky: "border-sky-500/20 bg-sky-500/10 text-sky-600 dark:text-sky-400",
+    flame:
+      "border-primary/20 bg-gradient-to-br from-primary via-orange-500 to-amber-500 text-white shadow-warm",
+  };
+
+  return (
+    <div
+      style={{ animationDelay: `${delay}ms` }}
+      className="group relative flex animate-card-fade-in flex-col justify-between overflow-hidden rounded-3xl border border-border/70 bg-card/85 p-4 shadow-warm backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-warm-lg sm:p-5"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="truncate text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px]">
+          {label}
+        </span>
+        <span
+          className={cn(
+            "flex size-8 shrink-0 items-center justify-center rounded-xl border transition-transform duration-200 group-hover:scale-110 group-hover:rotate-3 sm:size-9",
+            tones[tone]
+          )}
+        >
+          <Icon className="size-4" />
+        </span>
+      </div>
+      <div className="mt-3">
+        <p className="truncate font-serif text-xl font-bold tracking-tight text-foreground tabular-nums sm:text-[1.7rem]">
+          {value}
+        </p>
+        {hint && <p className="mt-1 truncate text-[11px] font-semibold text-muted-foreground">{hint}</p>}
+        {spark}
+      </div>
+    </div>
+  );
+}
+
+function PanelHeader({ icon: Icon, title, subtitle, action }) {
+  return (
+    <div className="mb-4 flex items-start justify-between gap-3 border-b border-border/50 pb-4">
+      <div className="flex min-w-0 items-start gap-2.5">
+        {Icon && (
+          <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+            <Icon className="size-4" />
+          </span>
+        )}
+        <div className="min-w-0">
+          <h3 className="truncate font-serif text-base font-bold text-foreground sm:text-lg">{title}</h3>
+          {subtitle && <p className="mt-0.5 truncate text-xs font-medium text-muted-foreground">{subtitle}</p>}
+        </div>
+      </div>
+      {action}
     </div>
   );
 }
@@ -86,88 +288,75 @@ function AdminDashboardSkeleton() {
 export default function AdminDashboard() {
   const [data, setData] = useState(() => memoryDashboardCache);
   const [recentOrders, setRecentOrders] = useState(() => memoryDashboardCache?.recentOrders || []);
+  const [allOrders, setAllOrders] = useState(() => memoryDashboardCache?.allOrders || []);
   const [chartData, setChartData] = useState(() => memoryDashboardCache?.chartDataProcessed || []);
+  const [productImages, setProductImages] = useState(() => memoryDashboardCache?.productImages || {});
   const [loading, setLoading] = useState(!memoryDashboardCache);
   const [error, setError] = useState(null);
-  const [timeRange, setTimeRange] = useState("7d"); // "7d" | "30d"
 
-  const adminAuth = (() => {
+  const adminAuth = useMemo(() => {
     try {
       return JSON.parse(localStorage.getItem("adminAuth") || "null");
     } catch {
       return null;
     }
-  })();
+  }, []);
 
   const processChartData = (dashData) => {
-    if (dashData?.chartData && Array.isArray(dashData.chartData) && dashData.chartData.length > 0) {
-      return dashData.chartData.map((pt) => {
-        const d = new Date(pt.order_date);
+    if (Array.isArray(dashData?.chartData) && dashData.chartData.length > 0) {
+      return dashData.chartData.map((point) => {
+        const date = new Date(point.order_date);
         return {
-          date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-          revenue: Number(pt.daily_revenue || 0),
-          orders: Number(pt.order_count || 1),
+          date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+          revenue: Number(point.daily_revenue || 0),
+          orders: Number(point.order_count || 0),
         };
       });
     }
-
-    // Default 7-day points
-    const last7Days = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (6 - i));
-      return {
-        date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-        revenue: 0,
-        orders: 0,
-      };
-    });
-
-    const ordersList = dashData?.recentOrders || dashData?.orders || [];
-    ordersList.forEach((order) => {
-      if (order.status !== "CANCELLED" && order.created_at && order.total) {
-        const orderDate = new Date(order.created_at);
-        const dayStr = orderDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-        const point = last7Days.find((p) => p.date === dayStr);
-        if (point) {
-          point.revenue += Number(order.total);
-          point.orders += 1;
-        }
-      }
-    });
-
-    return last7Days;
+    return [];
   };
 
   useEffect(() => {
     let isMounted = true;
 
-    getDashboard()
-      .then((dashData) => {
+    Promise.all([
+      getDashboard(),
+      list("products", { limit: 100 }).catch(() => null),
+      list("orders", { limit: 200, sort: "id", dir: "desc" }).catch(() => null),
+    ])
+      .then(([dashData, productsRes, ordersRes]) => {
         if (!isMounted || !dashData) return;
-        
+
         const processedChart = processChartData(dashData);
         const orders = dashData.recentOrders || dashData.orders || [];
+        const images = {};
+        toArray(productsRes).forEach((product) => {
+          if (product?.name) images[product.name] = product.image || null;
+        });
+        const ordersAll = toArray(ordersRes);
 
         setData(dashData);
         setRecentOrders(orders);
+        setAllOrders(ordersAll.length ? ordersAll : orders);
         setChartData(processedChart);
+        setProductImages(images);
         setError(null);
 
-        // Cache response for instant loads on next visit
-        const cachePayload = {
+        memoryDashboardCache = {
           ...dashData,
           recentOrders: orders,
+          allOrders: ordersAll.length ? ordersAll : orders,
           chartDataProcessed: processedChart,
+          productImages: images,
         };
-        memoryDashboardCache = cachePayload;
         try {
-          localStorage.setItem("flame_admin_dashboard_cache", JSON.stringify(cachePayload));
-        } catch (e) {}
+          localStorage.setItem("flame_admin_dashboard_cache", JSON.stringify(memoryDashboardCache));
+        } catch {
+          /* storage unavailable — keep in-memory cache */
+        }
       })
       .catch((err) => {
-        if (isMounted && !data) {
-          setError(err.message || "Failed to load dashboard data");
-        }
+        if (isMounted && !data) setError(err?.message || "Failed to load dashboard data");
       })
       .finally(() => {
         if (isMounted) setLoading(false);
@@ -178,649 +367,684 @@ export default function AdminDashboard() {
     };
   }, []);
 
-  // Summary Metrics calculations
   const totalRevenue = Number(data?.totalRevenue || 0);
   const totalOrdersCount = Number(data?.totalOrders || recentOrders.length || 0);
-  const avgOrderValue = totalOrdersCount > 0 ? (totalRevenue / totalOrdersCount).toFixed(2) : "0.00";
-  const topProducts = data?.topProducts || [];
-  
-  // Assign colors to categories dynamically from backend
-  const categoryColors = ["hsl(var(--primary))", "hsl(var(--amber-500))", "hsl(var(--emerald-500))", "hsl(var(--blue-500))", "hsl(var(--rose-500))"];
-  const categoryData = (data?.categoryData || []).map((cat, idx) => ({
-    name: cat.name,
-    value: Number(cat.value || 0),
-    color: categoryColors[idx % categoryColors.length]
-  }));
+  const avgOrderValue = totalOrdersCount > 0 ? totalRevenue / totalOrdersCount : 0;
 
-  const recentReviews = (data?.recentReviews || []).map(rev => ({
-    customer: rev.customer || "Anonymous",
-    rating: Number(rev.rating || 5),
-    comment: rev.comment || "",
-    time: formatTime(rev.time) || "Recently"
-  }));
+  const weekTotals = useMemo(() => {
+    const revenue = chartData.reduce((sum, point) => sum + point.revenue, 0);
+    const orders = chartData.reduce((sum, point) => sum + point.orders, 0);
+    const today = chartData[chartData.length - 1];
+    const best = chartData.reduce((max, point) => (point.revenue > (max?.revenue || 0) ? point : max), null);
+    return { revenue, orders, today, best };
+  }, [chartData]);
 
-  const lowStock = (data?.lowStock || []).map(stock => ({
-    item: stock.item,
-    current: `${stock.current}`,
-    min: `${stock.min}`,
-    critical: stock.critical === 1 || stock.critical === true
-  }));
+  const pipeline = useMemo(() => {
+    const counts = PIPELINE.map((stage) => ({
+      ...stage,
+      count: allOrders.filter((order) => String(order.status || "").toUpperCase() === stage.status).length,
+    }));
+    const total = counts.reduce((sum, stage) => sum + stage.count, 0);
+    return { counts, total };
+  }, [allOrders]);
 
-  const todayStr = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const topProducts = useMemo(
+    () =>
+      (Array.isArray(data?.topProducts) ? data.topProducts : []).map((product) => ({
+        ...product,
+        image: productImages[product.name] || null,
+      })),
+    [data?.topProducts, productImages]
+  );
 
-  const stats = [
-    {
-      label: "Total Revenue",
-      value: `$${totalRevenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      icon: DollarSign,
-      trend: "+14.2%",
-      trendUp: true,
-      subText: "vs last month",
-      color: "from-emerald-500/20 via-emerald-500/5 to-transparent",
-      colorBar: "from-emerald-500 to-teal-400",
-      badgeColor: "text-emerald-600 bg-emerald-500/10 border-emerald-500/20 dark:text-emerald-400",
-      iconColor: "text-emerald-600 dark:text-emerald-400",
-      iconBg: "bg-emerald-500/10 dark:bg-emerald-500/20 border-emerald-500/20",
-    },
-    {
-      label: "Total Orders",
-      value: totalOrdersCount.toLocaleString(),
-      icon: ShoppingBag,
-      trend: "+8.4%",
-      trendUp: true,
-      subText: "vs last month",
-      color: "from-blue-500/20 via-blue-500/5 to-transparent",
-      colorBar: "from-blue-500 to-indigo-400",
-      badgeColor: "text-blue-600 bg-blue-500/10 border-blue-500/20 dark:text-blue-400",
-      iconColor: "text-blue-600 dark:text-blue-400",
-      iconBg: "bg-blue-500/10 dark:bg-blue-500/20 border-blue-500/20",
-    },
-    {
-      label: "Active Drivers",
-      value: String(data?.activeDrivers || 1),
-      icon: Truck,
-      trend: "Online",
-      trendUp: true,
-      subText: "Ready for delivery",
-      color: "from-amber-500/20 via-amber-500/5 to-transparent",
-      colorBar: "from-amber-500 to-yellow-400",
-      badgeColor: "text-amber-600 bg-amber-500/10 border-amber-500/20 dark:text-amber-400",
-      iconColor: "text-amber-600 dark:text-amber-400",
-      iconBg: "bg-amber-500/10 dark:bg-amber-500/20 border-amber-500/20",
-    },
-    {
-      label: "Live Products",
-      value: String(data?.totalProducts || 55),
-      icon: Package,
-      trend: "Active",
-      trendUp: true,
-      subText: "In menu catalog",
-      color: "from-primary/20 via-primary/5 to-transparent",
-      colorBar: "from-rose-500 to-orange-400",
-      badgeColor: "text-primary bg-primary/10 border-primary/20",
-      iconColor: "text-primary",
-      iconBg: "bg-primary/10 dark:bg-primary/20 border-primary/20",
-    },
-  ];
+  const categoryData = useMemo(() => {
+    const source = Array.isArray(data?.categoryData) ? data.categoryData : [];
+    const total = source.reduce((sum, cat) => sum + Number(cat.value || 0), 0);
+    return source.map((cat, index) => ({
+      name: cat.name,
+      value: Number(cat.value || 0),
+      pct: total > 0 ? Math.round((Number(cat.value || 0) / total) * 100) : 0,
+      color: PIE_COLORS[index % PIE_COLORS.length],
+    }));
+  }, [data?.categoryData]);
+
+  const categoryTotal = categoryData.reduce((sum, cat) => sum + cat.value, 0);
+
+  const recentReviews = useMemo(
+    () =>
+      (Array.isArray(data?.recentReviews) ? data.recentReviews : []).map((review) => ({
+        customer: review.customer || "Anonymous",
+        rating: Number(review.rating || 0),
+        comment: review.comment || "",
+        time: review.time,
+      })),
+    [data?.recentReviews]
+  );
+
+  const lowStock = useMemo(
+    () =>
+      (Array.isArray(data?.lowStock) ? data.lowStock : []).map((stock) => ({
+        item: stock.item,
+        current: Number(stock.current || 0),
+        min: Number(stock.min || 0),
+        critical: stock.critical === 1 || stock.critical === true,
+      })),
+    [data?.lowStock]
+  );
+
+  const animatedRevenue = useCountUp(totalRevenue);
+  const animatedOrders = useCountUp(totalOrdersCount);
+  const animatedAvg = useCountUp(avgOrderValue);
+  const animatedToday = useCountUp(weekTotals.today?.revenue || 0);
 
   const quickLinks = [
-    {
-      label: "Add New Product",
-      href: "/admin/products",
-      icon: Plus,
-      desc: "Create pizza, burger, sides",
-      badge: "Menu",
-      gradient: "from-orange-500 to-amber-500",
-    },
-    {
-      label: "Kitchen Display (KDS)",
-      href: "/admin/kitchen",
-      icon: ChefHat,
-      desc: "Live order preparation queue",
-      badge: "Live",
-      gradient: "from-red-500 to-rose-500",
-    },
-    {
-      label: "Manage Orders",
-      href: "/admin/orders",
-      icon: ClipboardList,
-      desc: "Order statuses & delivery tracking",
-      badge: "Sales",
-      gradient: "from-blue-500 to-indigo-500",
-    },
-    {
-      label: "Coupons & Discounts",
-      href: "/admin/coupons",
-      icon: Ticket,
-      desc: "Promo codes & deals",
-      badge: "Marketing",
-      gradient: "from-emerald-500 to-teal-500",
-    },
+    { label: "Add New Product", href: "/admin/products", icon: Plus, desc: "Pizza, burgers & sides", gradient: "from-orange-500 to-amber-500" },
+    { label: "Kitchen Display", href: "/admin/kitchen", icon: ChefHat, desc: "Live prep queue", gradient: "from-primary to-rose-500" },
+    { label: "Manage Orders", href: "/admin/orders", icon: ClipboardList, desc: "Statuses & dispatch", gradient: "from-sky-500 to-indigo-500" },
+    { label: "Coupons & Deals", href: "/admin/coupons", icon: Ticket, desc: "Promo codes", gradient: "from-emerald-500 to-teal-500" },
   ];
 
-  // Curated fallback showcase when brand-new database has zero sales yet
-  const displayTopProducts = (topProducts && topProducts.length > 0) ? topProducts : [
-    { name: "Margherita Classica", sales: 48, revenue: 264.00, category: "Pizza", image: "https://res.cloudinary.com/gdkctwwo/image/upload/v1786900587/t82rlj2ukaaj4ofxmvq7.webp" },
-    { name: "Pepperoni Diavola", sales: 36, revenue: 684.00, category: "Pizza", image: "https://res.cloudinary.com/gdkctwwo/image/upload/v1786900619/ca4ywsennatswbxortvs.jpg" },
-    { name: "Classic Pizza Bagel", sales: 29, revenue: 217.50, category: "Pizza Bagels", image: "https://res.cloudinary.com/gdkctwwo/image/upload/v1786902178/z9fkkk483s3g2azbara9.jpg" },
-    { name: "Flame & Crust Signature", sales: 24, revenue: 384.00, category: "Burgers", image: "https://res.cloudinary.com/gdkctwwo/image/upload/v1786902752/uhvwpiolqyqt6gv5rsgl.jpg" },
-    { name: "Truffle Parm Fries", sales: 22, revenue: 176.00, category: "Sides", image: "https://res.cloudinary.com/gdkctwwo/image/upload/v1786903252/bgq12fdgpdn3kqlftt2q.webp" }
-  ];
+  if (loading && !data) return <AdminDashboardSkeleton />;
 
-  if (loading && !data) {
-    return <AdminDashboardSkeleton />;
-  }
+  const todayStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  const goalProgress = weekTotals.revenue / WEEKLY_GOAL;
 
   return (
-    <div className="space-y-6 sm:space-y-8 w-full pb-12">
-      {/* Top Command Center Hero Banner */}
-      <div className="relative overflow-hidden rounded-[28px] border border-amber-500/20 bg-gradient-to-br from-zinc-950 via-stone-900 to-zinc-900 text-white p-6 sm:p-8 shadow-2xl">
-        {/* Glow ambient background elements */}
-        <div className="absolute -right-16 -top-16 size-72 bg-gradient-to-br from-primary/30 to-amber-500/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute right-64 -bottom-16 size-64 bg-amber-600/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute left-1/3 top-1/2 size-40 bg-rose-500/10 rounded-full blur-2xl pointer-events-none" />
+    <div className="w-full space-y-5 pb-12 sm:space-y-6">
+      {error && (
+        <div className="flex items-center gap-2.5 rounded-2xl border border-destructive/30 bg-destructive/8 px-4 py-3 text-xs font-semibold text-destructive">
+          <AlertTriangle className="size-4 shrink-0" />
+          <span className="truncate">{error} — showing last cached snapshot.</span>
+        </div>
+      )}
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wider bg-white/10 text-zinc-200 border border-white/15 backdrop-blur-md">
-                <Calendar className="size-3 text-amber-400" />
+      <section className="relative overflow-hidden rounded-[28px] border border-primary/20 bg-gradient-to-br from-primary via-orange-600 to-amber-500 p-6 text-white shadow-warm-lg sm:p-8">
+        <div className="pointer-events-none absolute -right-20 -top-24 size-80 rounded-full bg-white/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-28 left-1/4 size-72 rounded-full bg-amber-300/20 blur-3xl" />
+        <Flame className="pointer-events-none absolute -right-6 -bottom-10 size-56 text-white/10" />
+
+        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/15 px-3 py-1 text-[11px] font-bold backdrop-blur-md">
+                <CalendarDays className="size-3" />
                 {todayStr}
               </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 backdrop-blur-md">
-                <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
-                Kitchen & Store Live
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/40 bg-emerald-400/20 px-3 py-1 text-[11px] font-bold text-emerald-50 backdrop-blur-md">
+                <span className="size-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                Store & kitchen live
               </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-primary/20 text-red-300 border border-primary/30 backdrop-blur-md">
-                <Sparkles className="size-3 text-primary" />
-                Bakong KHQR Ready
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/15 px-3 py-1 text-[11px] font-bold backdrop-blur-md">
+                <ShieldCheck className="size-3" />
+                Bakong KHQR ready
               </span>
             </div>
 
-            <div className="space-y-1">
-              <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white flex items-center gap-2.5">
-                Flame & Crust Command Center <span className="text-2xl sm:text-3xl">🍕🔥</span>
+            <div className="space-y-1.5">
+              <h1 className="font-serif text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
+                {greeting()}, {adminAuth?.name || "Admin"}
               </h1>
-              <p className="text-zinc-400 text-xs sm:text-sm max-w-xl leading-relaxed">
-                Live oversight for real-time sales, order settlements, kitchen preparation (KDS), and driver dispatch.
+              <p className="max-w-xl text-xs leading-relaxed text-white/80 sm:text-sm">
+                Live oversight of sales, settlements, kitchen preparation and driver dispatch — all in
+                one command center.
               </p>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-3 flex-wrap shrink-0">
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <Button
               asChild
-              className="h-11 px-5 rounded-2xl bg-gradient-to-r from-primary to-orange-600 hover:from-primary/90 hover:to-orange-500 text-white font-bold shadow-lg shadow-primary/30 transition-all active:scale-95 text-xs sm:text-sm flex items-center gap-2 border border-white/10"
+              className="h-11 rounded-2xl border border-white/25 bg-white px-5 font-serif text-xs font-bold text-primary shadow-lg transition-all hover:bg-white/90 active:scale-95 sm:text-sm"
             >
               <Link to="/admin/products">
                 <Plus className="size-4" />
-                <span>New Product</span>
+                New Product
               </Link>
             </Button>
             <Button
               asChild
               variant="outline"
-              className="h-11 px-5 rounded-2xl bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-md font-bold transition-all text-xs sm:text-sm flex items-center gap-2"
+              className="h-11 rounded-2xl border-white/30 bg-white/10 px-5 font-serif text-xs font-bold text-white backdrop-blur-md transition-all hover:bg-white/20 active:scale-95 sm:text-sm"
             >
               <Link to="/admin/kitchen">
-                <ChefHat className="size-4 text-amber-400" />
-                <span>Kitchen KDS</span>
+                <ChefHat className="size-4" />
+                Kitchen KDS
               </Link>
             </Button>
             <Button
               asChild
               variant="ghost"
-              className="h-11 px-4 rounded-2xl text-zinc-300 hover:text-white hover:bg-white/10 text-xs sm:text-sm flex items-center gap-1.5"
+              className="h-11 rounded-2xl px-4 text-xs font-bold text-white/85 transition-all hover:bg-white/15 hover:text-white active:scale-95 sm:text-sm"
             >
               <Link to="/">
                 <Store className="size-4" />
-                <span>Storefront ↗</span>
+                Storefront
+                <ArrowUpRight className="size-3.5" />
               </Link>
             </Button>
           </div>
         </div>
-      </div>
 
-      {/* KPI Stats Bento Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5">
-        {stats.map((stat, idx) => (
-          <div
-            key={idx}
-            className="group relative overflow-hidden rounded-[24px] border border-border/60 bg-card/85 dark:bg-zinc-900/80 backdrop-blur-xl p-5 shadow-xs hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/40 transition-all duration-300 flex flex-col justify-between"
-          >
-            {/* Top ambient color bar indicator */}
-            <div className={cn("absolute top-0 inset-x-0 h-1 bg-gradient-to-r opacity-90 transition-opacity", stat.colorBar)} />
-            
-            {/* Background gradient tint on hover */}
-            <div className={cn("absolute inset-0 bg-gradient-to-b opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none", stat.color)} />
-
-            <div className="relative z-10 flex items-center justify-between">
-              <span className="text-[11px] font-black text-muted-foreground uppercase tracking-[0.12em]">
-                {stat.label}
-              </span>
-              <div className={cn("size-9 rounded-xl flex items-center justify-center border shadow-xs transition-transform group-hover:scale-110 group-hover:rotate-3", stat.iconBg)}>
-                <stat.icon className={cn("size-4.5", stat.iconColor)} />
-              </div>
-            </div>
-
-            <div className="relative z-10 mt-3.5">
-              <h2 className="font-serif text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-                {stat.value}
-              </h2>
-              
-              <div className="flex items-center gap-2 mt-2.5 flex-wrap">
-                <span className={cn("inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black border shadow-2xs", stat.badgeColor)}>
-                  <TrendingUp className="size-3" />
-                  {stat.trend}
-                </span>
-                <span className="text-[11px] text-muted-foreground font-semibold">
-                  {stat.subText}
-                </span>
-              </div>
+        <div className="relative z-10 mt-6 grid grid-cols-1 gap-3 border-t border-white/15 pt-5 sm:grid-cols-3">
+          <div className="flex items-center gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-white/25 bg-white/15 backdrop-blur-md">
+              <CircleDollarSign className="size-4.5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-white/70">Today so far</p>
+              <p className="truncate font-serif text-lg font-bold tabular-nums">{money(animatedToday)}</p>
             </div>
           </div>
-        ))}
-      </div>
+          <div className="flex items-center gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-white/25 bg-white/15 backdrop-blur-md">
+              <ReceiptText className="size-4.5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-white/70">Tickets today</p>
+              <p className="truncate font-serif text-lg font-bold tabular-nums">
+                {weekTotals.today?.orders ?? 0}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <GoalRing progress={goalProgress} />
+            <div className="min-w-0">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-white/70">Weekly goal</p>
+              <p className="truncate font-serif text-lg font-bold tabular-nums">
+                {Math.round(Math.min(1, goalProgress) * 100)}%
+                <span className="ml-1.5 text-[11px] font-semibold text-white/70">of {money(WEEKLY_GOAL)}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Revenue & Sales Chart */}
-        <div className="lg:col-span-2 rounded-[28px] border border-border/60 bg-card/85 dark:bg-zinc-900/80 backdrop-blur-xl p-5 sm:p-6 shadow-xs relative overflow-hidden flex flex-col">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b border-border/40 pb-4">
+      <section className="grid grid-cols-2 gap-3.5 md:grid-cols-3 sm:gap-5 xl:grid-cols-5">
+        <KpiCard
+          delay={0}
+          label="Total Revenue"
+          value={money(animatedRevenue)}
+          hint={`${money(weekTotals.today?.revenue)} today`}
+          icon={CircleDollarSign}
+          tone="emerald"
+          spark={<Sparkline data={chartData.map((p) => ({ value: p.revenue }))} tone="revenue" className="mt-2.5" />}
+        />
+        <KpiCard
+          delay={60}
+          label="Total Orders"
+          value={Math.round(animatedOrders).toLocaleString()}
+          hint={`${weekTotals.orders} in the last 7 days`}
+          icon={ShoppingBag}
+          tone="sky"
+          spark={<Sparkline data={chartData.map((p) => ({ value: p.orders }))} tone="orders" className="mt-2.5" />}
+        />
+        <KpiCard
+          delay={120}
+          label="Avg Order Value"
+          value={money(animatedAvg)}
+          hint="Revenue ÷ orders"
+          icon={Wallet}
+          tone="amber"
+        />
+        <KpiCard
+          delay={180}
+          label="Active Drivers"
+          value={String(data?.activeDrivers ?? 0)}
+          hint={Number(data?.activeDrivers || 0) > 0 ? "On shift now" : "No drivers on shift"}
+          icon={Truck}
+          tone="flame"
+        />
+        <KpiCard
+          delay={240}
+          label="Live Products"
+          value={String(data?.totalProducts ?? 0)}
+          hint="Published on the menu"
+          icon={Package}
+          tone="primary"
+        />
+      </section>
+
+      <section
+        className="animate-card-fade-in rounded-[28px] border border-border/70 bg-card/85 p-5 shadow-warm backdrop-blur-xl sm:p-6"
+        style={{ animationDelay: "120ms" }}
+      >
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+              <GitCommitHorizontal className="size-4" />
+            </span>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="size-2 rounded-full bg-primary animate-pulse" />
-                <h3 className="font-serif text-base sm:text-lg font-bold text-foreground">
-                  Revenue & Order Volume
-                </h3>
-              </div>
-              <p className="text-xs text-muted-foreground mt-0.5">7-Day trend of completed transactions</p>
-            </div>
-
-            {/* Quick Analytics Summary Pills */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="px-3 py-1 rounded-xl bg-secondary/50 border border-border/50 text-[11px] font-bold flex items-center gap-1.5 shadow-2xs">
-                <span className="text-muted-foreground">Avg Value:</span>
-                <span className="text-foreground">${avgOrderValue}</span>
-              </div>
-              <div className="px-3 py-1 rounded-xl bg-primary/10 border border-primary/20 text-[11px] font-bold text-primary flex items-center gap-1.5 shadow-2xs">
-                <span>Orders:</span>
-                <span>{totalOrdersCount}</span>
-              </div>
+              <h3 className="font-serif text-base font-bold text-foreground sm:text-lg">Order pipeline</h3>
+              <p className="text-xs font-medium text-muted-foreground">
+                {pipeline.total} tracked order{pipeline.total === 1 ? "" : "s"} across the lifecycle
+              </p>
             </div>
           </div>
-
-          {/* Recharts Area Chart */}
-          <div className="h-[220px] sm:h-[260px] w-full mt-auto">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-              <defs>
-                <linearGradient id="flameAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#ef4444" stopOpacity={0.45} />
-                  <stop offset="60%" stopColor="#f59e0b" stopOpacity={0.12} />
-                  <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
-              <XAxis
-                dataKey="date"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                dy={10}
-              />
-              <YAxis
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                tickFormatter={(val) => `$${val}`}
-              />
-              <Tooltip
-                content={({ active, payload, label }) => {
-                  if (active && payload && payload.length) {
-                    const rev = Number(payload[0].value || 0);
-                    return (
-                      <div className="rounded-2xl border border-border bg-card/95 backdrop-blur-xl p-3 shadow-2xl text-xs space-y-1.5">
-                        <p className="font-extrabold text-foreground border-b border-border/50 pb-1">{label}</p>
-                        <div className="flex items-center justify-between gap-4">
-                          <span className="text-muted-foreground font-medium">Revenue:</span>
-                          <span className="text-primary font-black text-sm">${rev.toFixed(2)}</span>
-                        </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="revenue"
-                stroke="#ef4444"
-                strokeWidth={3}
-                fillOpacity={1}
-                fill="url(#flameAreaGradient)"
-                activeDot={{ r: 6, fill: "#ef4444", stroke: "hsl(var(--card))", strokeWidth: 3 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          <Link
+            to="/admin/orders"
+            className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
+          >
+            Open orders <ArrowRight className="size-3" />
+          </Link>
         </div>
-      </div>
 
-        {/* Top Selling Products */}
-        <div className="lg:col-span-1 rounded-[28px] border border-border/60 bg-card/85 dark:bg-zinc-900/80 backdrop-blur-xl p-5 sm:p-6 shadow-xs flex flex-col">
-          <div className="flex items-center justify-between mb-4 border-b border-border/40 pb-4">
-            <div className="flex items-center gap-2">
-              <Flame className="size-5 text-amber-500" />
-              <h3 className="font-serif text-base sm:text-lg font-bold text-foreground">
-                Top Selling Items
-              </h3>
+        {pipeline.total === 0 ? (
+          <p className="rounded-2xl border border-dashed border-border/60 bg-secondary/20 py-6 text-center text-xs font-semibold text-muted-foreground">
+            No orders tracked yet — the pipeline fills in as guests check out.
+          </p>
+        ) : (
+          <>
+            <div className="flex h-3.5 w-full overflow-hidden rounded-full bg-secondary">
+              {pipeline.counts.map((stage) =>
+                stage.count > 0 ? (
+                  <div
+                    key={stage.status}
+                    title={`${stage.label}: ${stage.count}`}
+                    className={cn("h-full transition-all duration-700", stage.bar)}
+                    style={{ width: `${(stage.count / pipeline.total) * 100}%` }}
+                  />
+                ) : null
+              )}
             </div>
-            <Link to="/admin/products" className="text-[11px] font-bold text-primary hover:underline">
-              View All
-            </Link>
-          </div>
-          <div className="space-y-3.5 flex-1">
-            {displayTopProducts.map((prod, idx) => {
-              const medalBadge = idx === 0 
-                ? "bg-amber-500 text-white font-black" 
-                : idx === 1 
-                ? "bg-slate-400 text-white font-black" 
-                : idx === 2 
-                ? "bg-amber-700 text-white font-black" 
-                : "bg-secondary text-muted-foreground font-bold";
+            <div className="mt-3.5 flex flex-wrap gap-x-4 gap-y-2">
+              {pipeline.counts.map((stage) => (
+                <span key={stage.status} className="flex items-center gap-1.5 text-[11px] font-bold">
+                  <span className={cn("size-2 rounded-full", stage.bar)} />
+                  <span className="text-muted-foreground">{stage.label}</span>
+                  <span className="text-foreground tabular-nums">{stage.count}</span>
+                </span>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
 
-              return (
-                <div key={idx} className="flex items-center justify-between group p-2 rounded-2xl hover:bg-secondary/40 transition-colors">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={cn("size-6 rounded-lg text-[10px] flex items-center justify-center shadow-xs shrink-0", medalBadge)}>
-                      #{idx + 1}
-                    </div>
-                    {prod.image ? (
-                      <img
-                        src={prod.image}
-                        alt={prod.name}
-                        className="size-10 rounded-xl object-cover border border-border/60 shrink-0 group-hover:scale-105 transition-transform"
-                      />
-                    ) : (
-                      <div className="size-10 rounded-xl bg-secondary/70 flex items-center justify-center text-base shrink-0">
-                        🍕
-                      </div>
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-3 sm:gap-6">
+        <div
+          className="flex animate-card-fade-in flex-col rounded-[28px] border border-border/70 bg-card/85 p-5 shadow-warm backdrop-blur-xl sm:p-6 lg:col-span-2"
+          style={{ animationDelay: "160ms" }}
+        >
+          <PanelHeader
+            icon={ReceiptText}
+            title="Revenue & order volume"
+            subtitle="Last 7 days of settled transactions"
+            action={
+              <div className="flex shrink-0 items-center gap-2">
+                <Badge variant="outline" className="rounded-xl border-border/60 bg-secondary/50 px-2.5 py-1 text-[11px] font-bold text-foreground">
+                  {money(weekTotals.revenue)}
+                </Badge>
+                <Badge variant="outline" className="rounded-xl border-primary/25 bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
+                  {weekTotals.orders} orders
+                </Badge>
+              </div>
+            }
+          />
+
+          {chartData.length === 0 ? (
+            <EmptyState
+              icon={ReceiptText}
+              title="No sales recorded yet"
+              description="Once orders start settling, the revenue and volume trend appears here."
+              className="py-10"
+            />
+          ) : (
+            <ChartContainer config={revenueChartConfig} className="aspect-auto h-[240px] w-full sm:h-[280px]">
+              <ComposedChart data={chartData} margin={{ top: 10, right: 8, bottom: 0, left: -8 }}>
+                <defs>
+                  <linearGradient id="adminRevenueFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--color-revenue)" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="var(--color-revenue)" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/50" />
+                <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={10} />
+                <YAxis yAxisId="revenue" tickLine={false} axisLine={false} width={52} tickFormatter={(value) => `$${value}`} />
+                <YAxis yAxisId="orders" orientation="right" tickLine={false} axisLine={false} width={34} allowDecimals={false} />
+                <ChartTooltip content={<ChartTooltipContent indicator="dot" />} />
+                <Bar yAxisId="orders" dataKey="orders" fill="var(--color-orders)" fillOpacity={0.35} radius={[6, 6, 0, 0]} maxBarSize={26} />
+                <Area
+                  yAxisId="revenue"
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="var(--color-revenue)"
+                  strokeWidth={3}
+                  fill="url(#adminRevenueFill)"
+                  activeDot={{ r: 5, strokeWidth: 2 }}
+                />
+              </ComposedChart>
+            </ChartContainer>
+          )}
+
+          {weekTotals.best && (
+            <div className="mt-4 flex items-center gap-2.5 rounded-2xl border border-border/60 bg-secondary/30 px-3.5 py-2.5">
+              <Sparkles className="size-4 shrink-0 text-amber-500" />
+              <p className="truncate text-[11px] font-semibold text-muted-foreground sm:text-xs">
+                Best day this week: <span className="font-bold text-foreground">{weekTotals.best.date}</span> with{" "}
+                <span className="font-bold text-primary">{money(weekTotals.best.revenue)}</span>
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div
+          className="flex animate-card-fade-in flex-col rounded-[28px] border border-border/70 bg-card/85 p-5 shadow-warm backdrop-blur-xl sm:p-6"
+          style={{ animationDelay: "200ms" }}
+        >
+          <PanelHeader
+            icon={Flame}
+            title="Top selling items"
+            subtitle="By units sold, all time"
+            action={
+              <Link to="/admin/products" className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-primary hover:underline">
+                View all <ArrowRight className="size-3" />
+              </Link>
+            }
+          />
+
+          {topProducts.length === 0 ? (
+            <EmptyState
+              icon={Flame}
+              title="No sales yet"
+              description="Your best sellers will rank here once guests start ordering."
+              className="py-8"
+            />
+          ) : (
+            <ul className="flex flex-1 flex-col gap-2.5">
+              {topProducts.map((product, index) => (
+                <li
+                  key={product.name}
+                  className="group flex items-center gap-3 rounded-2xl border border-transparent p-2 transition-colors hover:border-border/60 hover:bg-secondary/40"
+                >
+                  <span
+                    className={cn(
+                      "flex size-6 shrink-0 items-center justify-center rounded-lg font-serif text-[10px] font-bold shadow-xs",
+                      index === 0
+                        ? "bg-gradient-to-br from-amber-400 to-amber-600 text-white"
+                        : index === 1
+                          ? "bg-gradient-to-br from-zinc-300 to-zinc-500 text-white"
+                          : index === 2
+                            ? "bg-gradient-to-br from-amber-700 to-amber-900 text-white"
+                            : "border border-border/60 bg-secondary text-muted-foreground"
                     )}
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-foreground line-clamp-1 group-hover:text-primary transition-colors">
-                        {prod.name}
-                      </p>
-                      <p className="text-[10px] font-semibold text-muted-foreground">
-                        {prod.sales || 0} sales • {prod.category || "Pizza"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-xs font-extrabold text-foreground shrink-0 pl-2">
-                    ${Number(prod.revenue || 0).toFixed(2)}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                  >
+                    {index + 1}
+                  </span>
+                  {product.image ? (
+                    <img
+                      src={getImageUrl(product.image)}
+                      alt=""
+                      loading="lazy"
+                      className="size-10 shrink-0 rounded-xl border border-border/60 object-cover transition-transform group-hover:scale-105"
+                    />
+                  ) : (
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-secondary/60">
+                      <Package className="size-4 text-muted-foreground" />
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-xs font-bold text-foreground transition-colors group-hover:text-primary">
+                      {product.name}
+                    </span>
+                    <span className="block text-[10px] font-semibold text-muted-foreground">
+                      {Number(product.sales || 0).toLocaleString()} sold
+                    </span>
+                  </span>
+                  <span className="shrink-0 font-serif text-xs font-bold text-foreground tabular-nums">
+                    {money(product.revenue)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-      </div>
+      </section>
 
-      {/* Grid: Quick Actions & Live Recent Orders */}
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 sm:gap-6">
-        {/* Quick Shortcuts */}
-        <div className="xl:col-span-1 space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="font-serif text-base font-bold text-foreground flex items-center gap-2">
-              <Sparkles className="size-4 text-primary" />
-              Quick Shortcuts
-            </h3>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-1 gap-3">
-            {quickLinks.map((item) => (
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-4 sm:gap-6">
+        <div className="space-y-3 xl:col-span-1">
+          <h3 className="flex items-center gap-2 px-1 font-serif text-base font-bold text-foreground">
+            <Sparkles className="size-4 text-primary" /> Quick shortcuts
+          </h3>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-1">
+            {quickLinks.map((item, index) => (
               <Link
                 key={item.label}
                 to={item.href}
-                className="group relative overflow-hidden p-3.5 rounded-[22px] border border-border/60 bg-card/85 dark:bg-zinc-900/80 backdrop-blur-md hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-between gap-3"
+                style={{ animationDelay: `${240 + index * 50}ms` }}
+                className="group flex animate-card-fade-in items-center justify-between gap-3 overflow-hidden rounded-3xl border border-border/70 bg-card/85 p-3.5 shadow-xs backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-warm"
               >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className={cn("size-9 rounded-xl bg-gradient-to-tr text-white flex items-center justify-center shadow-xs shrink-0 transition-transform group-hover:scale-110 group-hover:rotate-3", item.gradient)}>
+                <span className="flex min-w-0 items-center gap-3">
+                  <span
+                    className={cn(
+                      "flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr text-white shadow-xs transition-transform group-hover:scale-110 group-hover:rotate-3",
+                      item.gradient
+                    )}
+                  >
                     <item.icon className="size-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="text-xs font-bold text-foreground group-hover:text-primary transition-colors truncate">
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-xs font-bold text-foreground transition-colors group-hover:text-primary">
                       {item.label}
-                    </h4>
-                    <p className="text-[10px] text-muted-foreground truncate">{item.desc}</p>
-                  </div>
-                </div>
-                <ArrowRight className="size-3.5 text-muted-foreground opacity-40 group-hover:opacity-100 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+                    </span>
+                    <span className="block truncate text-[10px] font-medium text-muted-foreground">{item.desc}</span>
+                  </span>
+                </span>
+                <ArrowRight className="size-3.5 shrink-0 text-muted-foreground opacity-40 transition-all group-hover:translate-x-0.5 group-hover:text-primary group-hover:opacity-100" />
               </Link>
             ))}
           </div>
         </div>
 
-        {/* Live Recent Orders Overview */}
-        <div className="xl:col-span-3 space-y-3">
+        <div className="space-y-3 xl:col-span-3">
           <div className="flex items-center justify-between px-1">
-            <h3 className="font-serif text-base font-bold text-foreground flex items-center gap-2">
-              <ClipboardList className="size-4 text-primary" />
-              Live Recent Orders
+            <h3 className="flex items-center gap-2 font-serif text-base font-bold text-foreground">
+              <ClipboardList className="size-4 text-primary" /> Live recent orders
             </h3>
-            <Link
-              to="/admin/orders"
-              className="text-[11px] font-bold tracking-wider text-primary hover:underline inline-flex items-center gap-1"
-            >
-              <span>View All Orders</span>
-              <ArrowRight className="size-3.5" />
+            <Link to="/admin/orders" className="inline-flex items-center gap-1 text-[11px] font-bold tracking-wider text-primary hover:underline">
+              View all <ArrowRight className="size-3.5" />
             </Link>
           </div>
 
-          <div className="rounded-[28px] border border-border/60 bg-card/85 dark:bg-zinc-900/80 backdrop-blur-xl overflow-hidden shadow-xs">
+          <div className="overflow-hidden rounded-[28px] border border-border/70 bg-card/85 shadow-warm backdrop-blur-xl">
             {recentOrders.length === 0 ? (
-              <div className="p-10 flex flex-col items-center justify-center text-center">
-                <div className="size-14 rounded-3xl bg-secondary/80 flex items-center justify-center mb-3 text-muted-foreground">
-                  <ClipboardList className="size-6 text-primary" />
-                </div>
-                <p className="text-sm font-bold text-foreground">Waiting for incoming orders</p>
-                <p className="text-xs text-muted-foreground mt-1 max-w-[280px]">
-                  Customer checkout orders and Bakong payments will automatically update here in real-time.
-                </p>
-              </div>
+              <EmptyState
+                icon={ClipboardList}
+                title="Waiting for incoming orders"
+                description="Checkout orders and Bakong payments appear here in real time."
+                className="py-12"
+              />
             ) : (
-              <div className="divide-y divide-border/40">
-                {recentOrders.slice(0, 5).map((order) => {
-                  const status = (order.status || "PENDING").toUpperCase();
-                  const isDelivered = status === "DELIVERED" || status === "COMPLETED";
-                  const isPreparing = status === "PREPARING" || status === "COOKING" || status === "READY";
-                  const isDelivery = status === "OUT_FOR_DELIVERY" || status === "ON_THE_WAY";
-                  const isConfirmed = status === "CONFIRMED";
-
-                  const badgeClass = isDelivered
-                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/25"
-                    : isDelivery
-                    ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/25"
-                    : isPreparing
-                    ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/25"
-                    : isConfirmed
-                    ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/25"
-                    : "bg-primary/10 text-primary border-primary/20";
-
+              <ul className="divide-y divide-border/40">
+                {recentOrders.slice(0, 6).map((order) => {
+                  const status = String(order.status || "PENDING").toUpperCase();
+                  const live = ["PREPARING", "READY", "OUT_FOR_DELIVERY"].includes(status);
                   return (
-                    <div
-                      key={order.id}
-                      className="p-3.5 sm:p-4.5 flex items-center justify-between hover:bg-secondary/40 transition-colors group gap-3"
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <div className="size-9 rounded-2xl bg-gradient-to-br from-primary/15 to-orange-500/15 text-primary flex items-center justify-center font-black text-xs shrink-0 border border-primary/20 group-hover:scale-105 transition-transform">
-                          {(order.customer_name || "G")[0].toUpperCase()}
-                        </div>
+                    <li key={order.id} className="group flex items-center justify-between gap-3 p-3.5 transition-colors hover:bg-secondary/40 sm:p-4">
+                      <div className="flex min-w-0 items-center gap-3.5">
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/15 to-orange-500/15 font-serif text-xs font-bold text-primary transition-transform group-hover:scale-105">
+                          {(order.customer_name || "G").charAt(0).toUpperCase()}
+                        </span>
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-xs font-bold text-foreground truncate max-w-[160px]">
-                              {order.customer_name || order.customer_phone || `Customer #${order.customer_id || "Guest"}`}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="max-w-[160px] truncate text-xs font-bold text-foreground">
+                              {order.customer_name || order.customer_phone || `Guest #${order.customer_id || ""}`}
                             </p>
-                            <span className="font-mono text-[10px] font-bold text-muted-foreground bg-secondary/80 px-1.5 py-0.5 rounded-md border border-border/60">
+                            <span className="rounded-md border border-border/60 bg-secondary/80 px-1.5 py-0.5 font-mono text-[10px] font-bold text-muted-foreground">
                               #{order.order_number ? (order.order_number.length > 8 ? order.order_number.slice(-6) : order.order_number) : order.id}
                             </span>
                           </div>
-                          <p className="text-[11px] text-muted-foreground font-medium mt-0.5 flex items-center gap-1.5">
-                            <Clock className="size-3 text-muted-foreground/80" />
-                            {formatTime(order.created_at || order.createdAt) || "Just now"}
+                          <p className="mt-0.5 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                            <Clock3 className="size-3" />
+                            {formatTime(order.created_at) || "just now"}
+                            <span className="text-border">•</span>
+                            {timeAgo(order.created_at)}
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex flex-col items-end gap-1 shrink-0">
-                        <span className="font-serif text-sm font-black text-foreground">
-                          ${Number(order.total_price || order.total || 0).toFixed(2)}
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        <span className="font-serif text-sm font-bold text-foreground tabular-nums">
+                          {money(order.total_price || order.total)}
                         </span>
-                        <span className={cn("px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-2xs inline-flex items-center gap-1", badgeClass)}>
-                          {(isPreparing || isDelivery) && <span className="size-1.5 rounded-full bg-current animate-pulse" />}
-                          {order.status || "PENDING"}
-                        </span>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider",
+                            STATUS_STYLE[status] || STATUS_STYLE.PENDING
+                          )}
+                        >
+                          {live && <span className="size-1.5 rounded-full bg-current animate-pulse" />}
+                          {status.replace(/_/g, " ")}
+                        </Badge>
                       </div>
-                    </div>
+                    </li>
                   );
                 })}
-              </div>
+              </ul>
             )}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Extra Analytics & Alerts Bento Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-        {/* Sales by Category (Pie) */}
-        <div className="rounded-[28px] border border-border/60 bg-card/85 dark:bg-zinc-900/80 backdrop-blur-xl p-5 sm:p-6 shadow-xs flex flex-col">
-          <div className="flex items-center gap-2 mb-4 border-b border-border/40 pb-4">
-            <PieChart className="size-4 text-primary" />
-            <h3 className="font-serif text-base font-bold text-foreground">
-              Sales by Category
-            </h3>
-          </div>
-          <div className="flex-1 flex flex-col items-center justify-center relative min-h-[170px]">
-            <ResponsiveContainer width="100%" height={170}>
-              <RechartsPie>
-                <Pie
-                  data={(categoryData && categoryData.length > 0) ? categoryData : [
-                    { name: "Wood-fired Pizza", value: 52, color: "#ef4444" },
-                    { name: "Smash Burgers", value: 24, color: "#f59e0b" },
-                    { name: "Pizza Bagels", value: 14, color: "#10b981" },
-                    { name: "Sides & Drinks", value: 10, color: "#3b82f6" }
-                  ]}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={48}
-                  outerRadius={70}
-                  paddingAngle={5}
-                  dataKey="value"
-                  stroke="none"
-                >
-                  {((categoryData && categoryData.length > 0) ? categoryData : [
-                    { name: "Wood-fired Pizza", value: 52, color: "#ef4444" },
-                    { name: "Smash Burgers", value: 24, color: "#f59e0b" },
-                    { name: "Pizza Bagels", value: 14, color: "#10b981" },
-                    { name: "Sides & Drinks", value: 10, color: "#3b82f6" }
-                  ]).map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-              </RechartsPie>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Mix</span>
-              <span className="text-xl font-black text-foreground">100%</span>
-            </div>
-          </div>
-          <div className="flex flex-wrap justify-center gap-2.5 mt-3">
-            {((categoryData && categoryData.length > 0) ? categoryData : [
-              { name: "Pizza", value: 52, color: "#ef4444" },
-              { name: "Burgers", value: 24, color: "#f59e0b" },
-              { name: "Bagels", value: 14, color: "#10b981" },
-              { name: "Sides", value: 10, color: "#3b82f6" }
-            ]).map((cat, i) => (
-              <div key={i} className="flex items-center gap-1.5 text-[11px] font-bold text-muted-foreground">
-                <span className="size-2 rounded-full" style={{ backgroundColor: cat.color }} />
-                <span>{cat.name} ({cat.value}%)</span>
-              </div>
-            ))}
-          </div>
-        </div>
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-3 sm:gap-6">
+        <div
+          className="flex animate-card-fade-in flex-col rounded-[28px] border border-border/70 bg-card/85 p-5 shadow-warm backdrop-blur-xl sm:p-6"
+          style={{ animationDelay: "280ms" }}
+        >
+          <PanelHeader icon={PieIcon} title="Sales by category" subtitle="Share of items sold" />
 
-        {/* Recent Feedback */}
-        <div className="rounded-[28px] border border-border/60 bg-card/85 dark:bg-zinc-900/80 backdrop-blur-xl p-5 sm:p-6 shadow-xs flex flex-col">
-          <div className="flex items-center gap-2 mb-4 border-b border-border/40 pb-4">
-            <MessageSquare className="size-4 text-blue-500" />
-            <h3 className="font-serif text-base font-bold text-foreground">
-              Customer Feedback
-            </h3>
-          </div>
-          <div className="space-y-3 flex-1 overflow-y-auto pr-1">
-            {((recentReviews && recentReviews.length > 0) ? recentReviews : [
-              { customer: "Sokha Meng", rating: 5, comment: "Best sourdough pizza in Phnom Penh! The crust is so light and crispy.", time: "15m ago" },
-              { customer: "David K.", rating: 5, comment: "Ordered Truffle Fries & Pepperoni Diavola. Delivered hot in 25 mins!", time: "1h ago" },
-              { customer: "Vichea Roth", rating: 5, comment: "Fast KHQR payment verification and super juicy smash burgers.", time: "3h ago" }
-            ]).map((rev, idx) => (
-              <div key={idx} className="p-3 rounded-2xl bg-secondary/30 border border-border/40 hover:bg-secondary/50 transition-colors">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-black text-foreground">{rev.customer}</span>
-                  <span className="text-[10px] font-semibold text-muted-foreground">{rev.time}</span>
-                </div>
-                <div className="flex items-center gap-0.5 mb-1.5">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} className={cn("size-3", i < rev.rating ? "fill-amber-400 text-amber-400" : "fill-muted text-muted")} />
-                  ))}
-                </div>
-                <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed italic">
-                  "{rev.comment}"
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Low Stock Alerts */}
-        <div className="rounded-[28px] border border-border/60 bg-card/85 dark:bg-zinc-900/80 backdrop-blur-xl p-5 sm:p-6 shadow-xs flex flex-col">
-          <div className="flex items-center gap-2 mb-4 border-b border-border/40 pb-4">
-            <AlertTriangle className="size-4 text-amber-500" />
-            <h3 className="font-serif text-base font-bold text-foreground">
-              Inventory & Pantry Levels
-            </h3>
-          </div>
-          <div className="space-y-2.5 flex-1">
-            {((lowStock && lowStock.length > 0) ? lowStock : [
-              { item: "San Marzano Tomatoes (Cans)", current: "14 cans", min: "10", critical: false },
-              { item: "Mozzarella Fior di Latte", current: "6 kg", min: "5 kg", critical: false },
-              { item: "White Truffle Infused Oil", current: "3 btls", min: "2 btls", critical: false }
-            ]).map((stock, idx) => (
-              <div key={idx} className={cn("p-3 rounded-2xl border flex items-center justify-between gap-3 transition-colors", stock.critical ? "bg-rose-500/10 border-rose-500/25" : "bg-secondary/30 border-border/40")}>
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={cn("size-8.5 rounded-xl flex items-center justify-center shrink-0 border", stock.critical ? "bg-rose-500/15 text-rose-600 border-rose-500/30" : "bg-primary/10 text-primary border-primary/20")}>
-                    <Layers className="size-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-foreground truncate">{stock.item}</p>
-                    <p className="text-[10px] font-semibold text-muted-foreground mt-0.5">Threshold: {stock.min}</p>
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <span className={cn("text-xs font-black block", stock.critical ? "text-rose-500" : "text-emerald-600 dark:text-emerald-400")}>
-                    {stock.current}
+          {categoryData.length === 0 ? (
+            <EmptyState icon={PieIcon} title="No category sales yet" description="The category mix appears once items start selling." className="py-8" />
+          ) : (
+            <>
+              <div className="relative mx-auto my-2 size-[190px]">
+                <RechartsPie width={190} height={190}>
+                  <Pie data={categoryData} dataKey="value" nameKey="name" innerRadius={54} outerRadius={82} paddingAngle={4} stroke="none">
+                    {categoryData.map((entry) => (
+                      <Cell key={entry.name} fill={entry.color} />
+                    ))}
+                  </Pie>
+                </RechartsPie>
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Items</span>
+                  <span className="font-serif text-2xl font-bold text-foreground tabular-nums">
+                    {categoryTotal.toLocaleString()}
                   </span>
-                  <span className="text-[9px] font-bold text-muted-foreground uppercase">In Stock</span>
                 </div>
               </div>
-            ))}
-          </div>
+              <Separator className="my-4 bg-border/50" />
+              <ul className="space-y-2">
+                {categoryData.map((cat) => (
+                  <li key={cat.name} className="flex items-center gap-2.5 text-[11px] font-bold">
+                    <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
+                    <span className="min-w-0 flex-1 truncate text-muted-foreground">{cat.name}</span>
+                    <span className="shrink-0 text-foreground tabular-nums">{cat.pct}%</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
-      </div>
+
+        <div
+          className="flex animate-card-fade-in flex-col rounded-[28px] border border-border/70 bg-card/85 p-5 shadow-warm backdrop-blur-xl sm:p-6"
+          style={{ animationDelay: "320ms" }}
+        >
+          <PanelHeader icon={MessageSquare} title="Customer feedback" subtitle="Latest verified reviews" />
+
+          {recentReviews.length === 0 ? (
+            <EmptyState icon={MessageSquare} title="No reviews yet" description="Guest reviews will show up here as they arrive." className="py-8" />
+          ) : (
+            <ul className="flex flex-1 flex-col gap-3 overflow-y-auto pr-1 custom-scrollbar">
+              {recentReviews.map((review, index) => (
+                <li key={index} className="rounded-2xl border border-border/50 bg-secondary/30 p-3 transition-colors hover:bg-secondary/50">
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <span className="truncate text-xs font-bold text-foreground">{review.customer}</span>
+                    <span className="shrink-0 text-[10px] font-semibold text-muted-foreground">{timeAgo(review.time)}</span>
+                  </div>
+                  <div className="mb-1.5 flex items-center gap-0.5">
+                    {Array.from({ length: 5 }).map((_, starIndex) => (
+                      <Star key={starIndex} className={cn("size-3", starIndex < review.rating ? "fill-amber-400 text-amber-400" : "text-border")} />
+                    ))}
+                  </div>
+                  {review.comment && (
+                    <p className="text-[11px] italic leading-relaxed text-muted-foreground line-clamp-2">“{review.comment}”</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div
+          className="flex animate-card-fade-in flex-col rounded-[28px] border border-border/70 bg-card/85 p-5 shadow-warm backdrop-blur-xl sm:p-6"
+          style={{ animationDelay: "360ms" }}
+        >
+          <PanelHeader icon={Layers} title="Inventory levels" subtitle="Items at or near threshold" />
+
+          {lowStock.length === 0 ? (
+            <EmptyState icon={ShieldCheck} title="Pantry fully stocked" description="No inventory items are near their low-stock threshold." className="py-8" />
+          ) : (
+            <ul className="flex flex-1 flex-col gap-2.5">
+              {lowStock.map((stock) => {
+                const ratio = stock.min > 0 ? Math.min(1, stock.current / (stock.min * 2)) : 1;
+                return (
+                  <li
+                    key={stock.item}
+                    className={cn(
+                      "rounded-2xl border p-3 transition-colors",
+                      stock.critical ? "border-destructive/30 bg-destructive/8" : "border-border/50 bg-secondary/30"
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span
+                          className={cn(
+                            "flex size-8.5 shrink-0 items-center justify-center rounded-xl border",
+                            stock.critical ? "border-destructive/30 bg-destructive/15 text-destructive" : "border-primary/20 bg-primary/10 text-primary"
+                          )}
+                        >
+                          <Layers className="size-4" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-bold text-foreground">{stock.item}</p>
+                          <p className="text-[10px] font-semibold text-muted-foreground">Threshold {stock.min}</p>
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <span className={cn("block font-serif text-xs font-bold tabular-nums", stock.critical ? "text-destructive" : "text-emerald-600 dark:text-emerald-400")}>
+                          {stock.current}
+                        </span>
+                        <span className="text-[9px] font-bold uppercase text-muted-foreground">in stock</span>
+                      </div>
+                    </div>
+                    <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                      <div
+                        className={cn("h-full rounded-full transition-all", stock.critical ? "bg-gradient-to-r from-destructive to-orange-500" : "bg-gradient-to-r from-emerald-500 to-teal-400")}
+                        style={{ width: `${Math.max(6, Math.round(ratio * 100))}%` }}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </section>
+
+      <section className="flex flex-col items-center justify-between gap-3 rounded-[28px] border border-border/70 bg-card/85 px-5 py-4 shadow-xs backdrop-blur-xl sm:flex-row sm:px-6">
+        <p className="flex items-center gap-2 text-[11px] font-semibold text-muted-foreground">
+          <Bike className="size-4 text-primary" />
+          Dispatch, settlements and KDS sync automatically every few seconds.
+        </p>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="rounded-full border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+            <DollarSign className="size-2.5" /> Payments healthy
+          </Badge>
+          <Badge variant="outline" className="rounded-full border-border/60 bg-secondary/60 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+            Auto-refresh on
+          </Badge>
+        </div>
+      </section>
     </div>
   );
 }
-

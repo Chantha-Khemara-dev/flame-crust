@@ -47,7 +47,7 @@ function MapUpdater({ center }) {
 // ----------------- HEADER -----------------
 function DriverHeader({ driver, locationActive, theme, toggleTheme, onRefresh, refreshing }) {
   return (
-    <header className="shrink-0 pt-[env(safe-area-inset-top,0px)] bg-white dark:bg-zinc-950 border-b border-slate-200/80 dark:border-white/10 transition-colors z-40 relative shadow-xs">
+    <header className="shrink-0 pt-[env(safe-area-inset-top,0px)] bg-card border-b border-border/70 transition-colors z-40 relative shadow-xs">
       <div className="h-16 flex items-center justify-between px-3 sm:px-6">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <div className="size-9 sm:size-10 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 flex items-center justify-center shadow-md shadow-red-600/25 shrink-0 text-white">
@@ -55,15 +55,15 @@ function DriverHeader({ driver, locationActive, theme, toggleTheme, onRefresh, r
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-nowrap">
-              <h1 className="font-black text-sm sm:text-lg text-slate-950 dark:text-white tracking-tight leading-none truncate whitespace-nowrap">
+              <h1 className="font-black text-sm sm:text-lg text-foreground tracking-tight leading-none truncate whitespace-nowrap">
                 Flame & Crust
               </h1>
               <span className="hidden sm:inline-block text-[9px] sm:text-[10px] font-black uppercase px-1.5 py-0.5 bg-red-500/15 text-red-600 dark:text-red-400 rounded-md border border-red-500/30 shrink-0 whitespace-nowrap">
                 Rider Hub
               </span>
             </div>
-            <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-zinc-400 mt-0.5 flex items-center gap-1.5 truncate">
-              <span className={cn("size-2 rounded-full inline-block shrink-0", locationActive ? "bg-emerald-500 animate-pulse" : "bg-slate-400")} />
+            <p className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground mt-0.5 flex items-center gap-1.5 truncate">
+              <span className={cn("size-2 rounded-full inline-block shrink-0", locationActive ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/50")} />
               <span className="truncate">{locationActive ? "GPS Active • Ready for orders" : "GPS Connecting..."}</span>
             </p>
           </div>
@@ -75,7 +75,7 @@ function DriverHeader({ driver, locationActive, theme, toggleTheme, onRefresh, r
             onClick={onRefresh}
             disabled={refreshing}
             className={cn(
-              "size-9 rounded-full bg-slate-100 dark:bg-zinc-900 hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-300 transition-all active:scale-95 border border-slate-200/50 dark:border-white/5 flex items-center justify-center shrink-0 cursor-pointer",
+              "size-9 rounded-full bg-secondary dark:bg-card hover:bg-secondary dark:hover:bg-secondary text-muted-foreground dark:text-muted-foreground transition-all active:scale-95 border border-border/60 dark:border-white/5 flex items-center justify-center shrink-0 cursor-pointer",
               refreshing && "opacity-60 cursor-not-allowed"
             )}
             title="Refresh Feed"
@@ -89,18 +89,18 @@ function DriverHeader({ driver, locationActive, theme, toggleTheme, onRefresh, r
           {/* Theme Toggle */}
           <button 
             onClick={toggleTheme}
-            className="size-9 rounded-full bg-slate-100 dark:bg-zinc-900 hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-300 transition-all active:scale-95 border border-slate-200/50 dark:border-white/5 flex items-center justify-center shrink-0 cursor-pointer"
+            className="size-9 rounded-full bg-secondary dark:bg-card hover:bg-secondary dark:hover:bg-secondary text-muted-foreground dark:text-muted-foreground transition-all active:scale-95 border border-border/60 dark:border-white/5 flex items-center justify-center shrink-0 cursor-pointer"
             title="Toggle Theme"
           >
             {theme === 'dark' ? <Sun className="size-4 text-amber-400" /> : <Moon className="size-4" />}
           </button>
 
-          <div className="w-px h-6 bg-slate-200 dark:bg-zinc-800 hidden sm:block" />
+          <div className="w-px h-6 bg-secondary dark:bg-secondary hidden sm:block" />
 
           {/* Driver Profile */}
           <Link to="/driver/profile" className="flex items-center gap-2 group pl-0.5 shrink-0">
             <div className="hidden md:block text-right">
-              <p className="text-xs font-black text-slate-900 dark:text-zinc-100 group-hover:text-primary transition-colors truncate max-w-[100px]">
+              <p className="text-xs font-black text-foreground dark:text-foreground group-hover:text-primary transition-colors truncate max-w-[100px]">
                 {driver?.name || "Driver"}
               </p>
               <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
@@ -115,7 +115,7 @@ function DriverHeader({ driver, locationActive, theme, toggleTheme, onRefresh, r
                   <User className="size-4.5" />
                 </div>
               )}
-              <span className="absolute -bottom-0.5 -right-0.5 size-2.5 bg-emerald-500 rounded-full ring-2 ring-white dark:ring-zinc-950" />
+              <span className="absolute -bottom-0.5 -right-0.5 size-2.5 bg-emerald-500 rounded-full ring-2 ring-card" />
             </div>
           </Link>
         </div>
@@ -127,15 +127,15 @@ function DriverHeader({ driver, locationActive, theme, toggleTheme, onRefresh, r
 // ----------------- TABS COMPONENT -----------------
 function OrderTabs({ activeTab, setActiveTab, availableCount, activeCount }) {
   return (
-    <div className="p-3.5 bg-white dark:bg-zinc-950 border-b border-slate-200/80 dark:border-white/10 shrink-0 z-20">
-      <div className="flex p-1 bg-slate-100 dark:bg-zinc-900/80 rounded-2xl border border-slate-200/60 dark:border-white/5">
+    <div className="p-3.5 bg-card border-b border-border/70 shrink-0 z-20">
+      <div className="flex p-1 bg-secondary dark:bg-card/80 rounded-2xl border border-border/60 dark:border-white/5">
         <button 
           onClick={() => setActiveTab("available")}
           className={cn(
             "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-black transition-all duration-200 flex items-center justify-center gap-2",
             activeTab === "available" 
               ? "bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md shadow-red-600/25" 
-              : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
+              : "text-muted-foreground hover:text-foreground dark:hover:text-foreground"
           )}
         >
           <span>New Requests</span>
@@ -154,7 +154,7 @@ function OrderTabs({ activeTab, setActiveTab, availableCount, activeCount }) {
             "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-black transition-all duration-200 flex items-center justify-center gap-2",
             activeTab === "my_deliveries" 
               ? "bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md shadow-red-600/25" 
-              : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
+              : "text-muted-foreground hover:text-foreground dark:hover:text-foreground"
           )}
         >
           <span>My Deliveries</span>
@@ -181,13 +181,13 @@ function NewDeliveryRequestCard({ order, onAccept, onSelectDetails, isActionLoad
   const paymentMethod = order.payment_method || "CASH";
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-[28px] p-5 shadow-sm hover:shadow-md transition-all duration-300 border border-slate-200/80 dark:border-white/10 relative overflow-hidden group">
+    <div className="bg-card rounded-[28px] p-3.5 shadow-sm hover:shadow-md transition-all duration-300 border border-border/70 relative overflow-hidden group sm:p-5">
       
       {/* Top Banner Tag */}
-      <div className="flex items-center justify-between pb-3 mb-3.5 border-b border-slate-100 dark:border-white/5 gap-2">
+      <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-border/50 dark:border-white/5 gap-2 sm:pb-3 sm:mb-3.5">
         <div className="flex items-center gap-2 min-w-0">
           <span className="size-2 rounded-full bg-red-500 animate-ping shrink-0" />
-          <h3 className="font-black text-xs sm:text-sm uppercase tracking-wider text-slate-950 dark:text-white truncate">
+          <h3 className="font-black text-xs sm:text-sm uppercase tracking-wider text-foreground truncate">
             New Delivery Request
           </h3>
         </div>
@@ -197,22 +197,22 @@ function NewDeliveryRequestCard({ order, onAccept, onSelectDetails, isActionLoad
       </div>
 
       {/* Customer Preview Row */}
-      <div className="flex items-center gap-3.5 mb-4 p-3 bg-slate-50 dark:bg-zinc-950/60 rounded-2xl border border-slate-100 dark:border-white/5">
+      <div className="flex items-center gap-2.5 mb-3 p-2.5 bg-secondary/40 dark:bg-card/70 rounded-2xl border border-border/50 dark:border-white/5 sm:gap-3.5 sm:mb-4 sm:p-3">
         <img 
           src={customerAvatar} 
           alt={customerName} 
-          className="size-11 rounded-full object-cover ring-2 ring-red-500/80 shadow-sm shrink-0" 
+          className="size-10 rounded-full object-cover ring-2 ring-red-500/80 shadow-sm shrink-0 sm:size-11" 
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
-            <h4 className="font-black text-sm text-slate-900 dark:text-zinc-100 truncate">
+            <h4 className="font-black text-sm text-foreground dark:text-foreground truncate">
               {customerName}
             </h4>
             <span className="text-[10px] font-black text-amber-500 flex items-center gap-0.5">
               ★ 4.9
             </span>
           </div>
-          <p className="text-xs text-slate-500 dark:text-zinc-400 truncate mt-0.5">
+          <p className="text-xs text-muted-foreground truncate mt-0.5">
             {order.address?.address_line || "Phnom Penh delivery area"}
           </p>
         </div>
@@ -226,7 +226,7 @@ function NewDeliveryRequestCard({ order, onAccept, onSelectDetails, isActionLoad
             <Clock className="size-4 stroke-[2.5]" />
           </div>
           <div>
-            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block leading-none">
+            <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/80 block leading-none">
               Est. Prep/ETA
             </span>
             <span className="text-sm font-black text-white mt-0.5 block leading-tight">
@@ -236,15 +236,15 @@ function NewDeliveryRequestCard({ order, onAccept, onSelectDetails, isActionLoad
         </div>
 
         {/* Distance Box */}
-        <div className="bg-slate-100 dark:bg-zinc-800/80 p-3 rounded-2xl flex items-center gap-2.5 border border-slate-200/50 dark:border-white/5">
-          <div className="p-1.5 bg-slate-200 dark:bg-zinc-700 text-slate-700 dark:text-zinc-300 rounded-lg shrink-0">
+        <div className="bg-secondary/80 p-3 rounded-2xl flex items-center gap-2.5 border border-border/60 dark:border-white/5">
+          <div className="p-1.5 bg-secondary text-foreground rounded-lg shrink-0">
             <Navigation className="size-4 stroke-[2.5]" />
           </div>
           <div>
-            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 block leading-none">
+            <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground block leading-none">
               Distance
             </span>
-            <span className="text-sm font-black text-slate-900 dark:text-white mt-0.5 block leading-tight">
+            <span className="text-sm font-black text-foreground mt-0.5 block leading-tight">
               1.5 - 3.2 km
             </span>
           </div>
@@ -266,15 +266,15 @@ function NewDeliveryRequestCard({ order, onAccept, onSelectDetails, isActionLoad
         </div>
 
         {/* Payment Type */}
-        <div className="bg-slate-50 dark:bg-zinc-950/60 p-3 rounded-2xl flex items-center gap-2.5 border border-slate-200/50 dark:border-white/5">
-          <div className="p-1.5 bg-slate-900 dark:bg-zinc-800 text-white rounded-lg shrink-0">
+        <div className="bg-secondary/40 dark:bg-card/70 p-3 rounded-2xl flex items-center gap-2.5 border border-border/60 dark:border-white/5">
+          <div className="p-1.5 bg-slate-900 dark:bg-secondary text-white rounded-lg shrink-0">
             <Package className="size-4 stroke-[2.5]" />
           </div>
           <div className="min-w-0">
-            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 block leading-none">
+            <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground block leading-none">
               Payment
             </span>
-            <span className="text-xs font-black text-slate-900 dark:text-white mt-0.5 block leading-tight truncate uppercase">
+            <span className="text-xs font-black text-foreground mt-0.5 block leading-tight truncate uppercase">
               {paymentMethod}
             </span>
           </div>
@@ -284,11 +284,11 @@ function NewDeliveryRequestCard({ order, onAccept, onSelectDetails, isActionLoad
       {/* Food Items Preview Bar */}
       <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 mb-4">
         {order.items?.map((item, idx) => (
-          <div key={idx} className="relative shrink-0 flex items-center justify-center size-12 rounded-xl bg-slate-100 dark:bg-zinc-800 border border-slate-200/80 dark:border-white/5 overflow-hidden shadow-xs">
+          <div key={idx} className="relative shrink-0 flex items-center justify-center size-12 rounded-xl bg-secondary border border-border/70 dark:border-white/5 overflow-hidden shadow-xs">
             {item.product_image ? (
               <img src={getImageUrl(item.product_image)} alt={item.product_name} className="w-full h-full object-cover" />
             ) : (
-              <Package className="size-5 text-slate-400" />
+              <Package className="size-5 text-muted-foreground/80" />
             )}
             {item.quantity > 1 && (
               <span className="absolute bottom-0.5 right-0.5 bg-black/85 text-amber-400 text-[9px] font-black px-1.5 py-0.2 rounded-md">
@@ -298,7 +298,7 @@ function NewDeliveryRequestCard({ order, onAccept, onSelectDetails, isActionLoad
           </div>
         ))}
         {totalItems > 0 && (
-          <span className="text-xs font-bold text-slate-500 dark:text-zinc-400 pl-1 shrink-0">
+          <span className="text-xs font-bold text-muted-foreground pl-1 shrink-0">
             {totalItems} items (${Number(order.total_amount || 0).toFixed(2)})
           </span>
         )}
@@ -310,7 +310,7 @@ function NewDeliveryRequestCard({ order, onAccept, onSelectDetails, isActionLoad
           variant="outline"
           onClick={() => onSelectDetails(order)}
           disabled={isActionLoading}
-          className="flex-1 h-12 rounded-2xl font-black text-xs uppercase tracking-wider border-2 border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300 active:scale-95 transition-all"
+          className="flex-1 h-12 rounded-2xl font-black text-xs uppercase tracking-wider border-2 border-border/60 dark:border-white/10 hover:bg-secondary dark:hover:bg-secondary text-foreground active:scale-95 transition-all"
         >
           Details
         </Button>
@@ -352,13 +352,13 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat
   const isReady = order.status === "READY";
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-[28px] p-5 shadow-sm border-2 border-red-500/30 dark:border-red-500/20 relative overflow-hidden transition-all">
+    <div className="bg-card rounded-[28px] p-5 shadow-sm border-2 border-red-500/30 dark:border-red-500/20 relative overflow-hidden transition-all">
       
       {/* Active Trip Header */}
-      <div className="flex items-center justify-between pb-3 mb-3.5 border-b border-slate-100 dark:border-white/5 gap-2">
+      <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-border/50 dark:border-white/5 gap-2 sm:pb-3 sm:mb-3.5">
         <div className="flex items-center gap-2 min-w-0">
           <span className="size-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-          <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white truncate">
+          <span className="text-xs font-black uppercase tracking-wider text-foreground truncate">
             Active Delivery #{order.order_number || String(order.id).slice(-8)}
           </span>
         </div>
@@ -368,7 +368,7 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat
       </div>
 
       {/* Customer Card with Call & Message Action */}
-      <div className="bg-slate-50 dark:bg-zinc-950 rounded-2xl p-3.5 mb-4 border border-slate-100 dark:border-white/5 flex items-center justify-between gap-3">
+      <div className="bg-secondary/40 dark:bg-zinc-950 rounded-2xl p-3.5 mb-4 border border-border/50 dark:border-white/5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <img 
             src={customerAvatar} 
@@ -377,12 +377,12 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat
           />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <h4 className="font-black text-sm text-slate-900 dark:text-zinc-100 truncate">
+              <h4 className="font-black text-sm text-foreground dark:text-foreground truncate">
                 {customerName}
               </h4>
               <span className="text-[10px] font-black text-amber-500">★ 4.9</span>
             </div>
-            <p className="text-xs font-semibold text-slate-500 dark:text-zinc-400 truncate">
+            <p className="text-xs font-semibold text-muted-foreground truncate">
               {customerPhone ? customerPhone : "Customer phone on file"}
             </p>
           </div>
@@ -398,7 +398,7 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat
           >
             <MessageSquare className="size-4.5 stroke-[2.5]" />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 size-5 bg-red-500 text-white rounded-full text-[10px] font-black flex items-center justify-center animate-bounce shadow-md ring-2 ring-white dark:ring-zinc-900">
+              <span className="absolute -top-1 -right-1 size-5 bg-red-500 text-white rounded-full text-[10px] font-black flex items-center justify-center animate-bounce shadow-md ring-2 ring-card">
                 {unreadCount}
               </span>
             )}
@@ -415,7 +415,7 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat
           <button
             type="button"
             onClick={() => onSelectDetails(order)}
-            className="size-10 rounded-full bg-slate-200 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 flex items-center justify-center hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-95 transition-transform cursor-pointer"
+            className="size-10 rounded-full bg-secondary text-foreground flex items-center justify-center hover:bg-secondary/70 active:scale-95 transition-transform cursor-pointer"
             title="View Full Details"
           >
             <ChevronRight className="size-5" />
@@ -434,14 +434,14 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat
             <p className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
               Pickup Point
             </p>
-            <p className="text-xs font-bold text-slate-900 dark:text-zinc-100 truncate">
+            <p className="text-xs font-bold text-foreground dark:text-foreground truncate">
               Flame & Crust Store (Main Kitchen)
             </p>
           </div>
         </div>
 
         {/* Route Connecting Line */}
-        <div className="w-0.5 h-4 bg-slate-200 dark:bg-zinc-700 ml-3" />
+        <div className="w-0.5 h-4 bg-secondary ml-3" />
 
         {/* Dropoff Pin */}
         <div className="flex items-start gap-3 relative">
@@ -452,7 +452,7 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat
             <p className="text-[10px] font-black uppercase tracking-wider text-red-500">
               Drop Location
             </p>
-            <p className="text-xs font-bold text-slate-900 dark:text-zinc-100 truncate">
+            <p className="text-xs font-bold text-foreground dark:text-foreground truncate">
               {order.address?.address_line || "Customer Delivery Address"}
             </p>
           </div>
@@ -460,14 +460,14 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat
       </div>
 
       {/* Progress Flow Steps */}
-      <div className="grid grid-cols-3 gap-1.5 mb-4 py-2 border-y border-slate-100 dark:border-white/5 text-center">
-        <div className={cn("py-1 rounded-lg text-[10px] font-black uppercase tracking-wider", order.status === "READY" || isEnRoute ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-slate-100 dark:bg-zinc-800 text-slate-400")}>
+      <div className="grid grid-cols-3 gap-1.5 mb-4 py-2 border-y border-border/50 dark:border-white/5 text-center">
+        <div className={cn("py-1 rounded-lg text-[10px] font-black uppercase tracking-wider", order.status === "READY" || isEnRoute ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-secondary text-muted-foreground/80")}>
           1. Ready
         </div>
-        <div className={cn("py-1 rounded-lg text-[10px] font-black uppercase tracking-wider", isEnRoute ? "bg-red-500/15 text-red-600 dark:text-red-400" : "bg-slate-100 dark:bg-zinc-800 text-slate-400")}>
+        <div className={cn("py-1 rounded-lg text-[10px] font-black uppercase tracking-wider", isEnRoute ? "bg-red-500/15 text-red-600 dark:text-red-400" : "bg-secondary text-muted-foreground/80")}>
           2. En Route
         </div>
-        <div className="py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-zinc-800 text-slate-400">
+        <div className="py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-secondary text-muted-foreground/80">
           3. Delivered
         </div>
       </div>
@@ -480,7 +480,7 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat
               href="https://www.google.com/maps/dir/?api=1&destination=11.5564,104.9282"
               target="_blank"
               rel="noopener noreferrer"
-              className="h-12 w-full rounded-2xl bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-900 dark:text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-colors"
+              className="h-12 w-full rounded-2xl bg-secondary hover:bg-secondary dark:hover:bg-secondary text-foreground font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-colors"
             >
               <Navigation className="size-4" />
               Navigate to Kitchen
@@ -493,7 +493,7 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat
                 "h-13 w-full rounded-2xl font-black text-sm uppercase tracking-wider shadow-lg transition-all border-none flex items-center justify-center gap-2",
                 order.status === "READY" && !isActionLoading
                   ? "bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white shadow-red-600/30 active:scale-98 cursor-pointer"
-                  : "bg-slate-200 dark:bg-zinc-800 text-slate-400 dark:text-zinc-600 cursor-not-allowed opacity-75 pointer-events-none"
+                  : "bg-secondary dark:bg-secondary text-muted-foreground/80 dark:text-muted-foreground cursor-not-allowed opacity-75 pointer-events-none"
               )}
             >
               {isActionLoading ? (
@@ -563,23 +563,23 @@ function OrderDetailsModal({ order, driver, isOpen, onClose, onAccept, onUpdateS
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-zinc-950 w-full sm:max-w-lg rounded-t-[32px] sm:rounded-[32px] max-h-[92vh] flex flex-col overflow-hidden border border-slate-200 dark:border-white/10 shadow-2xl animate-in slide-in-from-bottom duration-300">
+      <div className="bg-card w-full sm:max-w-lg rounded-t-[32px] sm:rounded-[32px] max-h-[92vh] flex flex-col overflow-hidden border border-border/60 dark:border-white/10 shadow-2xl animate-in slide-in-from-bottom duration-300">
         
         {/* Top Header */}
-        <div className="p-5 border-b border-slate-100 dark:border-white/10 flex items-center justify-between shrink-0 bg-slate-50/50 dark:bg-zinc-900/50">
+        <div className="p-4 border-b border-border/50 dark:border-white/10 flex items-center justify-between shrink-0 bg-secondary/40 dark:bg-card/60 sm:p-5">
           <div className="flex items-center gap-3">
             <button 
               onClick={onClose} 
               disabled={isActionLoading}
-              className="size-9 rounded-full bg-slate-200 dark:bg-zinc-800 flex items-center justify-center text-slate-700 dark:text-zinc-300 hover:bg-slate-300 dark:hover:bg-zinc-700 transition-colors"
+              className="size-9 rounded-full bg-secondary flex items-center justify-center text-foreground hover:bg-secondary/70 transition-colors"
             >
               <ArrowLeft className="size-4.5 stroke-[2.5]" />
             </button>
             <div>
-              <h2 className="text-base sm:text-lg font-black text-slate-950 dark:text-white uppercase tracking-tight">
+              <h2 className="text-base sm:text-lg font-black text-foreground uppercase tracking-tight">
                 {isAvailable ? "Accept Request?" : "Passenger & Order Details"}
               </h2>
-              <p className="text-xs text-slate-500 dark:text-zinc-400 font-bold">
+              <p className="text-xs text-muted-foreground font-bold">
                 Order #{order.order_number || order.id}
               </p>
             </div>
@@ -587,17 +587,17 @@ function OrderDetailsModal({ order, driver, isOpen, onClose, onAccept, onUpdateS
           <button 
             onClick={onClose}
             disabled={isActionLoading}
-            className="size-8 rounded-full bg-slate-100 dark:bg-zinc-900 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white"
+            className="size-8 rounded-full bg-secondary dark:bg-card flex items-center justify-center text-muted-foreground hover:text-foreground dark:hover:text-white"
           >
             <X className="size-4" />
           </button>
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar sm:p-5 sm:space-y-5">
           
           {/* Customer Profile Card */}
-          <div className="bg-slate-50 dark:bg-zinc-900 rounded-2xl p-4 border border-slate-200/60 dark:border-white/5 flex items-center justify-between gap-3">
+          <div className="bg-secondary/40 rounded-2xl p-3 border border-border/60 dark:border-white/5 flex items-center justify-between gap-3 sm:p-4">
             <div className="flex items-center gap-3.5 min-w-0">
               <img 
                 src={customerAvatar} 
@@ -606,12 +606,12 @@ function OrderDetailsModal({ order, driver, isOpen, onClose, onAccept, onUpdateS
               />
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <h3 className="font-black text-base text-slate-900 dark:text-zinc-100 truncate">
+                  <h3 className="font-black text-base text-foreground dark:text-foreground truncate">
                     {customerName}
                   </h3>
                   <span className="text-xs font-black text-amber-500">★ 4.9</span>
                 </div>
-                <p className="text-xs text-slate-500 dark:text-zinc-400 font-semibold mt-0.5">
+                <p className="text-xs text-muted-foreground font-semibold mt-0.5">
                   {customerPhone || "Flame & Crust Valued Member"}
                 </p>
               </div>
@@ -639,7 +639,7 @@ function OrderDetailsModal({ order, driver, isOpen, onClose, onAccept, onUpdateS
           </div>
 
           {/* Pickup & Drop Route Information */}
-          <div className="bg-slate-50 dark:bg-zinc-900 rounded-2xl p-4 border border-slate-200/60 dark:border-white/5 space-y-4">
+          <div className="bg-secondary/40 rounded-2xl p-4 border border-border/60 dark:border-white/5 space-y-4">
             
             {/* Pickup */}
             <div className="flex items-start gap-3">
@@ -651,18 +651,18 @@ function OrderDetailsModal({ order, driver, isOpen, onClose, onAccept, onUpdateS
                   <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                     Pickup Location
                   </span>
-                  <span className="text-[10px] font-bold text-slate-400">0.0 km</span>
+                  <span className="text-[10px] font-bold text-muted-foreground/80">0.0 km</span>
                 </div>
-                <p className="text-sm font-bold text-slate-900 dark:text-zinc-100">
+                <p className="text-sm font-bold text-foreground dark:text-foreground">
                   Flame & Crust Restaurant
                 </p>
-                <p className="text-xs text-slate-500 dark:text-zinc-400">
+                <p className="text-xs text-muted-foreground">
                   Street 240, Phnom Penh (Central Kitchen)
                 </p>
               </div>
             </div>
 
-            <div className="w-0.5 h-5 bg-slate-200 dark:bg-zinc-800 ml-3.5" />
+            <div className="w-0.5 h-5 bg-secondary dark:bg-secondary ml-3.5" />
 
             {/* Drop Location */}
             <div className="flex items-start gap-3">
@@ -674,12 +674,12 @@ function OrderDetailsModal({ order, driver, isOpen, onClose, onAccept, onUpdateS
                   <span className="text-[10px] font-black uppercase tracking-wider text-red-500">
                     Drop Location
                   </span>
-                  <span className="text-[10px] font-bold text-slate-400">~2.4 km</span>
+                  <span className="text-[10px] font-bold text-muted-foreground/80">~2.4 km</span>
                 </div>
-                <p className="text-sm font-bold text-slate-900 dark:text-zinc-100">
+                <p className="text-sm font-bold text-foreground dark:text-foreground">
                   {order.address?.label || "Customer Location"}
                 </p>
-                <p className="text-xs text-slate-600 dark:text-zinc-300 mt-0.5">
+                <p className="text-xs text-muted-foreground dark:text-muted-foreground mt-0.5">
                   {order.address?.address_line || "No street address specified"}
                 </p>
               </div>
@@ -689,11 +689,11 @@ function OrderDetailsModal({ order, driver, isOpen, onClose, onAccept, onUpdateS
 
           {/* Pricing & Earnings Summary */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-slate-50 dark:bg-zinc-900 rounded-2xl p-3.5 border border-slate-200/60 dark:border-white/5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+            <div className="bg-secondary/40 rounded-2xl p-3.5 border border-border/60 dark:border-white/5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 block mb-1">
                 Estimated Time
               </span>
-              <p className="text-base font-black text-slate-950 dark:text-white">
+              <p className="text-base font-black text-foreground">
                 15 - 20 Mins
               </p>
             </div>
@@ -710,35 +710,35 @@ function OrderDetailsModal({ order, driver, isOpen, onClose, onAccept, onUpdateS
           {/* Product Items Details List */}
           <div>
             <div className="flex items-center justify-between mb-2.5">
-              <h4 className="font-black text-xs uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+              <h4 className="font-black text-xs uppercase tracking-wider text-muted-foreground/80 dark:text-muted-foreground">
                 Order Items ({totalItems})
               </h4>
-              <span className="text-xs font-black text-slate-900 dark:text-white">
+              <span className="text-xs font-black text-foreground">
                 Total: ${Number(order.total_amount || 0).toFixed(2)}
               </span>
             </div>
 
             <div className="space-y-2">
               {order.items?.map((item, idx) => (
-                <div key={idx} className="flex items-center gap-3 p-2.5 bg-slate-50 dark:bg-zinc-900/60 rounded-2xl border border-slate-200/40 dark:border-white/5">
-                  <div className="size-12 rounded-xl bg-slate-100 dark:bg-zinc-800 overflow-hidden shrink-0 border border-slate-200/50 dark:border-white/5">
+                <div key={idx} className="flex items-center gap-3 p-2.5 bg-secondary/40/60 rounded-2xl border border-border/50 dark:border-white/5">
+                  <div className="size-12 rounded-xl bg-secondary overflow-hidden shrink-0 border border-border/60 dark:border-white/5">
                     {item.product_image ? (
                       <img src={getImageUrl(item.product_image)} alt={item.product_name} className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-slate-400">
+                      <div className="w-full h-full flex items-center justify-center text-muted-foreground/80">
                         <Package className="size-5" />
                       </div>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h5 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-zinc-100 truncate">
+                    <h5 className="font-bold text-xs sm:text-sm text-foreground dark:text-foreground truncate">
                       {item.product_name || `Item #${item.product_id}`}
                     </h5>
-                    <p className="text-[11px] text-slate-500 dark:text-zinc-400">
-                      Qty: <span className="font-bold text-slate-900 dark:text-zinc-100">{item.quantity}</span> • ${Number(item.price || 0).toFixed(2)}
+                    <p className="text-[11px] text-muted-foreground">
+                      Qty: <span className="font-bold text-foreground dark:text-foreground">{item.quantity}</span> • ${Number(item.price || 0).toFixed(2)}
                     </p>
                   </div>
-                  <span className="font-black text-xs text-slate-900 dark:text-zinc-100 shrink-0">
+                  <span className="font-black text-xs text-foreground dark:text-foreground shrink-0">
                     ${(Number(item.price || 0) * (item.quantity || 1)).toFixed(2)}
                   </span>
                 </div>
@@ -749,7 +749,7 @@ function OrderDetailsModal({ order, driver, isOpen, onClose, onAccept, onUpdateS
         </div>
 
         {/* Bottom CTA */}
-        <div className="p-5 border-t border-slate-100 dark:border-white/10 shrink-0 bg-white dark:bg-zinc-950">
+        <div className="p-5 border-t border-border/50 dark:border-white/10 shrink-0 bg-card">
           {isAvailable ? (
             <Button 
               onClick={async () => {
@@ -778,7 +778,7 @@ function OrderDetailsModal({ order, driver, isOpen, onClose, onAccept, onUpdateS
             <Button 
               onClick={onClose}
               disabled={isActionLoading}
-              className="w-full h-13 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-black font-black text-sm uppercase tracking-wider active:scale-98 transition-all border-none"
+              className="flex-1 h-12 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 text-white font-black text-sm uppercase tracking-wider active:scale-98 transition-all shadow-lg shadow-red-600/25 border-none sm:h-13"
             >
               Close
             </Button>
@@ -816,10 +816,10 @@ function EmptyState({ tab, onRefresh }) {
       <div className="size-20 bg-red-500/15 rounded-full flex items-center justify-center mb-5 border border-red-500/30 text-red-600 dark:text-red-400 shadow-inner">
         {tab === "available" ? <Package className="size-9 stroke-[2.5]" /> : <Bike className="size-9 stroke-[2.5]" />}
       </div>
-      <h3 className="text-xl font-black text-slate-950 dark:text-white mb-1.5 tracking-tight">
+      <h3 className="text-xl font-black text-foreground mb-1.5 tracking-tight">
         {tab === "available" ? "No new requests right now" : "No active deliveries"}
       </h3>
-      <p className="text-slate-500 dark:text-zinc-400 text-xs sm:text-sm max-w-[280px] leading-relaxed mb-6 font-semibold">
+      <p className="text-muted-foreground text-xs sm:text-sm max-w-[280px] leading-relaxed mb-6 font-semibold">
         {tab === "available" 
           ? "Stay online! New orders from Flame & Crust kitchen will pop up here instantly." 
           : "Pick an available delivery from the New Requests tab to get started."}
@@ -1195,7 +1195,7 @@ export default function DriverDashboardPage() {
   const currentDisplayOrders = activeTab === "available" ? availableOrders : myOrders;
 
   return (
-    <div className="w-full h-[100dvh] flex flex-col font-sans transition-colors selection:bg-amber-200 dark:selection:bg-amber-900/50 bg-slate-50 dark:bg-zinc-950 overflow-hidden">
+    <div className="w-full h-[100dvh] flex flex-col font-sans transition-colors selection:bg-amber-200 dark:selection:bg-amber-900/50 bg-secondary/40 dark:bg-zinc-950 overflow-hidden">
       
       {/* Header */}
       <DriverHeader 
@@ -1212,7 +1212,7 @@ export default function DriverDashboardPage() {
         
         {/* Left Column (Orders List) - 38% on Desktop */}
         <div className={cn(
-          "w-full lg:w-[420px] xl:w-[460px] h-full flex flex-col bg-slate-50/70 dark:bg-zinc-950 border-r border-slate-200/80 dark:border-white/10 transition-colors z-20 shadow-lg",
+          "w-full lg:w-[420px] xl:w-[460px] h-full flex flex-col bg-secondary/50 dark:bg-zinc-950 border-r border-border/70 transition-colors z-20 shadow-lg",
           mobileView === "map" && "hidden lg:flex"
         )}>
           
@@ -1227,7 +1227,7 @@ export default function DriverDashboardPage() {
             {loading ? (
               <div className="space-y-4">
                 {[0, 1].map(i => (
-                  <div key={i} className="h-64 rounded-[28px] border border-slate-200/50 dark:border-white/5 bg-gradient-to-r from-slate-100 via-slate-200/70 to-slate-100 dark:from-zinc-900 dark:via-zinc-800/60 dark:to-zinc-900 bg-[length:200%_100%] animate-[shimmer_1.6s_ease-in-out_infinite]" />
+                  <div key={i} className="h-64 rounded-[28px] border border-border/60 bg-gradient-to-r from-secondary via-secondary/70 to-secondary dark:from-zinc-900 dark:via-zinc-800/60 dark:to-zinc-900 bg-[length:200%_100%] animate-[shimmer_1.6s_ease-in-out_infinite]" />
                 ))}
               </div>
             ) : currentDisplayOrders.length === 0 ? (
@@ -1271,7 +1271,7 @@ export default function DriverDashboardPage() {
 
         {/* Right Column (Live Route Map) - 62% on Desktop */}
         <div className={cn(
-          "flex-1 h-full w-full relative bg-slate-200 dark:bg-zinc-900",
+          "flex-1 h-full w-full relative bg-secondary dark:bg-card",
           mobileView === "list" && "hidden lg:block"
         )}>
           {/* Refresh Action Overlay */}
@@ -1280,7 +1280,7 @@ export default function DriverDashboardPage() {
               variant="outline"
               onClick={handleRefresh}
               disabled={refreshing}
-              className="rounded-2xl h-11 px-4 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-slate-200/80 dark:border-white/10 text-slate-800 dark:text-zinc-200 font-black text-xs uppercase tracking-wider shadow-lg hover:bg-white dark:hover:bg-zinc-900 active:scale-95 transition-all"
+              className="rounded-2xl h-11 px-4 bg-white/95 dark:bg-card/95 backdrop-blur-md border-border/70 text-foreground dark:text-foreground font-black text-xs uppercase tracking-wider shadow-lg hover:bg-white dark:hover:bg-card active:scale-95 transition-all"
             >
               <RefreshCw className={cn("size-3.5 mr-2 stroke-[2.5]", refreshing && "animate-spin text-amber-500")} />
               Refresh Map
@@ -1289,9 +1289,9 @@ export default function DriverDashboardPage() {
 
           {/* Active Orders Count Badge on Map */}
           <div className="absolute top-5 left-5 z-[400] pointer-events-none">
-            <div className="px-4 py-2 rounded-2xl bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border border-slate-200/80 dark:border-white/10 shadow-lg flex items-center gap-2">
+            <div className="px-4 py-2 rounded-2xl bg-white/95 dark:bg-card/95 backdrop-blur-md border border-border/70 shadow-lg flex items-center gap-2">
               <span className="size-2.5 rounded-full bg-amber-400 animate-pulse" />
-              <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+              <span className="text-xs font-black text-foreground uppercase tracking-wider">
                 {myOrders.length} Active • {availableOrders.length} Available
               </span>
             </div>
@@ -1335,7 +1335,7 @@ export default function DriverDashboardPage() {
                     <Popup className="font-sans">
                       <div className="p-1">
                         <p className="font-black text-xs">#{order.order_number || order.id} • {order.customer?.name || "Customer"}</p>
-                        <p className="text-[11px] text-slate-500">{order.address?.address_line}</p>
+                        <p className="text-[11px] text-muted-foreground">{order.address?.address_line}</p>
                       </div>
                     </Popup>
                   </Marker>
@@ -1357,7 +1357,7 @@ export default function DriverDashboardPage() {
           background: "linear-gradient(to top, rgba(2,6,23,0.22) 0%, rgba(2,6,23,0.08) 55%, transparent 100%)",
         }}
       >
-        <nav className="pointer-events-auto mx-auto flex w-full max-w-md items-stretch gap-1 rounded-[26px] border border-slate-200/80 dark:border-white/10 bg-white/92 dark:bg-zinc-900/92 p-1.5 shadow-[0_16px_44px_-14px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+        <nav className="pointer-events-auto mx-auto flex w-full max-w-md items-stretch gap-1 rounded-[26px] border border-border/70 bg-white/92 dark:bg-card/92 p-1.5 shadow-[0_16px_44px_-14px_rgba(0,0,0,0.5)] backdrop-blur-xl">
           {/* Orders */}
           <button
             onClick={() => setMobileView("list")}
@@ -1366,7 +1366,7 @@ export default function DriverDashboardPage() {
               "relative flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-2 transition-colors duration-200 active:scale-[0.97]",
               mobileView === "list"
                 ? "text-white"
-                : "text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-100"
+                : "text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground"
             )}
           >
             {mobileView === "list" && (
@@ -1398,7 +1398,7 @@ export default function DriverDashboardPage() {
               "relative flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-2 transition-colors duration-200 active:scale-[0.97]",
               mobileView === "map"
                 ? "text-white"
-                : "text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-100"
+                : "text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground"
             )}
           >
             {mobileView === "map" && (
@@ -1420,7 +1420,7 @@ export default function DriverDashboardPage() {
           {/* Profile */}
           <Link
             to="/driver/profile"
-            className="relative flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-2 text-slate-500 transition-colors duration-200 hover:text-slate-800 active:scale-[0.97] dark:text-zinc-400 dark:hover:text-zinc-100"
+            className="relative flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-2 text-muted-foreground transition-colors duration-200 hover:text-foreground active:scale-[0.97] dark:text-muted-foreground dark:hover:text-foreground"
           >
             <span className="relative">
               {driver?.profile_photo ? (
