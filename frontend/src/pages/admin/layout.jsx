@@ -126,29 +126,20 @@ function AdminLayout() {
 
           {/* Right Header Actions */}
           <div className="flex items-center gap-2.5">
-            {/* Theme Toggle with Spring Morph Animation */}
+            {/* Theme Toggle */}
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
-              className="size-9 rounded-xl border-border/70 text-muted-foreground hover:text-foreground hover:bg-secondary/70 transition-all cursor-pointer relative overflow-hidden group shadow-2xs hover:shadow-warm active:scale-95"
-              onClick={(e) => setTheme(theme === "dark" ? "light" : "dark", e)}
+              className="size-9 rounded-full text-foreground/70 hover:text-primary hover:bg-secondary/60 transition-colors cursor-pointer"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-              title={theme === "dark" ? "Light Mode" : "Dark Mode"}
+              title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
-              <div className="relative size-4 flex items-center justify-center">
-                <Sun className={cn(
-                  "size-4 text-amber-500 transition-all duration-500 absolute",
-                  theme === "dark" 
-                    ? "-rotate-90 scale-0 opacity-0" 
-                    : "rotate-0 scale-100 opacity-100 animate-theme-spin drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]"
-                )} />
-                <Moon className={cn(
-                  "size-4 text-indigo-400 transition-all duration-500 absolute",
-                  theme === "dark" 
-                    ? "rotate-0 scale-100 opacity-100 animate-theme-spin drop-shadow-[0_0_8px_rgba(129,140,248,0.5)]" 
-                    : "rotate-90 scale-0 opacity-0"
-                )} />
-              </div>
+              {theme === "dark" ? (
+                <Sun className="size-4.5 text-amber-500" />
+              ) : (
+                <Moon className="size-4.5 text-indigo-400" />
+              )}
             </Button>
 
             {/* Sign Out Button */}

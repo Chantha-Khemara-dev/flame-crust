@@ -30,10 +30,9 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
   const setTheme = (newTheme, event) => {
     if (newTheme === theme) return;
 
-    // Determine the origin point of the ripple (from event target center, or click coordinates)
-    const rect = event?.currentTarget?.getBoundingClientRect?.();
-    const x = rect ? rect.left + rect.width / 2 : (event?.clientX ?? lastPointerPos.x);
-    const y = rect ? rect.top + rect.height / 2 : (event?.clientY ?? lastPointerPos.y);
+    // Determine the origin point of the ripple (from event or last known click coordinate)
+    const x = event?.clientX ?? lastPointerPos.x;
+    const y = event?.clientY ?? lastPointerPos.y;
 
     const isReducedMotion =
       typeof window !== "undefined" &&

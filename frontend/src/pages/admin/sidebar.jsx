@@ -420,14 +420,14 @@ function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-border/50" />
               <DropdownMenuItem 
-                onClick={(e) => setTheme(theme === "dark" ? "light" : "dark", e)} 
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")} 
                 className="rounded-lg cursor-pointer font-bold focus:bg-primary/10 focus:text-primary transition-colors flex items-center justify-between"
               >
                 <span className="flex items-center gap-2">
                   {theme === "dark" ? (
-                    <Sun className="size-4 text-amber-500 animate-theme-spin" />
+                    <Sun className="size-4 text-amber-500" />
                   ) : (
-                    <Moon className="size-4 text-indigo-400 animate-theme-spin" />
+                    <Moon className="size-4 text-indigo-400" />
                   )}
                   <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
                 </span>

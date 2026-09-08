@@ -525,24 +525,15 @@ export default function KitchenDashboard() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={(e) => toggleTheme(e)}
-              className="size-9 rounded-full border border-border/70 bg-card text-foreground shadow-xs transition-all hover:border-primary/40 hover:bg-secondary active:scale-95 sm:size-10 relative overflow-hidden group"
+              onClick={() => toggleTheme()}
+              className="size-9 rounded-full text-foreground/80 hover:text-foreground hover:bg-secondary transition-colors cursor-pointer sm:size-10"
               title="Toggle theme (T)"
             >
-              <div className="relative size-4 flex items-center justify-center">
-                <Sun className={cn(
-                  "size-4 text-amber-500 transition-all duration-500 absolute",
-                  theme === "dark" 
-                    ? "-rotate-90 scale-0 opacity-0" 
-                    : "rotate-0 scale-100 opacity-100 animate-theme-spin drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]"
-                )} />
-                <Moon className={cn(
-                  "size-4 text-indigo-400 transition-all duration-500 absolute",
-                  theme === "dark" 
-                    ? "rotate-0 scale-100 opacity-100 animate-theme-spin drop-shadow-[0_0_8px_rgba(129,140,248,0.5)]" 
-                    : "rotate-90 scale-0 opacity-0"
-                )} />
-              </div>
+              {theme === "dark" ? (
+                <Sun className="size-4 sm:size-5 text-amber-500" />
+              ) : (
+                <Moon className="size-4 sm:size-5 text-indigo-400" />
+              )}
             </Button>
 
             <Button
