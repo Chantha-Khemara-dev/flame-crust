@@ -68,35 +68,67 @@ export function DashboardView({
     }
   });
   const avgPrepText = prepCount > 0 ? `${Math.round(totalPrepSecs / prepCount / 60)} min` : "12 min";
-  const totalActive = pendingOrders.length + preparingOrders.length + readyOrders.length;
+  const totalActive = safePending.length + safePreparing.length + safeReady.length;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Top Statistics Cards - Horizontal scroll on mobile, grid on sm+ */}
-      <div className="flex sm:grid overflow-x-auto sm:overflow-visible no-scrollbar grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3.5 mb-3 sm:mb-4 shrink-0 pb-0.5 sm:pb-0">
-        <StatCard title="Today's Orders" value={totalOrdersToday} icon={ShoppingBag} />
-        <StatCard title="Preparing" value={preparingOrders.length} icon={Flame} highlight={preparingOrders.length > 0} />
-        <StatCard title="Ready" value={readyOrders.length} icon={CheckCircle2} />
-        <StatCard title="Delayed (>15m)" value={delayedOrdersCount} icon={Clock} isAlert={delayedOrdersCount > 0} />
-        <StatCard title="Avg Prep" value={avgPrepText} icon={Utensils} />
-        <StatCard title="Revenue" value={`$${Number(todayRevenue || 0).toFixed(2)}`} icon={DollarSign} />
+      {/* Top Statistics Cards - Hero Theme Aesthetic */}
+      <div className="flex sm:grid overflow-x-auto sm:overflow-visible no-scrollbar grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3.5 mb-3.5 sm:mb-4 shrink-0 pb-1 sm:pb-0">
+        <StatCard 
+          title="Today's Orders" 
+          value={totalOrdersToday} 
+          icon={ShoppingBag} 
+          theme="amber"
+        />
+        <StatCard 
+          title="In Oven" 
+          value={safePreparing.length} 
+          icon={Flame} 
+          theme="flame"
+          highlight={safePreparing.length > 0} 
+        />
+        <StatCard 
+          title="Ready for Pickup" 
+          value={safeReady.length} 
+          icon={CheckCircle2} 
+          theme="emerald"
+        />
+        <StatCard 
+          title="Delayed (>15m)" 
+          value={delayedOrdersCount} 
+          icon={Clock} 
+          theme="alert"
+          isAlert={delayedOrdersCount > 0} 
+        />
+        <StatCard 
+          title="Avg Prep Time" 
+          value={avgPrepText} 
+          icon={Utensils} 
+          theme="orange"
+        />
+        <StatCard 
+          title="Today's Revenue" 
+          value={`$${Number(todayRevenue || 0).toFixed(2)}`} 
+          icon={DollarSign} 
+          theme="gold"
+        />
       </div>
 
-      {/* Station / Column Segment Bar - 4-part segmented control matching project style */}
-      <div className="grid grid-cols-4 p-1.5 bg-secondary/60 dark:bg-zinc-900/60 backdrop-blur-md rounded-2xl sm:rounded-full mb-3.5 shrink-0 gap-1 border border-border/60 shadow-xs">
+      {/* Station / Column Segment Bar - Sleek Frosted Floating Capsule */}
+      <div className="grid grid-cols-4 p-1.5 bg-card/85 dark:bg-zinc-900/85 backdrop-blur-xl rounded-full mb-3.5 sm:mb-4 shrink-0 gap-1 border border-border/80 shadow-warm ring-1 ring-black/[0.03] dark:ring-white/[0.05]">
         <button
           onClick={() => setSelectedColumn('all')}
           className={cn(
-            "py-2 px-1 rounded-xl sm:rounded-full text-xs transition-all text-center flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2",
+            "py-2 sm:py-2.5 px-1 sm:px-3 rounded-full text-xs transition-all text-center flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 active:scale-95",
             selectedColumn === 'all'
-              ? "bg-primary text-primary-foreground shadow-warm font-serif font-bold"
-              : "text-muted-foreground hover:text-foreground hover:bg-secondary/80 font-medium"
+              ? "bg-gradient-to-r from-primary via-orange-600 to-amber-600 text-white shadow-warm font-serif font-bold"
+              : "text-muted-foreground hover:text-foreground hover:bg-secondary/70 font-semibold"
           )}
         >
           <span>All Stages</span>
           <span className={cn(
-            "text-[10px] px-2 py-0.2 rounded-full font-bold font-sans",
-            selectedColumn === 'all' ? "bg-white/25 text-white" : "bg-card border border-border/70 text-muted-foreground"
+            "text-[10px] px-2 py-0.5 rounded-full font-bold font-sans",
+            selectedColumn === 'all' ? "bg-white/25 text-white backdrop-blur-sm" : "bg-secondary text-muted-foreground border border-border/60"
           )}>
             {totalActive}
           </span>
@@ -105,82 +137,85 @@ export function DashboardView({
         <button
           onClick={() => setSelectedColumn('pending')}
           className={cn(
-            "py-2 px-1 rounded-xl sm:rounded-full text-xs transition-all text-center flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2",
+            "py-2 sm:py-2.5 px-1 sm:px-3 rounded-full text-xs transition-all text-center flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 active:scale-95",
             selectedColumn === 'pending'
-              ? "bg-primary text-primary-foreground shadow-warm font-serif font-bold"
-              : "text-muted-foreground hover:text-foreground hover:bg-secondary/80 font-medium"
+              ? "bg-gradient-to-r from-primary via-orange-600 to-amber-600 text-white shadow-warm font-serif font-bold"
+              : "text-muted-foreground hover:text-foreground hover:bg-secondary/70 font-semibold"
           )}
         >
           <span className="hidden sm:inline"><Clock className="size-3.5" /></span>
-          <span>Pending</span>
+          <span>To Prepare</span>
           <span className={cn(
-            "text-[10px] px-2 py-0.2 rounded-full font-bold font-sans",
-            selectedColumn === 'pending' ? "bg-white/25 text-white" : "bg-card border border-border/70 text-muted-foreground"
+            "text-[10px] px-2 py-0.5 rounded-full font-bold font-sans",
+            selectedColumn === 'pending' ? "bg-white/25 text-white backdrop-blur-sm" : "bg-secondary text-muted-foreground border border-border/60"
           )}>
-            {pendingOrders.length}
+            {safePending.length}
           </span>
         </button>
 
         <button
           onClick={() => setSelectedColumn('preparing')}
           className={cn(
-            "py-2 px-1 rounded-xl sm:rounded-full text-xs transition-all text-center flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2",
+            "py-2 sm:py-2.5 px-1 sm:px-3 rounded-full text-xs transition-all text-center flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 active:scale-95",
             selectedColumn === 'preparing'
-              ? "bg-primary text-primary-foreground shadow-warm font-serif font-bold"
-              : "text-muted-foreground hover:text-foreground hover:bg-secondary/80 font-medium"
+              ? "bg-gradient-to-r from-primary via-orange-600 to-amber-600 text-white shadow-warm font-serif font-bold"
+              : "text-muted-foreground hover:text-foreground hover:bg-secondary/70 font-semibold"
           )}
         >
-          <span className="hidden sm:inline"><Flame className="size-3.5" /></span>
+          <span className="hidden sm:inline"><Flame className="size-3.5 animate-pulse" /></span>
           <span>Cooking</span>
           <span className={cn(
-            "text-[10px] px-2 py-0.2 rounded-full font-bold font-sans",
-            selectedColumn === 'preparing' ? "bg-white/25 text-white" : "bg-card border border-border/70 text-muted-foreground"
+            "text-[10px] px-2 py-0.5 rounded-full font-bold font-sans",
+            selectedColumn === 'preparing' ? "bg-white/25 text-white backdrop-blur-sm" : "bg-secondary text-muted-foreground border border-border/60"
           )}>
-            {preparingOrders.length}
+            {safePreparing.length}
           </span>
         </button>
 
         <button
           onClick={() => setSelectedColumn('ready')}
           className={cn(
-            "py-2 px-1 rounded-xl sm:rounded-full text-xs transition-all text-center flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2",
+            "py-2 sm:py-2.5 px-1 sm:px-3 rounded-full text-xs transition-all text-center flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 active:scale-95",
             selectedColumn === 'ready'
-              ? "bg-primary text-primary-foreground shadow-warm font-serif font-bold"
-              : "text-muted-foreground hover:text-foreground hover:bg-secondary/80 font-medium"
+              ? "bg-gradient-to-r from-primary via-orange-600 to-amber-600 text-white shadow-warm font-serif font-bold"
+              : "text-muted-foreground hover:text-foreground hover:bg-secondary/70 font-semibold"
           )}
         >
           <span className="hidden sm:inline"><CheckCircle2 className="size-3.5" /></span>
           <span>Ready</span>
           <span className={cn(
-            "text-[10px] px-2 py-0.2 rounded-full font-bold font-sans",
-            selectedColumn === 'ready' ? "bg-white/25 text-white" : "bg-card border border-border/70 text-muted-foreground"
+            "text-[10px] px-2 py-0.5 rounded-full font-bold font-sans",
+            selectedColumn === 'ready' ? "bg-white/25 text-white backdrop-blur-sm" : "bg-secondary text-muted-foreground border border-border/60"
           )}>
-            {readyOrders.length}
+            {safeReady.length}
           </span>
         </button>
       </div>
 
-      {/* Kanban Board Columns - Responsive Layout */}
+      {/* Kanban Board Columns - Responsive Artisanal Layout */}
       <div className={cn(
         "flex-1 overflow-hidden",
         selectedColumn === 'all' 
-          ? "flex flex-col md:grid md:grid-cols-3 md:gap-5 gap-3.5 overflow-y-auto pb-4 md:pb-0" 
+          ? "flex flex-col md:grid md:grid-cols-3 md:gap-5 gap-3.5 overflow-y-auto pb-4 md:pb-0 custom-scrollbar" 
           : "flex flex-col"
       )}>
         
-        {/* NEW / TO PREPARE */}
+        {/* STATION 1: TO PREPARE */}
         <div className={cn(
           "h-full",
           selectedColumn !== 'all' && selectedColumn !== 'pending' && "hidden"
         )}>
           <Column 
             title="To Prepare" 
-            count={pendingOrders.length} 
-            icon={Clock} 
-            emptyText="No pending tickets in queue"
+            subtitle="Station 1 • Prep & Dough"
+            count={safePending.length} 
+            icon={Clock}
+            iconBg="bg-amber-500/15 text-amber-600 border-amber-500/25"
+            emptyTitle="All Tickets Prepared"
+            emptyText="No incoming tickets waiting in queue. Expediter is clear."
             isAllViewOnMobile={selectedColumn === 'all'}
           >
-            {pendingOrders.map(order => (
+            {safePending.map(order => (
               <OrderCard 
                 key={order.id} 
                 order={order} 
@@ -189,9 +224,9 @@ export function DashboardView({
                 action={
                   <Button 
                     onClick={(e) => { e.stopPropagation(); updateOrderStatus(order.id, "PREPARING"); }}
-                    className="w-full h-11 rounded-full bg-gradient-to-r from-primary via-orange-500 to-amber-500 hover:opacity-95 text-primary-foreground font-serif font-bold shadow-warm transition-transform active:scale-[0.98] text-xs sm:text-sm"
+                    className="w-full h-11 sm:h-12 rounded-full bg-gradient-to-r from-primary via-orange-500 to-amber-500 hover:brightness-105 text-white font-serif font-bold shadow-warm transition-all active:scale-[0.98] text-xs sm:text-sm group"
                   >
-                    <Flame className="size-4 mr-2" /> Start Cooking
+                    <Flame className="size-4 mr-2 group-hover:scale-125 transition-transform" /> Start Cooking in Oven
                   </Button>
                 }
               />
@@ -199,19 +234,22 @@ export function DashboardView({
           </Column>
         </div>
 
-        {/* PREPARING */}
+        {/* STATION 2: COOKING IN OVEN */}
         <div className={cn(
           "h-full",
           selectedColumn !== 'all' && selectedColumn !== 'preparing' && "hidden"
         )}>
           <Column 
             title="Cooking in Oven" 
-            count={preparingOrders.length} 
+            subtitle="Station 2 • Wood-Fired Stone Oven (800°F)"
+            count={safePreparing.length} 
             icon={Flame} 
-            emptyText="No active cooking tickets"
+            iconBg="bg-gradient-to-br from-primary via-orange-500 to-amber-500 text-white shadow-warm ring-2 ring-primary/20"
+            emptyTitle="Oven is Clear & Hot"
+            emptyText="Stone oven is preheated at 800°F, ready for incoming artisan pizzas."
             isAllViewOnMobile={selectedColumn === 'all'}
           >
-            {preparingOrders.map(order => (
+            {safePreparing.map(order => (
               <OrderCard 
                 key={order.id} 
                 order={order} 
@@ -221,9 +259,9 @@ export function DashboardView({
                 action={
                   <Button 
                     onClick={(e) => { e.stopPropagation(); updateOrderStatus(order.id, "READY"); }}
-                    className="w-full h-11 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-serif font-bold shadow-warm transition-transform active:scale-[0.98] text-xs sm:text-sm"
+                    className="w-full h-11 sm:h-12 rounded-full bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:brightness-105 text-white font-serif font-bold shadow-warm transition-all active:scale-[0.98] text-xs sm:text-sm group"
                   >
-                    <CheckCircle2 className="size-4 mr-2" /> Mark as Ready
+                    <CheckCircle2 className="size-4 mr-2 group-hover:scale-125 transition-transform" /> Mark as Baked & Ready
                   </Button>
                 }
               />
@@ -231,27 +269,30 @@ export function DashboardView({
           </Column>
         </div>
 
-        {/* READY */}
+        {/* STATION 3: READY FOR PICKUP */}
         <div className={cn(
           "h-full",
           selectedColumn !== 'all' && selectedColumn !== 'ready' && "hidden"
         )}>
           <Column 
             title="Ready for Pickup" 
-            count={readyOrders.length} 
+            subtitle="Station 3 • Expediter & Dispatch"
+            count={safeReady.length} 
             icon={CheckCircle2} 
-            emptyText="No orders waiting for pickup"
+            iconBg="bg-emerald-500/15 text-emerald-600 border-emerald-500/25"
+            emptyTitle="Pickup Station Clear"
+            emptyText="All finished orders have been handed over to drivers or customers."
             isAllViewOnMobile={selectedColumn === 'all'}
           >
-            {readyOrders.map(order => (
+            {safeReady.map(order => (
               <OrderCard 
                 key={order.id} 
                 order={order} 
                 stage="ready"
                 onClick={() => onOrderClick(order)}
                 action={
-                  <div className="w-full h-11 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-serif font-bold text-xs sm:text-sm border border-emerald-500/30">
-                    <ShoppingBag className="size-4 mr-2 text-emerald-600 dark:text-emerald-400" /> Ready for Driver
+                  <div className="w-full h-11 sm:h-12 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-serif font-bold text-xs sm:text-sm border border-emerald-500/30 shadow-2xs">
+                    <ShoppingBag className="size-4 mr-2 text-emerald-600 dark:text-emerald-400" /> Awaiting Driver Pickup
                   </div>
                 }
               />
@@ -264,58 +305,104 @@ export function DashboardView({
   );
 }
 
-function StatCard({ title, value, icon: Icon, highlight = false, isAlert = false }) {
+function StatCard({ title, value, icon: Icon, theme = "amber", highlight = false, isAlert = false }) {
+  const themeStyles = {
+    amber: {
+      card: "border-border/80 hover:border-amber-500/40 bg-gradient-to-br from-card via-card to-amber-500/[0.03]",
+      icon: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+    },
+    flame: {
+      card: "border-primary/40 bg-gradient-to-br from-card via-card to-primary/[0.07] ring-1 ring-primary/15 hover:border-primary/70",
+      icon: "bg-gradient-to-br from-primary via-orange-500 to-amber-500 text-white shadow-warm ring-2 ring-primary/20"
+    },
+    emerald: {
+      card: "border-border/80 hover:border-emerald-500/40 bg-gradient-to-br from-card via-card to-emerald-500/[0.03]",
+      icon: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+    },
+    alert: {
+      card: isAlert 
+        ? "border-destructive/50 bg-destructive/5 ring-1 ring-destructive/20 animate-pulse" 
+        : "border-border/80 hover:border-destructive/40 bg-gradient-to-br from-card via-card to-destructive/[0.02]",
+      icon: isAlert 
+        ? "bg-destructive/15 text-destructive border-destructive/30" 
+        : "bg-secondary text-muted-foreground border-border/70"
+    },
+    orange: {
+      card: "border-border/80 hover:border-orange-500/40 bg-gradient-to-br from-card via-card to-orange-500/[0.03]",
+      icon: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20"
+    },
+    gold: {
+      card: "border-border/80 hover:border-amber-500/40 bg-gradient-to-br from-card via-card to-amber-500/[0.04]",
+      icon: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+    }
+  };
+
+  const currentTheme = themeStyles[theme] || themeStyles.amber;
+
   return (
     <div className={cn(
-      "bg-card/90 dark:bg-card/40 backdrop-blur-md p-3 sm:p-4 rounded-2xl sm:rounded-3xl border shadow-warm hover:shadow-warm-lg transition-all flex flex-col justify-between min-w-[120px] sm:min-w-0 shrink-0 sm:shrink",
-      isAlert ? "border-destructive/40 bg-destructive/5" : (highlight ? "border-primary/40 bg-primary/5" : "border-border/70")
+      "p-3.5 sm:p-4.5 rounded-3xl border shadow-warm hover:shadow-warm-lg hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between min-w-[130px] sm:min-w-0 shrink-0 sm:shrink relative overflow-hidden backdrop-blur-xl group",
+      currentTheme.card
     )}>
-      <div className="flex items-center justify-between gap-1.5 mb-1.5">
-        <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider truncate">{title}</span>
+      <div className="flex items-center justify-between gap-1.5 mb-2">
+        <span className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider truncate">{title}</span>
         <div className={cn(
-          "size-7 sm:size-8 rounded-xl flex items-center justify-center shrink-0 border",
-          isAlert 
-            ? "bg-destructive/10 text-destructive border-destructive/20" 
-            : (highlight 
-                ? "bg-primary/10 text-primary border-primary/20" 
-                : "bg-secondary text-muted-foreground border-border/70")
+          "size-7 sm:size-8 rounded-xl flex items-center justify-center shrink-0 border transition-transform duration-200 group-hover:scale-110",
+          currentTheme.icon
         )}>
-          <Icon className="size-3.5 sm:size-4" />
+          <Icon className={cn("size-3.5 sm:size-4", theme === 'flame' && highlight && "animate-flicker")} />
         </div>
       </div>
-      <div className="font-serif text-lg sm:text-2xl font-bold text-foreground tracking-tight truncate">{value}</div>
+      <div className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-foreground tracking-tight truncate">{value}</div>
     </div>
   );
 }
 
-function Column({ title, count, icon: Icon, emptyText, isAllViewOnMobile, children }) {
+function Column({ title, subtitle, count, icon: Icon, iconBg, emptyTitle, emptyText, isAllViewOnMobile, children }) {
   const hasChildren = Array.isArray(children) ? children.length > 0 : Boolean(children);
 
   return (
     <div className={cn(
-      "flex flex-col rounded-3xl border border-border/60 bg-secondary/30 dark:bg-zinc-900/30 backdrop-blur-sm overflow-hidden transition-all",
-      isAllViewOnMobile ? "min-h-[170px] md:h-full" : "h-full min-h-[280px]"
+      "flex flex-col rounded-3xl border border-border/80 bg-card/65 dark:bg-zinc-900/50 backdrop-blur-xl overflow-hidden transition-all shadow-warm ring-1 ring-black/[0.03] dark:ring-white/[0.04]",
+      isAllViewOnMobile ? "min-h-[200px] md:h-full" : "h-full min-h-[300px]"
     )}>
-      <div className="px-4 sm:px-5 py-3 sm:py-3.5 border-b border-border/60 bg-card/75 dark:bg-card/35 backdrop-blur-md flex items-center justify-between shrink-0">
-        <h2 className="font-serif font-bold text-sm sm:text-base text-foreground flex items-center gap-2.5">
-          <Icon className="size-4 sm:size-4.5 text-primary" /> {title}
-        </h2>
-        <span className="bg-primary/10 text-primary border border-primary/20 text-xs sm:text-sm font-serif font-bold px-2.5 py-0.5 rounded-full">
+      {/* Column Header */}
+      <div className="px-4.5 sm:px-5 py-3.5 sm:py-4 border-b border-border/70 bg-card/85 dark:bg-card/45 backdrop-blur-xl flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className={cn("size-8 sm:size-9 rounded-2xl flex items-center justify-center shrink-0 border", iconBg || "bg-primary/10 text-primary border-primary/20")}>
+            <Icon className="size-4 sm:size-4.5" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="font-serif font-bold text-sm sm:text-base text-foreground tracking-tight truncate leading-tight">
+              {title}
+            </h2>
+            {subtitle && (
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider truncate">
+                {subtitle}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <span className="bg-secondary/90 border border-border/80 text-xs sm:text-sm font-serif font-bold px-3 py-0.5 rounded-full text-foreground shadow-2xs shrink-0">
           {count}
         </span>
       </div>
+
+      {/* Column Body */}
       <div className={cn(
         "p-3 sm:p-4 custom-scrollbar flex flex-col gap-3 sm:gap-4",
-        isAllViewOnMobile ? "max-h-[400px] md:max-h-none overflow-y-auto md:flex-1" : "flex-1 overflow-y-auto"
+        isAllViewOnMobile ? "max-h-[440px] md:max-h-none overflow-y-auto md:flex-1" : "flex-1 overflow-y-auto"
       )}>
         {hasChildren ? (
           children
         ) : (
-          <div className="flex-1 min-h-[140px] flex flex-col items-center justify-center text-center p-6 text-muted-foreground/60">
-            <div className="size-12 rounded-2xl bg-secondary/80 border border-border/60 flex items-center justify-center mb-2">
-              <Inbox className="size-6 opacity-50 text-muted-foreground" />
+          <div className="flex-1 min-h-[170px] flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-border/60 rounded-3xl bg-secondary/20 dark:bg-zinc-900/20 my-auto">
+            <div className="size-13 rounded-3xl bg-card border border-border/80 flex items-center justify-center mb-3 shadow-xs text-primary/80">
+              <Icon className="size-6 opacity-75" />
             </div>
-            <p className="font-serif text-xs sm:text-sm font-medium text-muted-foreground">{emptyText || "No orders"}</p>
+            <p className="font-serif text-sm font-bold text-foreground mb-1">{emptyTitle || "Station is Clear"}</p>
+            <p className="text-xs font-medium text-muted-foreground max-w-xs">{emptyText || "No active tickets."}</p>
           </div>
         )}
       </div>
@@ -327,47 +414,57 @@ function OrderCard({ order, onClick, action, showTimer, stage = "pending" }) {
   const isDelayed = stage === "pending" && order.created_at && (Date.now() - new Date(order.created_at).getTime()) > 15 * 60 * 1000;
 
   const stageAccent = {
-    pending: isDelayed ? "border-destructive/60 bg-destructive/5" : "border-border/80 hover:border-primary/40",
-    preparing: "border-primary/50 hover:border-primary",
-    ready: "border-emerald-500/40 hover:border-emerald-500/60"
+    pending: isDelayed ? "border-destructive/60 bg-destructive/5" : "border-border/80 hover:border-amber-500/50",
+    preparing: "border-primary/50 hover:border-primary/80 ring-1 ring-primary/20",
+    ready: "border-emerald-500/40 hover:border-emerald-500/70"
+  };
+
+  const topStripe = {
+    pending: isDelayed ? "bg-destructive" : "bg-gradient-to-r from-amber-500 to-orange-500",
+    preparing: "bg-gradient-to-r from-primary via-orange-500 to-amber-500 animate-pulse",
+    ready: "bg-gradient-to-r from-emerald-500 to-teal-500"
   };
 
   return (
     <div 
       onClick={onClick}
       className={cn(
-        "bg-card rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-warm hover:shadow-warm-lg transition-all duration-200 cursor-pointer flex flex-col group relative border",
+        "bg-card dark:bg-zinc-900/90 rounded-3xl p-4.5 sm:p-5 shadow-warm hover:shadow-warm-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer flex flex-col group relative border overflow-hidden",
         stageAccent[stage]
       )}
     >
-      <div className="flex justify-between items-start mb-3 border-b border-border/50 pb-2.5">
+      {/* Artisanal Top Accent Stripe */}
+      <div className={cn("absolute top-0 inset-x-0 h-1.5", topStripe[stage])} />
+
+      {/* Header */}
+      <div className="flex justify-between items-start mb-3 border-b border-border/60 pb-3 pt-1">
         <div>
-          <div className="flex items-center gap-1.5 mb-1">
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Ticket</span>
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <span className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-widest">Ticket</span>
             {isDelayed && (
-              <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20 animate-pulse">
+              <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-destructive/15 text-destructive border border-destructive/25 animate-pulse">
                 Delayed
               </span>
             )}
             {order.order_type && (
-              <span className="text-[9px] font-medium uppercase px-2 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border/50">
+              <span className="text-[9px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-secondary text-foreground/80 border border-border/70">
                 {order.order_type}
               </span>
             )}
           </div>
-          <h3 className="font-serif text-lg sm:text-xl font-bold text-foreground leading-tight">
+          <h3 className="font-serif text-lg sm:text-xl font-bold text-foreground leading-tight tracking-tight">
             #{order.order_number ? (order.order_number.length > 8 ? order.order_number.slice(-6) : order.order_number) : order.id}
           </h3>
         </div>
 
         <div className="text-right flex flex-col items-end">
           {showTimer ? (
-             <div className="flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-1 rounded-full text-xs font-serif font-bold border border-primary/20">
+             <div className="flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-serif font-bold border border-primary/25 shadow-2xs">
                <Flame className="size-3.5 animate-pulse text-primary fill-primary/20" />
                <ElapsedTimer startTime={order.updated_at || order.created_at} />
              </div>
           ) : (
-            <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground bg-secondary/80 px-2.5 py-1 rounded-full border border-border/50">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground bg-secondary/80 px-2.5 py-1 rounded-full border border-border/60">
               <Clock className="size-3 text-muted-foreground" />
               {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </div>
@@ -378,7 +475,7 @@ function OrderCard({ order, onClick, action, showTimer, stage = "pending" }) {
       {showTimer && (
         <div className="mb-3">
            <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-             <div className="h-full bg-gradient-to-r from-primary via-orange-500 to-amber-500 rounded-full w-[65%] relative overflow-hidden animate-pulse" />
+             <div className="h-full bg-gradient-to-r from-primary via-orange-500 to-amber-500 rounded-full w-[70%] relative overflow-hidden animate-pulse" />
            </div>
         </div>
       )}
@@ -386,16 +483,16 @@ function OrderCard({ order, onClick, action, showTimer, stage = "pending" }) {
       {/* Order items list */}
       <div className="flex-1 space-y-2 mb-3.5">
         {order.notes && (
-          <div className="px-3 py-2 bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/25 rounded-2xl text-xs font-medium text-amber-900 dark:text-amber-200 line-clamp-2">
+          <div className="px-3 py-2 bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 rounded-2xl text-xs font-medium text-amber-900 dark:text-amber-200 line-clamp-2">
             ⚠️ {order.notes}
           </div>
         )}
         {order.items?.map((item, idx) => (
           <div key={idx} className="flex gap-2.5 items-center text-xs">
-            <span className="size-6 rounded-lg bg-primary/10 text-primary font-serif font-bold flex items-center justify-center text-xs shrink-0 border border-primary/20">
+            <span className="size-6 sm:size-6.5 rounded-xl bg-primary/10 text-primary font-serif font-bold flex items-center justify-center text-xs shrink-0 border border-primary/20 shadow-2xs">
               {item.quantity}x
             </span>
-            <span className="font-medium text-foreground truncate flex-1">{item.product_name}</span>
+            <span className="font-semibold text-foreground truncate flex-1">{item.product_name}</span>
           </div>
         ))}
       </div>
