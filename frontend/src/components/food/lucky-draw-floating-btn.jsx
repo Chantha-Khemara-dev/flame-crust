@@ -28,7 +28,7 @@ export function LuckyDrawFloatingButton() {
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 1, type: "spring", damping: 15 }}
-        className="fixed bottom-28 left-4 sm:bottom-6 sm:left-6 z-40 select-none"
+        className="fixed bottom-[165px] left-4 sm:bottom-6 sm:left-6 z-40 select-none"
       >
         <span className="absolute -inset-1 rounded-full bg-gradient-to-r from-orange-500/40 via-amber-400/40 to-red-500/40 blur-md animate-pulse pointer-events-none" />
 
