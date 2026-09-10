@@ -204,18 +204,34 @@ export function getSecondsUntilMidnight() {
   return Math.max(0, Math.ceil((midnight.getTime() - now.getTime()) / 1000));
 }
 
+export function getPrizeIcon(item) {
+  if (!item) return Gift;
+  const match = PRIZES.find((p) => p.id === item.id || p.code === item.code);
+  if (
+    match &&
+    match.icon &&
+    (typeof match.icon === "function" || (typeof match.icon === "object" && match.icon.$$typeof))
+  ) {
+    return match.icon;
+  }
+  if (
+    item.icon &&
+    (typeof item.icon === "function" || (typeof item.icon === "object" && item.icon.$$typeof))
+  ) {
+    return item.icon;
+  }
+  return Gift;
+}
+
 export function getWonCoupons(storageKey) {
   try {
-    const stored = localStorage.getItem(`flame_lucky_draw_vouchers_${storageKey}`);
-    if (stored) return JSON.parse(stored);
-
-    // Fallback/migrate legacy vouchers if present and user has no vouchers yet
-    const legacy = localStorage.getItem("flame_lucky_draw_vouchers");
-    if (legacy) {
-      const parsedLegacy = JSON.parse(legacy);
-      if (Array.isArray(parsedLegacy) && parsedLegacy.length > 0) {
-        localStorage.setItem(`flame_lucky_draw_vouchers_${storageKey}`, legacy);
-        return parsedLegacy;
+    const raw =
+      localStorage.getItem(`flame_lucky_draw_vouchers_${storageKey}`) ||
+      localStorage.getItem("flame_lucky_draw_vouchers");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((v) => v && typeof v === "object" && v.code);
       }
     }
   } catch {}
@@ -558,8 +574,9 @@ export function LuckyDrawModal({ open, onOpenChange }) {
         setCooldownRemaining(getSecondsUntilMidnight());
       }
 
+      const { icon: _omittedIcon, ...safePrize } = targetPrize;
       const newVoucher = {
-        ...targetPrize,
+        ...safePrize,
         account: currentAcc.name,
         wonAt: new Date().toISOString(),
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
@@ -581,11 +598,24 @@ export function LuckyDrawModal({ open, onOpenChange }) {
     }, 4500);
   };
 
-  const handleCopyCode = (code) => {
-    navigator.clipboard.writeText(code);
-    setHasCopied(true);
-    toast.success(`Promo code "${code}" copied to clipboard!`);
-    setTimeout(() => setHasCopied(false), 2000);
+  const handleCopyCode = async (code) => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(code);
+      } else {
+        const el = document.createElement("textarea");
+        el.value = code;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
+      }
+      setHasCopied(true);
+      toast.success(`Promo code "${code}" copied to clipboard!`);
+      setTimeout(() => setHasCopied(false), 2000);
+    } catch {
+      toast.info(`Promo code: ${code}`);
+    }
   };
 
   const handleApplyToCart = (prize) => {
@@ -604,7 +634,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
 
   if (!open) return null;
 
-  const WinIcon = winningPrize?.icon || Gift;
+  const WinIcon = getPrizeIcon(winningPrize);
 
   return (
     <AnimatePresence>
@@ -877,33 +907,42 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                 ) : (
                   <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
                     {wonCoupons.map((voucher, i) => {
-                      const Icon = voucher.icon || Gift;
+                      const Icon = getPrizeIcon(voucher);
+                      const wonDate = voucher?.wonAt ? new Date(voucher.wonAt) : null;
+                      const expDate = voucher?.expiresAt ? new Date(voucher.expiresAt) : null;
+                      const wonStr = wonDate && !isNaN(wonDate.getTime()) ? wonDate.toLocaleDateString() : null;
+                      const expStr = expDate && !isNaN(expDate.getTime()) ? expDate.toLocaleDateString() : "Valid 7 days";
+
                       return (
                         <motion.div
-                          key={i}
+                          key={`${voucher?.code || 'v'}-${voucher?.wonAt || i}-${i}`}
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: Math.min(i * 0.05, 0.3) }}
                           className="relative rounded-2xl border border-border/60 bg-gradient-to-br from-secondary/50 to-secondary/20 hover:border-amber-500/40 hover:shadow-md hover:shadow-orange-500/5 transition-all group overflow-hidden"
                         >
-                          <div className={cn("absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b", voucher.bgGradient)} />
+                          <div className={cn("absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b", voucher?.bgGradient || "from-orange-500 to-amber-500")} />
                           <div className="absolute -left-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-card border border-border/60" />
                           <div className="absolute -right-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-card border border-border/60" />
 
                           <div className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-2.5">
                             <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <div className={cn("size-10 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-sm shrink-0", voucher.bgGradient)}>
+                              <div className={cn("size-10 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-sm shrink-0", voucher?.bgGradient || "from-orange-500 to-amber-500")}>
                                 <Icon className="size-5 text-white" />
                               </div>
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 mb-0.5">
-                                  <span className="font-serif text-sm font-bold text-foreground truncate">{voucher.label}</span>
-                                  <TierBadge tier={voucher.tier} />
+                                  <span className="font-serif text-sm font-bold text-foreground truncate">{voucher?.label || "Prize Voucher"}</span>
+                                  <TierBadge tier={voucher?.tier} />
                                 </div>
                                 <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                                  <span className="font-mono font-bold text-primary">{voucher.code}</span>
-                                  <span>•</span>
-                                  <span>Min. ${voucher.minOrder}</span>
+                                  <span className="font-mono font-bold text-primary">{voucher?.code}</span>
+                                  {voucher?.minOrder && (
+                                    <>
+                                      <span>•</span>
+                                      <span>Min. ${voucher.minOrder}</span>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -912,7 +951,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                onClick={() => handleCopyCode(voucher.code)}
+                                onClick={() => handleCopyCode(voucher?.code)}
                                 className="size-8 rounded-lg hover:bg-secondary"
                                 title="Copy Code"
                               >
@@ -932,9 +971,9 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                           <div className="px-4 py-2 text-[10px] text-muted-foreground flex items-center justify-between">
                             <span className="flex items-center gap-1">
                               <Clock className="size-3" />
-                              Won {new Date(voucher.wonAt).toLocaleDateString()}
+                              {wonStr ? `Won ${wonStr}` : "Won Recently"}
                             </span>
-                            <span className="font-semibold">Expires {new Date(voucher.expiresAt).toLocaleDateString()}</span>
+                            <span className="font-semibold">Expires {expStr}</span>
                           </div>
                         </motion.div>
                       );
