@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import {
@@ -48,14 +49,14 @@ export const PRIZES = [
     subtext: "Free Delivery",
     code: "FREEDELIVERY",
     type: "FREE_DELIVERY",
-    value: 20,
-    minOrder: 20,
+    value: 2,
+    minOrder: 10,
     color: "#DC2626",
     colorLight: "#F87171",
     textColor: "#FFFFFF",
-    bgGradient: "from-red-600 to-rose-600",
+    bgGradient: "from-red-500 to-rose-600",
     icon: Zap,
-    tier: "rare",
+    tier: "common",
   },
   {
     id: "crust3",
@@ -149,6 +150,7 @@ export const PRIZES = [
   },
 ];
 
+export const DAILY_FREE_LIMIT = 1;
 export const DAILY_SPIN_LIMIT = 3;
 const SEGMENT_ANGLE = 360 / PRIZES.length;
 const BULB_COUNT = 16;
@@ -181,20 +183,87 @@ export function getCurrentAccount() {
 
 export function getSpinsData(storageKey) {
   const today = new Date().toISOString().slice(0, 10);
+  let dailyUsed = 0;
+  let lastSpinTime = 0;
+
   try {
     const raw = localStorage.getItem(`flame_lucky_spins_${storageKey}`);
     if (raw) {
       const data = JSON.parse(raw);
       if (data && data.date === today) {
-        return {
-          date: today,
-          used: typeof data.used === "number" ? data.used : 0,
-          lastSpinTime: data.lastSpinTime || 0,
-        };
+        dailyUsed = typeof data.used === "number" ? data.used : 0;
+        lastSpinTime = data.lastSpinTime || 0;
       }
     }
   } catch {}
-  return { date: today, used: 0, lastSpinTime: 0 };
+
+  let bonusEarned = 0;
+  try {
+    const rawBonus = localStorage.getItem(`flame_lucky_bonus_earned_${storageKey}`);
+    if (rawBonus != null) {
+      bonusEarned = parseInt(rawBonus, 10) || 0;
+    }
+  } catch {}
+
+  let bonusUsed = 0;
+  try {
+    const rawBonusUsed = localStorage.getItem(`flame_lucky_bonus_used_${storageKey}`);
+    if (rawBonusUsed != null) {
+      bonusUsed = parseInt(rawBonusUsed, 10) || 0;
+    }
+  } catch {}
+
+  const dailyRemaining = Math.max(0, DAILY_FREE_LIMIT - dailyUsed);
+  const bonusRemaining = Math.max(0, bonusEarned - bonusUsed);
+  const totalRemaining = dailyRemaining + bonusRemaining;
+
+  return {
+    date: today,
+    used: dailyUsed,
+    dailyUsed,
+    dailyRemaining,
+    bonusEarned,
+    bonusUsed,
+    bonusRemaining,
+    totalRemaining,
+    lastSpinTime,
+  };
+}
+
+export function addBonusSpins(storageKey, count = 1) {
+  try {
+    const currentRaw = localStorage.getItem(`flame_lucky_bonus_earned_${storageKey}`);
+    const current = currentRaw ? parseInt(currentRaw, 10) || 0 : 0;
+    const updated = current + count;
+    localStorage.setItem(`flame_lucky_bonus_earned_${storageKey}`, String(updated));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("flame_lucky_spins_updated", { detail: { storageKey, count } }));
+    }
+    return updated;
+  } catch {
+    return 0;
+  }
+}
+
+export function recordSpinUsed(storageKey) {
+  const data = getSpinsData(storageKey);
+  const today = new Date().toISOString().slice(0, 10);
+  const now = Date.now();
+
+  if (data.dailyRemaining > 0) {
+    const newDailyUsed = data.dailyUsed + 1;
+    localStorage.setItem(
+      `flame_lucky_spins_${storageKey}`,
+      JSON.stringify({ date: today, used: newDailyUsed, lastSpinTime: now })
+    );
+  } else if (data.bonusRemaining > 0) {
+    const newBonusUsed = data.bonusUsed + 1;
+    localStorage.setItem(`flame_lucky_bonus_used_${storageKey}`, String(newBonusUsed));
+  }
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("flame_lucky_spins_updated", { detail: { storageKey } }));
+  }
 }
 
 export function getSecondsUntilMidnight() {
@@ -225,17 +294,95 @@ export function getPrizeIcon(item) {
 
 export function getWonCoupons(storageKey) {
   try {
-    const raw =
-      localStorage.getItem(`flame_lucky_draw_vouchers_${storageKey}`) ||
-      localStorage.getItem("flame_lucky_draw_vouchers");
-    if (raw) {
+    const keysToCheck = [
+      storageKey ? `flame_lucky_draw_vouchers_${storageKey}` : null,
+      "flame_lucky_draw_vouchers_guest",
+      "flame_lucky_draw_vouchers",
+    ].filter(Boolean);
+
+    const all = [];
+    const seen = new Set();
+
+    for (const k of keysToCheck) {
+      const raw = localStorage.getItem(k);
+      if (!raw) continue;
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          for (const item of parsed) {
+            if (item && typeof item === "object" && item.code) {
+              const uniqueKey = item.code + (item.wonAt || item.id || "");
+              if (!seen.has(uniqueKey)) {
+                seen.add(uniqueKey);
+                all.push(item);
+              }
+            }
+          }
+        }
+      } catch {}
+    }
+    return all;
+  } catch {
+    return [];
+  }
+}
+
+export function markWonCouponUsed(storageKey, couponCode) {
+  if (!couponCode) return;
+  const targetCode = String(couponCode).toUpperCase().trim();
+  const keysToCheck = [
+    storageKey ? `flame_lucky_draw_vouchers_${storageKey}` : null,
+    "flame_lucky_draw_vouchers_guest",
+    "flame_lucky_draw_vouchers",
+  ].filter(Boolean);
+
+  for (const k of keysToCheck) {
+    const raw = localStorage.getItem(k);
+    if (!raw) continue;
+    try {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        return parsed.filter((v) => v && typeof v === "object" && v.code);
+        let changed = false;
+        const updated = parsed.map((v) => {
+          if (v && v.code && String(v.code).toUpperCase().trim() === targetCode && !v.used) {
+            changed = true;
+            return { ...v, used: true, usedAt: new Date().toISOString() };
+          }
+          return v;
+        });
+        if (changed) {
+          localStorage.setItem(k, JSON.stringify(updated));
+        }
       }
-    }
-  } catch {}
-  return [];
+    } catch {}
+  }
+}
+
+export function formatWonVouchersAsCoupons(wonVouchers) {
+  if (!Array.isArray(wonVouchers)) return [];
+  return wonVouchers
+    .filter((v) => v && v.code)
+    .map((v, idx) => {
+      const isExpired = v.expiresAt && new Date(v.expiresAt) < new Date();
+      const isUsed = Boolean(v.used);
+      return {
+        id: `lucky_${v.code}_${v.wonAt || idx}`,
+        code: String(v.code).toUpperCase(),
+        discount_type: v.type || "FIXED",
+        discount_value: Number(v.value || 0),
+        min_order_amount: Number(v.minOrder || 0),
+        description: `Won from Lucky Draw (${v.label || v.code})`,
+        isLuckyDraw: true,
+        tier: v.tier || "rare",
+        isUsed: isUsed || isExpired,
+        isExpired,
+        active: !isUsed && !isExpired,
+        wonAt: v.wonAt,
+        expiresAt: v.expiresAt,
+        label: v.label,
+        bgGradient: v.bgGradient,
+      };
+    });
 }
 
 function playTickSound(audioCtxRef) {
@@ -448,6 +595,7 @@ function Wheel({ rotation, isSpinning, onSpin, disabled, spinsRemaining = 0 }) {
 }
 
 export function LuckyDrawModal({ open, onOpenChange }) {
+  const navigate = useNavigate();
   const { applyCoupon, openCart } = useCart();
   const [isSpinning, setIsSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
@@ -456,7 +604,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [viewHistory, setViewHistory] = useState(false);
   const [account, setAccount] = useState(getCurrentAccount);
-  const [spinsUsed, setSpinsUsed] = useState(() => getSpinsData(getCurrentAccount().storageKey).used);
+  const [spinsData, setSpinsData] = useState(() => getSpinsData(getCurrentAccount().storageKey));
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
   const [wonCoupons, setWonCoupons] = useState(() => getWonCoupons(getCurrentAccount().storageKey));
 
@@ -469,15 +617,31 @@ export function LuckyDrawModal({ open, onOpenChange }) {
     } catch {}
   }, []);
 
-  const reloadAccountData = useCallback(() => {
+  const reloadAccountData = useCallback(async () => {
     const acc = getCurrentAccount();
     setAccount(acc);
+
+    // Sync bonus spins with customer's total completed orders if logged in
+    if (acc.isLoggedIn && acc.id && acc.id !== "guest") {
+      try {
+        const { list } = await import("@/lib/api");
+        const orders = await list("orders");
+        const myOrders = orders.filter((o) => String(o.customer_id) === String(acc.id));
+        if (myOrders.length > 0) {
+          const storedEarned = localStorage.getItem(`flame_lucky_bonus_earned_${acc.storageKey}`);
+          const currentEarned = storedEarned != null ? parseInt(storedEarned, 10) || 0 : 0;
+          if (myOrders.length > currentEarned) {
+            localStorage.setItem(`flame_lucky_bonus_earned_${acc.storageKey}`, String(myOrders.length));
+          }
+        }
+      } catch {}
+    }
+
     const spins = getSpinsData(acc.storageKey);
-    setSpinsUsed(spins.used);
+    setSpinsData(spins);
     setWonCoupons(getWonCoupons(acc.storageKey));
 
-    const left = Math.max(0, DAILY_SPIN_LIMIT - spins.used);
-    if (left <= 0) {
+    if (spins.totalRemaining <= 0) {
       setCooldownRemaining(getSecondsUntilMidnight());
     } else {
       setCooldownRemaining(0);
@@ -491,8 +655,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
     const interval = setInterval(() => {
       const acc = getCurrentAccount();
       const spins = getSpinsData(acc.storageKey);
-      const left = Math.max(0, DAILY_SPIN_LIMIT - spins.used);
-      if (left <= 0) {
+      if (spins.totalRemaining <= 0) {
         setCooldownRemaining(getSecondsUntilMidnight());
       } else {
         setCooldownRemaining(0);
@@ -503,15 +666,20 @@ export function LuckyDrawModal({ open, onOpenChange }) {
       reloadAccountData();
       setWinningPrize(null);
     };
+    const handleSpinsUpdated = () => {
+      reloadAccountData();
+    };
     window.addEventListener("authChanged", handleAuth);
+    window.addEventListener("flame_lucky_spins_updated", handleSpinsUpdated);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener("authChanged", handleAuth);
+      window.removeEventListener("flame_lucky_spins_updated", handleSpinsUpdated);
     };
   }, [open, reloadAccountData]);
 
-  const spinsRemaining = Math.max(0, DAILY_SPIN_LIMIT - spinsUsed);
+  const spinsRemaining = spinsData.totalRemaining;
 
   const formatCooldown = (seconds) => {
     const h = Math.floor(seconds / 3600);
@@ -558,19 +726,11 @@ export function LuckyDrawModal({ open, onOpenChange }) {
       setWinningPrize(targetPrize);
 
       const currentAcc = getCurrentAccount();
-      const currentSpins = getSpinsData(currentAcc.storageKey);
-      const newUsed = currentSpins.used + 1;
-      const today = new Date().toISOString().slice(0, 10);
-      const now = Date.now();
+      recordSpinUsed(currentAcc.storageKey);
+      const updatedSpins = getSpinsData(currentAcc.storageKey);
+      setSpinsData(updatedSpins);
 
-      localStorage.setItem(
-        `flame_lucky_spins_${currentAcc.storageKey}`,
-        JSON.stringify({ date: today, used: newUsed, lastSpinTime: now })
-      );
-      setSpinsUsed(newUsed);
-
-      const newRemaining = Math.max(0, DAILY_SPIN_LIMIT - newUsed);
-      if (newRemaining <= 0) {
+      if (updatedSpins.totalRemaining <= 0) {
         setCooldownRemaining(getSecondsUntilMidnight());
       }
 
@@ -620,11 +780,13 @@ export function LuckyDrawModal({ open, onOpenChange }) {
 
   const handleApplyToCart = (prize) => {
     applyCoupon({
-      id: prize.id,
+      id: `lucky_${prize.code}_${prize.wonAt || Date.now()}`,
       code: prize.code,
       discount_type: prize.type,
       discount_value: prize.value,
       min_order_amount: prize.minOrder,
+      description: `Won from Lucky Draw (${prize.label})`,
+      isLuckyDraw: true,
       active: true,
     });
     toast.success(`Voucher "${prize.code}" applied to cart!`);
@@ -638,40 +800,36 @@ export function LuckyDrawModal({ open, onOpenChange }) {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto no-scrollbar">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={() => !isSpinning && onOpenChange(false)}
-          className="fixed inset-0 bg-gradient-to-br from-black/90 via-zinc-950/85 to-black/90 backdrop-blur-xl"
+          className="fixed inset-0 bg-black/75 backdrop-blur-sm touch-none"
         />
 
         <motion.div
-          initial={{ scale: 0.92, opacity: 0, y: 24 }}
+          initial={{ scale: 0.92, opacity: 0, y: 16 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.92, opacity: 0, y: 24 }}
-          transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          className="relative w-full max-w-[480px] rounded-[32px] bg-card border border-amber-500/25 shadow-[0_30px_90px_rgba(0,0,0,0.6),0_0_0_1px_rgba(245,158,11,0.08)] overflow-hidden my-auto z-10 select-none text-foreground"
+          exit={{ scale: 0.94, opacity: 0, y: 12 }}
+          transition={{ type: "spring", damping: 26, stiffness: 320 }}
+          className="relative w-full max-w-[460px] max-h-[92vh] overflow-y-auto custom-scrollbar rounded-3xl bg-card border border-amber-500/30 shadow-[0_20px_60px_rgba(234,88,12,0.22)] p-4 sm:p-5 text-card-foreground z-10"
         >
-          <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-orange-500 via-amber-400 to-red-500" />
-          <div className="absolute -top-28 -right-28 size-72 bg-gradient-to-br from-orange-500/25 to-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-28 -left-28 size-72 bg-gradient-to-br from-primary/20 to-rose-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-0 right-1/4 w-32 h-32 bg-gradient-to-br from-orange-500/15 to-transparent rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute bottom-0 left-1/4 w-32 h-32 bg-gradient-to-tr from-amber-500/15 to-transparent rounded-full blur-2xl pointer-events-none" />
 
-          <div className="relative p-5 sm:p-6">
-            <div className="flex items-center justify-between pb-4 border-b border-border/60">
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <div className="size-11 rounded-2xl bg-gradient-to-br from-orange-500 via-amber-500 to-red-500 flex items-center justify-center shadow-lg shadow-orange-500/35 ring-1 ring-amber-300/40">
-                    <Sparkles className="size-5 text-white" />
-                  </div>
-                  <div className="absolute -top-1 -right-1 size-3 rounded-full bg-emerald-500 border-2 border-card animate-pulse" />
+          <div className="relative">
+            <div className="flex items-center justify-between pb-3 border-b border-border/60">
+              <div className="flex items-center gap-2.5">
+                <div className="size-10 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white shadow-md shadow-orange-500/30">
+                  <Sparkles className="size-5" />
                 </div>
                 <div>
-                  <h3 className="font-serif text-lg font-bold tracking-tight flex items-center gap-2">
-                    Flame Lucky Wheel
+                  <h3 className="font-serif text-lg font-bold text-foreground flex items-center gap-2">
+                    Lucky Wheel
                     <Badge className="border border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10 text-[9px] font-black uppercase px-1.5 py-0 rounded-full">
-                      3 Spins Daily
+                      Earn by Ordering 🍕
                     </Badge>
                   </h3>
                   <div className="flex items-center gap-1.5 mt-0.5 text-xs text-muted-foreground">
@@ -688,7 +846,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                     </span>
                     <span>•</span>
                     <span className="font-bold text-amber-600 dark:text-amber-400 text-[11px]">
-                      {spinsRemaining > 0 ? `${spinsRemaining} left today` : "Reset at 00:00"}
+                      {spinsRemaining > 0 ? `${spinsRemaining} spins left` : "0 spins left"}
                     </span>
                   </div>
                 </div>
@@ -716,7 +874,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
               </div>
             </div>
 
-            <div className="flex items-center justify-center my-4">
+            <div className="flex items-center justify-center my-3">
               <div className="inline-flex items-center gap-1 p-1 rounded-full bg-secondary/70 border border-border/60">
                 <button
                   type="button"
@@ -755,9 +913,29 @@ export function LuckyDrawModal({ open, onOpenChange }) {
               </div>
             </div>
 
+            {/* Earn Spins by Ordering Notice */}
+            {!viewHistory && (
+              <div className="w-full mb-2.5 px-3 py-2 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent border border-amber-500/25 flex items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-base shrink-0">🍕</span>
+                  <span className="text-[11px] font-medium text-amber-900 dark:text-amber-200 truncate">
+                    Order more to earn spins! <strong className="text-amber-600 dark:text-amber-400">+1 Spin per order</strong>
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="text-[10px] bg-secondary px-1.5 py-0.5 rounded-full border border-border/60 text-muted-foreground">
+                    {spinsData.dailyRemaining} Free
+                  </span>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-full border border-amber-500/30 font-bold">
+                    +{spinsData.bonusRemaining} Orders
+                  </span>
+                </div>
+              </div>
+            )}
+
             {!viewHistory ? (
               <>
-                <div className="flex flex-col items-center justify-center py-3">
+                <div className="flex flex-col items-center justify-center py-2">
                   <Wheel rotation={rotation} isSpinning={isSpinning} onSpin={handleSpin} disabled={isSpinning || spinsRemaining <= 0} spinsRemaining={spinsRemaining} />
                 </div>
 
@@ -769,51 +947,34 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                       animate={{ scale: 1, opacity: 1, y: 0 }}
                       exit={{ scale: 0.9, opacity: 0 }}
                       transition={{ type: "spring", damping: 20, stiffness: 280 }}
-                      className="mt-5"
+                      className="mt-4"
                     >
-                      <div className="relative rounded-2xl bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-primary/10 border border-amber-500/35 overflow-hidden">
-                        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-amber-400/70 to-transparent" />
-                        <div className="absolute -top-8 -right-8 size-24 bg-amber-400/20 rounded-full blur-2xl pointer-events-none" />
+                      <div className="relative p-4 rounded-2xl border-2 border-amber-500/40 bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-transparent shadow-lg shadow-orange-500/15 overflow-hidden">
+                        <div className="absolute top-2 right-2 flex items-center gap-1 text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
+                          <Sparkles className="size-3" />
+                          Won Prize
+                        </div>
 
-                        <div className="p-4">
-                          <div className="flex items-center justify-center gap-2 mb-3">
-                            <motion.div
-                              animate={{ rotate: [0, -12, 12, 0], scale: [1, 1.15, 1] }}
-                              transition={{ duration: 0.7, delay: 0.15 }}
-                            >
-                              <Gift className="size-4 text-amber-500" />
-                            </motion.div>
-                            <p className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-[0.2em]">
-                              Prize Unlocked
-                            </p>
+                        <div className="flex flex-col items-center text-center">
+                          <div className={cn("size-14 rounded-2xl bg-gradient-to-br flex items-center justify-center shadow-md mb-2.5", winningPrize.bgGradient)}>
+                            <WinIcon className="size-7 text-white" />
                           </div>
 
-                          <div className="flex items-center justify-center gap-3 mb-1.5">
-                            <div className={cn("size-11 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-lg shrink-0", winningPrize.bgGradient)}>
-                              <WinIcon className="size-5 text-white" />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap justify-center">
-                                <span className="font-serif text-xl font-bold text-foreground leading-none">{winningPrize.label}</span>
-                                <TierBadge tier={winningPrize.tier} />
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleCopyCode(winningPrize.code)}
-                                className="mt-1.5 inline-flex items-center gap-1.5 font-mono text-xs font-bold text-primary hover:text-orange-600 transition-colors cursor-pointer group"
-                                title="Copy code"
-                              >
-                                {winningPrize.code}
-                                {hasCopied ? (
-                                  <Check className="size-3 text-emerald-500" />
-                                ) : (
-                                  <Copy className="size-3 opacity-50 group-hover:opacity-100 transition-opacity" />
-                                )}
-                              </button>
-                            </div>
+                          <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-0.5">
+                            {winningPrize.tier} Prize
+                          </span>
+                          <h4 className="font-serif text-xl font-black text-foreground mb-1">
+                            {winningPrize.label}
+                          </h4>
+
+                          <div className="my-2.5 px-3 py-1.5 rounded-xl bg-background/80 border border-border/60 flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-muted-foreground">Code:</span>
+                            <span className="font-mono font-black text-base text-primary tracking-wider">
+                              {winningPrize.code}
+                            </span>
                           </div>
 
-                          <p className="text-[11px] text-muted-foreground mb-3.5 text-center">
+                          <p className="text-[11px] text-muted-foreground mb-3 text-center">
                             Valid for 7 days on orders over ${winningPrize.minOrder}.
                           </p>
 
@@ -842,7 +1003,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                                 className="rounded-xl border border-amber-500/30 text-xs font-bold gap-1.5 hover:bg-amber-500/15"
                               >
                                 <RotateCw className="size-3.5 text-amber-500" />
-                                Spin Again ({spinsRemaining} left)
+                                Spin Again
                               </Button>
                             )}
                           </div>
@@ -855,21 +1016,37 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
-                      className="mt-5 w-full p-3.5 rounded-2xl bg-secondary/50 border border-border/60 flex flex-col items-center justify-center gap-1.5 text-center"
+                      className="mt-4 w-full p-4 rounded-2xl bg-secondary/60 border border-border/80 flex flex-col items-center justify-center gap-2.5 text-center"
                     >
-                      <div className="flex items-center justify-center gap-2 text-muted-foreground text-xs font-semibold">
-                        <Clock className="size-4 text-amber-500 shrink-0" />
-                        <span>Daily limit ({DAILY_SPIN_LIMIT}/{DAILY_SPIN_LIMIT} used). Reset in:</span>
+                      <div className="size-11 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-2xl">
+                        🍕
+                      </div>
+                      <div>
+                        <h5 className="font-serif font-bold text-sm text-foreground">
+                          Want More Lucky Spins?
+                        </h5>
+                        <p className="text-xs text-muted-foreground mt-0.5 max-w-xs">
+                          Place any order in the app to unlock <span className="font-bold text-amber-600 dark:text-amber-400">+1 Bonus Spin</span> immediately!
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          onOpenChange(false);
+                          navigate("/menu");
+                        }}
+                        className="w-full h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-xs shadow-md shadow-orange-500/25 gap-1.5 cursor-pointer"
+                      >
+                        <ShoppingBag className="size-3.5" /> Order Now to Earn Spins
+                      </Button>
+                      <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground mt-0.5">
+                        <Clock className="size-3.5 text-amber-500 shrink-0" />
+                        <span>Daily free spin resets in:</span>
                         <span className="font-mono font-bold text-foreground tabular-nums">{formatCooldown(cooldownRemaining)}</span>
                       </div>
-                      <p className="text-[11px] text-muted-foreground">
-                        {account.isLoggedIn
-                          ? `Each account gets 3 free spins daily. Switch account or wait for midnight!`
-                          : `Each account gets 3 free spins daily! Log in with an account to get separate daily spins.`}
-                      </p>
                     </motion.div>
                   ) : (
-                    <motion.div key="cta" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-5 w-full">
+                    <motion.div key="cta" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-4 w-full">
                       <Button
                         onClick={handleSpin}
                         disabled={isSpinning}
@@ -877,7 +1054,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                       >
                         <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 pointer-events-none" />
                         <Sparkles className="size-4" />
-                        {`SPIN THE WHEEL (${spinsRemaining}/${DAILY_SPIN_LIMIT} FREE LEFT)`}
+                        {`SPIN THE WHEEL (${spinsRemaining} SPINS AVAILABLE)`}
                       </Button>
                     </motion.div>
                   )}
@@ -959,10 +1136,16 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                               </Button>
                               <Button
                                 size="sm"
+                                disabled={Boolean(voucher?.used)}
                                 onClick={() => handleApplyToCart(voucher)}
-                                className="h-8 px-3 rounded-lg text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600 shadow-sm"
+                                className={cn(
+                                  "h-8 px-3 rounded-lg text-xs font-bold shadow-sm",
+                                  voucher?.used
+                                    ? "bg-muted text-muted-foreground cursor-not-allowed"
+                                    : "bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600"
+                                )}
                               >
-                                Apply
+                                {voucher?.used ? "Used" : "Apply"}
                               </Button>
                             </div>
                           </div>

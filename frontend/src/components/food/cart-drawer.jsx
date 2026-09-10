@@ -189,9 +189,41 @@ export function CartDrawer() {
     setIsApplying(true);
     setCouponError("");
     try {
+      const targetCode = couponCode.trim().toUpperCase();
+
+      // Check won Lucky Draw vouchers first
+      try {
+        const { getCurrentAccount, getWonCoupons, formatWonVouchersAsCoupons } = await import("./lucky-draw-modal.jsx");
+        const acc = getCurrentAccount();
+        const rawWon = getWonCoupons(acc.storageKey);
+        const wonCouponsList = formatWonVouchersAsCoupons(rawWon);
+        const wonMatch = wonCouponsList.find((v) => v.code === targetCode);
+
+        if (wonMatch) {
+          if (wonMatch.isUsed) {
+            setCouponError("You have already used this Lucky Draw voucher.");
+            return;
+          }
+          if (wonMatch.isExpired) {
+            setCouponError("This Lucky Draw voucher has expired.");
+            return;
+          }
+          const minOrder = Number(wonMatch.min_order_amount || 0);
+          if (minOrder > 0 && grossSubtotal < minOrder) {
+            setCouponError(`Minimum order amount is $${minOrder.toFixed(2)}`);
+            return;
+          }
+
+          applyCoupon(wonMatch);
+          setCouponCode("");
+          toast.success(`🎉 Lucky Draw voucher "${wonMatch.code}" applied!`);
+          return;
+        }
+      } catch (e) {}
+
       const { list } = await import("@/lib/api");
       const coupons = await list("coupons");
-      const found = coupons.find(c => c.code.toUpperCase() === couponCode.trim().toUpperCase());
+      const found = coupons.find(c => c.code.toUpperCase() === targetCode);
       if (!found || !found.active) {
         setCouponError("Invalid or inactive promo code.");
       } else if (found.min_order_amount && grossSubtotal < Number(found.min_order_amount)) {

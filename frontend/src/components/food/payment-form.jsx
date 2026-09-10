@@ -34,6 +34,11 @@ import { MapPicker } from "./map-picker";
 import { motion, AnimatePresence } from "framer-motion";
 import { list } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import {
+  getCurrentAccount,
+  getWonCoupons,
+  formatWonVouchersAsCoupons,
+} from "./lucky-draw-modal.jsx";
 
 const PAYMENT_METHODS = [
   { id: "KHQR", label: "KHQR", sublabel: "All Cambodian Banks", badge: "POPULAR", icon: QrCode },
@@ -102,9 +107,27 @@ export function PaymentForm({
   const fetchAvailableCoupons = async () => {
     try {
       setLoadingCoupons(true);
-      const data = await list("coupons");
-      const active = data.filter(c => c.active);
-      setAllCoupons(active);
+      let active = [];
+      try {
+        const data = await list("coupons");
+        active = data.filter(c => c.active);
+      } catch (e) {
+        console.warn("Failed to load db coupons", e);
+      }
+
+      // Load customer's won Lucky Draw vouchers
+      try {
+        const acc = getCurrentAccount();
+        const rawWon = getWonCoupons(acc.storageKey);
+        const luckyCoupons = formatWonVouchersAsCoupons(rawWon);
+
+        const luckyCodes = new Set(luckyCoupons.map((lc) => lc.code.toUpperCase()));
+        const remainingDbCoupons = active.filter((c) => !luckyCodes.has(String(c.code).toUpperCase()));
+
+        setAllCoupons([...luckyCoupons, ...remainingDbCoupons]);
+      } catch (e) {
+        setAllCoupons(active);
+      }
     } catch (e) {
       console.error("Failed to load coupons", e);
     } finally {
@@ -225,8 +248,40 @@ export function PaymentForm({
     setIsApplyingCoupon(true);
     setCouponError("");
     try {
+      const targetCode = couponCodeInput.trim().toUpperCase();
+
+      // 1. Check won Lucky Draw vouchers
+      try {
+        const acc = getCurrentAccount();
+        const rawWon = getWonCoupons(acc.storageKey);
+        const wonCouponsList = formatWonVouchersAsCoupons(rawWon);
+        const wonMatch = wonCouponsList.find((v) => v.code === targetCode);
+
+        if (wonMatch) {
+          if (wonMatch.isUsed) {
+            setCouponError("You have already used this Lucky Draw voucher");
+            return;
+          }
+          if (wonMatch.isExpired) {
+            setCouponError("This Lucky Draw voucher has expired");
+            return;
+          }
+          const minOrder = Number(wonMatch.min_order_amount || 0);
+          if (minOrder > 0 && grossSubtotal < minOrder) {
+            setCouponError(`Minimum order amount is $${minOrder.toFixed(2)}`);
+            return;
+          }
+
+          if (typeof onApplyCoupon === "function") onApplyCoupon(wonMatch);
+          setCouponCodeInput("");
+          toast.success(`🎉 Lucky Draw voucher "${wonMatch.code}" applied!`);
+          return;
+        }
+      } catch (err) {}
+
+      // 2. Check DB coupons
       const coupons = await list("coupons");
-      const found = coupons.find(c => c.code.toUpperCase() === couponCodeInput.trim().toUpperCase());
+      const found = coupons.find(c => c.code.toUpperCase() === targetCode);
       if (!found) {
         setCouponError("Invalid promo code");
       } else if (!found.active) {
@@ -754,13 +809,29 @@ export function PaymentForm({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-bold text-xs text-foreground uppercase">{c.code}</span>
+                        {c.isLuckyDraw && (
+                          <span className="text-[9px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-1.5 py-0.2 rounded-full font-bold uppercase flex items-center gap-1">
+                            <Sparkles className="size-2 text-amber-500" />
+                            Lucky Prize
+                          </span>
+                        )}
                         <span className="text-[9px] bg-primary/15 text-primary px-1.5 py-0.2 rounded-full font-bold">
                           {c.discount_type === "FREE_DELIVERY" ? "Free Delivery" : c.discount_type === "PERCENTAGE" ? `${c.discount_value}% OFF` : `$${c.discount_value} OFF`}
                         </span>
+                        {c.isLuckyDraw && c.tier && (
+                          <span className="text-[8px] uppercase tracking-wider px-1.5 py-0.2 rounded-full border border-border/50 text-muted-foreground font-semibold">
+                            {c.tier}
+                          </span>
+                        )}
                       </div>
                       <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
                         {c.description || (c.discount_type === "FREE_DELIVERY" ? "Free delivery on your order" : "Discount on your order")}
                       </p>
+                      {c.isLuckyDraw && c.expiresAt && !c.isUsed && (
+                        <p className="text-[9px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
+                          Expires: {new Date(c.expiresAt).toLocaleDateString()}
+                        </p>
+                      )}
                       {minOrder > 0 && (
                         <p className={cn("text-[10px] mt-0.5", isMinOrderNotMet ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-muted-foreground")}>
                           Min order: ${minOrder.toFixed(2)} {isMinOrderNotMet && `(Need $${(minOrder - grossSubtotal).toFixed(2)} more)`}

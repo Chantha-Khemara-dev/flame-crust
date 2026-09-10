@@ -48,6 +48,13 @@ import { useCart } from "@/lib/cart-store";
 import { create, list, API_URL } from "@/lib/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  getCurrentAccount,
+  getWonCoupons,
+  markWonCouponUsed,
+  addBonusSpins,
+  formatWonVouchersAsCoupons,
+} from "@/components/food/lucky-draw-modal";
 import { QRCodeCanvas } from "qrcode.react";
 import { BakongKHQR, IndividualInfo } from "bakong-khqr";
 
@@ -161,9 +168,24 @@ function CheckoutPage() {
         console.warn("Failed to check coupon usages", e);
       }
 
-      setAllCoupons(activeCoupons);
+      // Load customer's won Lucky Draw vouchers
+      const acc = getCurrentAccount();
+      const rawWon = getWonCoupons(acc.storageKey);
+      const luckyCoupons = formatWonVouchersAsCoupons(rawWon);
+
+      // Deduplicate: If DB has a coupon with the same code as a won Lucky Draw voucher, prefer the won voucher
+      const luckyCodes = new Set(luckyCoupons.map((lc) => lc.code.toUpperCase()));
+      const remainingDbCoupons = activeCoupons.filter((c) => !luckyCodes.has(String(c.code).toUpperCase()));
+
+      // Put won Lucky Draw vouchers FIRST so customer easily applies them!
+      setAllCoupons([...luckyCoupons, ...remainingDbCoupons]);
     } catch (e) {
       console.error(e);
+      try {
+        const acc = getCurrentAccount();
+        const rawWon = getWonCoupons(acc.storageKey);
+        setAllCoupons(formatWonVouchersAsCoupons(rawWon));
+      } catch {}
     } finally {
       setLoadingCoupons(false);
     }
@@ -487,8 +509,38 @@ function CheckoutPage() {
     setIsApplyingCoupon(true);
     setCouponError("");
     try {
+      const targetCode = couponCode.trim().toUpperCase();
+
+      // 1. Check won Lucky Draw vouchers first!
+      const acc = getCurrentAccount();
+      const rawWon = getWonCoupons(acc.storageKey);
+      const wonCouponsList = formatWonVouchersAsCoupons(rawWon);
+      const wonMatch = wonCouponsList.find((v) => v.code === targetCode);
+
+      if (wonMatch) {
+        if (wonMatch.isUsed) {
+          setCouponError("You have already used this Lucky Draw voucher");
+          return;
+        }
+        if (wonMatch.isExpired) {
+          setCouponError("This Lucky Draw voucher has expired");
+          return;
+        }
+        const minOrder = Number(wonMatch.min_order_amount || 0);
+        if (minOrder > 0 && grossSubtotal < minOrder) {
+          setCouponError(`Minimum order amount is $${minOrder.toFixed(2)}`);
+          return;
+        }
+
+        applyCoupon(wonMatch);
+        setCouponCode("");
+        toast.success(`🎉 Lucky Draw voucher "${wonMatch.code}" applied!`);
+        return;
+      }
+
+      // 2. Check DB coupons
       const coupons = await list("coupons");
-      const found = coupons.find((c) => c.code.toUpperCase() === couponCode.trim().toUpperCase());
+      const found = coupons.find((c) => c.code.toUpperCase() === targetCode);
       if (!found) {
         setCouponError("Invalid promo code");
       } else if (!found.active) {
@@ -692,7 +744,14 @@ function CheckoutPage() {
         status: paymentStatus,
       });
 
-      if (coupon && finalCustomerId) {
+      if (coupon && coupon.isLuckyDraw) {
+        try {
+          const acc = getCurrentAccount();
+          markWonCouponUsed(acc.storageKey, coupon.code);
+        } catch (e) {
+          console.warn("Failed to mark lucky draw coupon as used", e);
+        }
+      } else if (coupon && finalCustomerId) {
         try {
           await create("coupon_usages", {
             coupon_id: coupon.id,
@@ -712,6 +771,13 @@ function CheckoutPage() {
           console.warn("Failed to record coupon usage", e);
         }
       }
+
+      // Award +1 Lucky Spin for ordering pizza!
+      try {
+        const acc = getCurrentAccount();
+        addBonusSpins(acc.storageKey, 1);
+        toast.success("🎉 You earned +1 Lucky Spin with this order!");
+      } catch (e) {}
 
       setIsSuccessRedirecting(true);
       const targetTotal = Number(total.toFixed(2));
@@ -1700,6 +1766,12 @@ function CheckoutPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-sm text-foreground">{c.code}</span>
+                        {c.isLuckyDraw && (
+                          <span className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold uppercase flex items-center gap-1">
+                            <Sparkles className="size-2.5 text-amber-500" />
+                            Lucky Prize
+                          </span>
+                        )}
                         <span className="text-[10px] bg-primary/15 text-primary px-2 py-0.5 rounded-full font-bold uppercase">
                           {c.discount_type === "FREE_DELIVERY"
                             ? "Free Delivery"
@@ -1707,10 +1779,20 @@ function CheckoutPage() {
                               ? `${c.discount_value}% OFF`
                               : `$${c.discount_value} OFF`}
                         </span>
+                        {c.isLuckyDraw && c.tier && (
+                          <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.2 rounded-full border border-border/50 text-muted-foreground font-semibold">
+                            {c.tier}
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
                         {c.description || (c.discount_type === "FREE_DELIVERY" ? "Free delivery on your order" : `Get discount on your pizza order`)}
                       </p>
+                      {c.isLuckyDraw && c.expiresAt && !c.isUsed && (
+                        <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
+                          Expires: {new Date(c.expiresAt).toLocaleDateString()}
+                        </p>
+                      )}
                       {minOrder > 0 && (
                         <p className={cn("text-[10px] mt-0.5", isMinOrderNotMet ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-muted-foreground")}>
                           Min order: ${minOrder.toFixed(2)} {isMinOrderNotMet && `(Need $${(minOrder - grossSubtotal).toFixed(2)} more)`}

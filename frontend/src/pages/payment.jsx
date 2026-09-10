@@ -17,6 +17,7 @@ import { get, create, update, list, API_URL } from "@/lib/api";
 import { toast } from "sonner";
 import { QRCodeCanvas } from "qrcode.react";
 import { BakongKHQR, IndividualInfo } from "bakong-khqr";
+import { getCurrentAccount, addBonusSpins } from "@/components/food/lucky-draw-modal.jsx";
 
 // QR session: total validity 5 minutes (300s)
 // Bakong token (verify) schedule per QR: 5 tokens total, no check at start.
@@ -266,6 +267,12 @@ export default function PaymentGatewayPage() {
           status: "PAID",
           amount: Number(Number(totalAmount).toFixed(2))
         });
+
+        // Award +1 Lucky Spin for ordering pizza!
+        try {
+          const acc = getCurrentAccount();
+          addBonusSpins(acc.storageKey, 1);
+        } catch (e) {}
 
         setTimeout(() => {
           navigate(`/order-confirmation`, {

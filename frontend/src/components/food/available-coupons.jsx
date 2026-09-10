@@ -5,6 +5,11 @@ import { Button } from "@/components/ui/button";
 import { list } from "@/lib/api";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  getCurrentAccount,
+  getWonCoupons,
+  formatWonVouchersAsCoupons,
+} from "./lucky-draw-modal.jsx";
 
 export function AvailableCoupons({ onSelectCoupon, currentCoupon, subtotal = 0 }) {
   const [coupons, setCoupons] = useState([]);
@@ -47,10 +52,28 @@ export function AvailableCoupons({ onSelectCoupon, currentCoupon, subtotal = 0 }
         console.warn("Failed to check coupon usages", e);
       }
 
-      setCoupons(activeCoupons);
+      // Merge customer's won Lucky Draw vouchers
+      try {
+        const acc = getCurrentAccount();
+        const rawWon = getWonCoupons(acc.storageKey);
+        const luckyCoupons = formatWonVouchersAsCoupons(rawWon);
+
+        const luckyCodes = new Set(luckyCoupons.map((lc) => lc.code.toUpperCase()));
+        const remainingDbCoupons = activeCoupons.filter((c) => !luckyCodes.has(String(c.code).toUpperCase()));
+
+        setCoupons([...luckyCoupons, ...remainingDbCoupons]);
+      } catch (e) {
+        setCoupons(activeCoupons);
+      }
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load coupons");
+      try {
+        const acc = getCurrentAccount();
+        const rawWon = getWonCoupons(acc.storageKey);
+        setCoupons(formatWonVouchersAsCoupons(rawWon));
+      } catch {
+        toast.error("Failed to load coupons");
+      }
     } finally {
       setLoading(false);
     }
@@ -125,6 +148,11 @@ export function AvailableCoupons({ onSelectCoupon, currentCoupon, subtotal = 0 }
                             <Ticket className="size-3 sm:size-3.5 text-primary" />
                           </span>
                           <span className="font-bold text-foreground text-sm sm:text-base truncate">{coupon.code}</span>
+                          {coupon.isLuckyDraw && (
+                            <span className="text-[9px] sm:text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded-full font-bold uppercase shrink-0">
+                              ✨ Lucky Prize
+                            </span>
+                          )}
                           {isExpired && (
                             <span className="text-[9px] sm:text-[10px] bg-red-500/10 text-red-500 px-1.5 py-0.5 rounded-full font-semibold shrink-0">Expired</span>
                           )}
