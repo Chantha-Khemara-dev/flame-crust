@@ -47,6 +47,7 @@ import {
 import { PageTransition } from "@/components/shared/page-transition";
 import { ProfileSkeleton } from "@/components/shared/loading-skeleton";
 import { PushNotificationButton } from "@/components/common/PushNotificationButton";
+import { DriverBottomNav } from "@/components/food/driver-bottom-nav";
 import { toast } from "sonner";
 import { getDriverMe, updateDriverProfile, list } from "@/lib/api";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
@@ -58,18 +59,18 @@ const DEFAULT_COVER_PHOTO = "https://images.unsplash.com/photo-1526367790999-015
 const STATUS_MAP = {
   ONLINE: {
     label: "Online",
-    dot: "bg-emerald-500 animate-pulse",
-    chip: "border-emerald-500/40 bg-emerald-500/20 text-emerald-200",
+    dot: "bg-emerald-600 dark:bg-emerald-400 animate-pulse",
+    chip: "border-emerald-500/35 bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 font-extrabold",
   },
   BUSY: {
     label: "On Delivery",
-    dot: "bg-amber-500 animate-pulse",
-    chip: "border-amber-500/40 bg-amber-500/20 text-amber-200",
+    dot: "bg-amber-600 dark:bg-amber-400 animate-pulse",
+    chip: "border-amber-500/35 bg-amber-500/15 text-amber-800 dark:text-amber-300 font-extrabold",
   },
   OFFLINE: {
     label: "Offline",
-    dot: "bg-muted-foreground/60",
-    chip: "border-border bg-secondary text-muted-foreground",
+    dot: "bg-zinc-500 dark:bg-zinc-400",
+    chip: "border-border/80 bg-secondary text-muted-foreground font-bold",
   },
 };
 
@@ -401,27 +402,27 @@ export default function DriverProfilePage() {
 
       {/* ── Top Header Navigation Bar ── */}
       <header
-        className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-xl"
-        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+        className="sticky top-0 z-40 border-b border-border/70 bg-background/80 dark:bg-zinc-950/80 backdrop-blur-2xl transition-colors shadow-2xs"
+        style={{ paddingTop: "max(0.65rem, env(safe-area-inset-top, 0px))" }}
       >
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-3 sm:h-16 sm:px-6">
           <Link
             to="/driver/dashboard"
             aria-label="Back to dashboard"
-            className="flex items-center gap-2 rounded-full text-foreground transition-all hover:bg-secondary active:scale-95 px-2.5 py-1.5 sm:px-3"
+            className="flex items-center gap-2 rounded-full text-foreground transition-all hover:bg-secondary active:scale-95 px-3 py-1.5 bg-secondary/60 hover:bg-secondary border border-border/60 shadow-2xs group"
           >
-            <ArrowLeft className="size-5 stroke-[2.5] sm:size-4" />
+            <ArrowLeft className="size-4 stroke-[2.5] group-hover:-translate-x-0.5 transition-transform" />
             <span className="text-xs font-bold uppercase tracking-wider">Dashboard</span>
           </Link>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 sm:gap-2.5">
             <span
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-2.5 sm:px-3 py-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-wide shadow-2xs backdrop-blur-md",
+                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] sm:text-[11px] uppercase tracking-wide shadow-2xs backdrop-blur-md",
                 status.chip
               )}
             >
-              <span className={cn("size-1.5 sm:size-2 rounded-full", status.dot)} />
+              <span className={cn("size-2 rounded-full", status.dot)} />
               {status.label}
             </span>
 
@@ -429,7 +430,7 @@ export default function DriverProfilePage() {
               type="button"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               aria-label="Toggle theme"
-              className="flex size-9 sm:size-10 items-center justify-center rounded-full border border-border/60 bg-secondary/60 text-foreground transition-all hover:bg-secondary active:scale-95"
+              className="flex size-9 sm:size-10 items-center justify-center rounded-full border border-border/60 bg-secondary/70 hover:bg-secondary text-foreground transition-all active:scale-95 shadow-2xs cursor-pointer"
             >
               <AnimatePresence mode="wait" initial={false}>
                 <motion.span
@@ -449,7 +450,7 @@ export default function DriverProfilePage() {
       </header>
 
       {/* ── Main Content Area ── */}
-      <main className="flex-1 pt-3 sm:pt-6 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] sm:pb-16">
+      <main className="flex-1 pt-3 sm:pt-6 pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))] sm:pb-20">
         <PageTransition>
           <div className={cn(
             "mx-auto px-3 sm:px-6 lg:px-8 space-y-3.5 sm:space-y-5 transition-all",
@@ -1226,6 +1227,9 @@ export default function DriverProfilePage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* ── Driver Foot Navbar (Bottom Navigation Capsule) ── */}
+      <DriverBottomNav currentTab={activeTab} onTabSelect={handleNavigateToTab} />
     </div>
   );
 }

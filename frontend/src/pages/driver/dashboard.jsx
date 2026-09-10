@@ -14,6 +14,7 @@ import { OrderChatModal, showChatNotificationToast } from "@/components/food/ord
 import { FloatingChatHead } from "@/components/food/floating-chat-head";
 import { PushNotificationButton } from "@/components/common/PushNotificationButton";
 import { PushNotificationPromptModal } from "@/components/common/PushNotificationPromptModal";
+import { DriverBottomNav } from "@/components/food/driver-bottom-nav";
 import { subscribeToPushNotifications } from "@/lib/push-notifications";
 import { cn } from "@/lib/utils";
 
@@ -47,7 +48,7 @@ function MapUpdater({ center }) {
 // ----------------- HEADER -----------------
 function DriverHeader({ driver, locationActive, theme, toggleTheme, onRefresh, refreshing }) {
   return (
-    <header className="shrink-0 pt-[env(safe-area-inset-top,0px)] bg-card border-b border-border/70 transition-colors z-40 relative shadow-xs">
+    <header className="shrink-0 pt-[max(0.65rem,env(safe-area-inset-top,0px))] bg-card border-b border-border/70 transition-colors z-40 relative shadow-xs">
       <div className="h-16 flex items-center justify-between px-3 sm:px-6">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <div className="size-9 sm:size-10 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 flex items-center justify-center shadow-md shadow-red-600/25 shrink-0 text-white">
@@ -1350,93 +1351,10 @@ export default function DriverDashboardPage() {
       </main>
 
       {/* Floating Bottom Dock for Mobile */}
-      <div
-        className="fixed bottom-0 inset-x-0 z-50 lg:hidden px-3 pt-3 pointer-events-none"
-        style={{
-          paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0.75rem))",
-          background: "linear-gradient(to top, rgba(2,6,23,0.22) 0%, rgba(2,6,23,0.08) 55%, transparent 100%)",
-        }}
-      >
-        <nav className="pointer-events-auto mx-auto flex w-full max-w-md items-stretch gap-1 rounded-[26px] border border-border/70 bg-white/92 dark:bg-card/92 p-1.5 shadow-[0_16px_44px_-14px_rgba(0,0,0,0.5)] backdrop-blur-xl">
-          {/* Orders */}
-          <button
-            onClick={() => setMobileView("list")}
-            aria-current={mobileView === "list"}
-            className={cn(
-              "relative flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-2 transition-colors duration-200 active:scale-[0.97]",
-              mobileView === "list"
-                ? "text-white"
-                : "text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground"
-            )}
-          >
-            {mobileView === "list" && (
-              <motion.span
-                layoutId="driverDockPill"
-                className="absolute inset-0 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 shadow-md shadow-red-600/30"
-                transition={{ type: "spring", stiffness: 420, damping: 34 }}
-              />
-            )}
-            <span className="relative flex items-center gap-1.5">
-              <Menu className="size-[18px] stroke-[2.5]" />
-              {currentDisplayOrders.length > 0 && (
-                <span className={cn(
-                  "min-w-[18px] rounded-full px-1 text-[10px] font-black leading-[18px] tabular-nums",
-                  mobileView === "list" ? "bg-white/25 text-white" : "bg-red-500/15 text-red-600 dark:text-red-400"
-                )}>
-                  {currentDisplayOrders.length}
-                </span>
-              )}
-            </span>
-            <span className="relative text-[10px] font-black uppercase tracking-wide">Orders</span>
-          </button>
-
-          {/* Live Map */}
-          <button
-            onClick={() => setMobileView("map")}
-            aria-current={mobileView === "map"}
-            className={cn(
-              "relative flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-2 transition-colors duration-200 active:scale-[0.97]",
-              mobileView === "map"
-                ? "text-white"
-                : "text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground"
-            )}
-          >
-            {mobileView === "map" && (
-              <motion.span
-                layoutId="driverDockPill"
-                className="absolute inset-0 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 shadow-md shadow-red-600/30"
-                transition={{ type: "spring", stiffness: 420, damping: 34 }}
-              />
-            )}
-            <span className="relative flex items-center gap-1.5">
-              <Map className="size-[18px] stroke-[2.5]" />
-              {locationActive && (
-                <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              )}
-            </span>
-            <span className="relative text-[10px] font-black uppercase tracking-wide">Live Map</span>
-          </button>
-
-          {/* Profile */}
-          <Link
-            to="/driver/profile"
-            className="relative flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-2 text-muted-foreground transition-colors duration-200 hover:text-foreground active:scale-[0.97] dark:text-muted-foreground dark:hover:text-foreground"
-          >
-            <span className="relative">
-              {driver?.profile_photo ? (
-                <img
-                  src={driver.profile_photo}
-                  alt={driver.name}
-                  className="size-[18px] rounded-full object-cover ring-2 ring-red-500/70"
-                />
-              ) : (
-                <User className="size-[18px] stroke-[2.5]" />
-              )}
-            </span>
-            <span className="relative text-[10px] font-black uppercase tracking-wide">Profile</span>
-          </Link>
-        </nav>
-      </div>
+      <DriverBottomNav
+        mobileView={mobileView}
+        onSelectMobileView={setMobileView}
+      />
 
       {/* Full Screen / Sheet Details Modal */}
       <OrderDetailsModal 
