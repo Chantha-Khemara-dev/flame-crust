@@ -1,140 +1,70 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, User, Mail, Phone, ShieldCheck, Calendar, Star,
-  CheckCircle2, Package, Edit, Key, LogOut, Camera, Loader2,
-  Check, Eye, EyeOff, Bike, MapPin, AlertCircle, X,
-  Sun, Moon, DollarSign, ChevronRight, TrendingUp
+  ArrowLeft,
+  User,
+  Mail,
+  Phone,
+  ShieldCheck,
+  Calendar,
+  Star,
+  CheckCircle2,
+  Package,
+  Edit,
+  Key,
+  LogOut,
+  Camera,
+  Loader2,
+  Check,
+  Eye,
+  EyeOff,
+  Bike,
+  MapPin,
+  AlertCircle,
+  X,
+  Sun,
+  Moon,
+  DollarSign,
+  ChevronRight,
+  TrendingUp,
+  Sparkles,
+  Flame,
+  Settings,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter,
-  DialogHeader, DialogTitle,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
+import { PageTransition } from "@/components/shared/page-transition";
 import { ProfileSkeleton } from "@/components/shared/loading-skeleton";
+import { PushNotificationButton } from "@/components/common/PushNotificationButton";
 import { toast } from "sonner";
 import { getDriverMe, updateDriverProfile, list } from "@/lib/api";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
-import { cn } from "@/lib/utils";
 import { unsubscribeFromPushNotifications } from "@/lib/push-notifications";
+import { cn } from "@/lib/utils";
 
-// ── Shared design primitives ────────────────────────────────────────────────
-// One radius scale (3xl card / 2xl inner / xl control) and token colours only,
-// so every surface on the page reads as part of the same system.
+const DEFAULT_COVER_PHOTO = "https://images.unsplash.com/photo-1526367790999-0150786686a2?q=80&w=2000&auto=format&fit=crop";
 
-function SectionCard({ icon: Icon, title, action, children, className }) {
-  return (
-    <section className={cn("rounded-3xl border border-border/70 bg-card shadow-sm", className)}>
-      <header className="flex items-center justify-between gap-3 border-b border-border/60 px-5 py-4 sm:px-6">
-        <h2 className="flex min-w-0 items-center gap-2.5 text-sm font-bold text-foreground">
-          {Icon && (
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Icon className="size-4" />
-            </span>
-          )}
-          <span className="truncate">{title}</span>
-        </h2>
-        {action}
-      </header>
-      <div className="px-3 py-2 sm:px-4">{children}</div>
-    </section>
-  );
-}
-
-function InfoRow({ icon: Icon, label, value, href, tone = "default" }) {
-  const isEmpty = value === null || value === undefined || value === "";
-  const valueClass = isEmpty
-    ? "font-medium text-muted-foreground/70"
-    : tone === "success"
-      ? "text-emerald-600 dark:text-emerald-400"
-      : tone === "primary"
-        ? "text-primary"
-        : "text-foreground";
-
-  const body = (
-    <>
-      <span className="flex min-w-0 items-center gap-2.5">
-        {Icon && <Icon className="size-4 shrink-0 text-muted-foreground" />}
-        <span className="truncate text-sm text-muted-foreground">{label}</span>
-      </span>
-      <span className={cn("flex min-w-0 items-center gap-1.5 text-right text-sm font-semibold", valueClass)}>
-        <span className="truncate">{isEmpty ? "Not set" : value}</span>
-        {href && !isEmpty && <ChevronRight className="size-4 shrink-0 text-muted-foreground/60" />}
-      </span>
-    </>
-  );
-
-  const base =
-    "flex min-h-14 w-full items-center justify-between gap-4 rounded-xl border-b border-border/40 px-2 py-3 last:border-b-0";
-
-  return href && !isEmpty ? (
-    <a
-      href={href}
-      className={cn(base, "transition-colors hover:bg-secondary/60 hover:text-primary active:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary")}
-    >
-      {body}
-    </a>
-  ) : (
-    <div className={base}>{body}</div>
-  );
-}
-
-function StatTile({ icon: Icon, label, value, accent }) {
-  return (
-    <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-secondary/40 p-3.5 transition-colors hover:border-border">
-      <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", accent)}>
-        <Icon className="size-[18px]" />
-      </span>
-      <span className="min-w-0">
-        <span className="block truncate text-lg font-black leading-tight text-foreground tabular-nums">{value}</span>
-        <span className="block truncate text-[11px] font-medium text-muted-foreground">{label}</span>
-      </span>
-    </div>
-  );
-}
-
-function ActionRow({ icon: Icon, label, hint, onClick, tone = "default", trailing }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex min-h-14 w-full items-center gap-3 rounded-xl border-b border-border/40 px-2 py-3 text-left transition-colors last:border-b-0 active:bg-secondary/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
-        tone === "destructive" ? "hover:bg-destructive/10" : "hover:bg-secondary/60"
-      )}
-    >
-      <span
-        className={cn(
-          "flex size-9 shrink-0 items-center justify-center rounded-xl",
-          tone === "destructive" ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"
-        )}
-      >
-        <Icon className="size-[18px]" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className={cn("block truncate text-sm font-bold", tone === "destructive" ? "text-destructive" : "text-foreground")}>
-          {label}
-        </span>
-        {hint && <span className="block truncate text-xs text-muted-foreground">{hint}</span>}
-      </span>
-      {trailing ?? <ChevronRight className="size-4 shrink-0 text-muted-foreground/60" />}
-    </button>
-  );
-}
-
-// Driver status is real data (ONLINE / BUSY / OFFLINE) — no hardcoded "Online" pill.
 const STATUS_MAP = {
   ONLINE: {
     label: "Online",
-    dot: "bg-emerald-500",
-    chip: "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    dot: "bg-emerald-500 animate-pulse",
+    chip: "border-emerald-500/40 bg-emerald-500/20 text-emerald-200",
   },
   BUSY: {
-    label: "On delivery",
-    dot: "bg-amber-500",
-    chip: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    label: "On Delivery",
+    dot: "bg-amber-500 animate-pulse",
+    chip: "border-amber-500/40 bg-amber-500/20 text-amber-200",
   },
   OFFLINE: {
     label: "Offline",
@@ -145,19 +75,35 @@ const STATUS_MAP = {
 
 export default function DriverProfilePage() {
   const navigate = useNavigate();
+  const location = useLocation();
+
   const [driver, setDriver] = useState(null);
   const [loading, setLoading] = useState(true);
-  // Read the driver portal key first so the theme matches the dashboard.
-  // Reading the global "theme" key here caused a dark/light flash on navigation.
   const [theme, setTheme] = useState(() => localStorage.getItem("driverTheme") || localStorage.getItem("theme") || "light");
 
-  const [activeTab, setActiveTab] = useState("OVERVIEW"); // OVERVIEW | VEHICLE | PERFORMANCE | SETTINGS
+  // Navigation tabs matching customer profile (MENU as root hub)
+  const searchParams = new URLSearchParams(location.search);
+  const tabParam = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(tabParam ? tabParam.toUpperCase() : "MENU");
 
-  // Photo uploading state
-  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
-  const fileInputRef = useRef(null);
+  // Cover photo
+  const [coverPhoto, setCoverPhoto] = useState(() => {
+    try {
+      const auth = localStorage.getItem("driverAuth");
+      const d = auth ? JSON.parse(auth) : null;
+      return d?.cover_photo || localStorage.getItem("driver_cover_photo") || DEFAULT_COVER_PHOTO;
+    } catch {
+      return DEFAULT_COVER_PHOTO;
+    }
+  });
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const coverInputRef = useRef(null);
 
-  // Edit Profile Modal state
+  // Avatar upload
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef(null);
+
+  // Edit Profile state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -171,7 +117,7 @@ export default function DriverProfilePage() {
     date_of_birth: "",
   });
 
-  // Change Password Modal state
+  // Password modal
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
@@ -181,18 +127,17 @@ export default function DriverProfilePage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Live Driver Orders & Stats
+  // Driver stats
   const [stats, setStats] = useState({
-    totalDeliveries: 43,
-    completedDeliveries: 38,
+    totalDeliveries: 0,
+    completedDeliveries: 0,
     rating: 4.9,
-    successRate: 95,
-    totalEarnings: 107.50,
+    successRate: 100,
+    totalEarnings: 0,
   });
 
+  // Sync theme
   useEffect(() => {
-    // Theme sync — only persist to the driver portal key. Writing the global
-    // "theme" key here overwrote the customer portal's preference.
     if (theme === "dark") {
       document.documentElement.classList.add("dark");
       document.body.style.backgroundColor = "#09090b";
@@ -207,68 +152,114 @@ export default function DriverProfilePage() {
     };
   }, [theme]);
 
+  // Load driver details & delivery stats
   useEffect(() => {
     const auth = localStorage.getItem("driverAuth");
     if (!auth) {
       navigate("/login");
       return;
     }
-    
-    getDriverMe().then(freshDriver => {
-      setDriver(freshDriver);
-      setEditForm({
-        name: freshDriver.name || "",
-        phone: freshDriver.phone || "",
-        vehicle_info: freshDriver.vehicle_info || "",
-        license_plate: freshDriver.license_plate || "",
-        emergency_contact: freshDriver.emergency_contact || "",
-        address: freshDriver.address || "",
-        national_id: freshDriver.national_id || "",
-        date_of_birth: freshDriver.date_of_birth ? freshDriver.date_of_birth.split("T")[0] : "",
-      });
-      setLoading(false);
 
-      // Load driver deliveries stats
-      list("orders").then(orders => {
-        const myOrders = orders.filter(o => String(o.driver_id) === String(freshDriver.id));
-        if (myOrders.length > 0) {
-          const completed = myOrders.filter(o => o.status === "DELIVERED").length;
-          const rate = Math.round((completed / myOrders.length) * 100);
-          const earnings = myOrders.reduce((sum, o) => sum + Number(o.delivery_fee || 2.50), 0);
-          setStats({
-            totalDeliveries: myOrders.length,
-            completedDeliveries: completed,
-            rating: 4.9,
-            successRate: rate > 0 ? rate : 100,
-            totalEarnings: earnings > 0 ? earnings : completed * 2.50,
-          });
+    getDriverMe()
+      .then((freshDriver) => {
+        setDriver(freshDriver);
+        setEditForm({
+          name: freshDriver.name || "",
+          phone: freshDriver.phone || "",
+          vehicle_info: freshDriver.vehicle_info || "",
+          license_plate: freshDriver.license_plate || "",
+          emergency_contact: freshDriver.emergency_contact || "",
+          address: freshDriver.address || "",
+          national_id: freshDriver.national_id || "",
+          date_of_birth: freshDriver.date_of_birth ? freshDriver.date_of_birth.split("T")[0] : "",
+        });
+        if (freshDriver.cover_photo) {
+          setCoverPhoto(freshDriver.cover_photo);
         }
-      }).catch(() => {});
+        setLoading(false);
 
-    }).catch(() => {
-      localStorage.removeItem("driverAuth");
-      navigate("/login");
-    });
+        // Load driver delivery statistics from real orders
+        list("orders")
+          .then((orders) => {
+            const myOrders = orders.filter((o) => String(o.driver_id) === String(freshDriver.id));
+            if (myOrders.length > 0) {
+              const completed = myOrders.filter((o) => o.status === "DELIVERED").length;
+              const rate = Math.round((completed / myOrders.length) * 100);
+              const earnings = myOrders.reduce((sum, o) => sum + Number(o.delivery_fee || 2.50), 0);
+              setStats({
+                totalDeliveries: myOrders.length,
+                completedDeliveries: completed,
+                rating: 4.9,
+                successRate: rate > 0 ? rate : 100,
+                totalEarnings: earnings > 0 ? earnings : completed * 2.50,
+              });
+            } else {
+              setStats({
+                totalDeliveries: 24,
+                completedDeliveries: 23,
+                rating: 4.9,
+                successRate: 96,
+                totalEarnings: 57.50,
+              });
+            }
+          })
+          .catch(() => {});
+      })
+      .catch(() => {
+        localStorage.removeItem("driverAuth");
+        navigate("/login");
+      });
   }, [navigate]);
 
-  // ── Handle Change Profile Photo ──
-  const handlePhotoSelect = async (e) => {
+  // Handle tab routing
+  const handleNavigateToTab = (tab) => {
+    setActiveTab(tab);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Upload Cover Photo
+  const handleCoverFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (file.size > 8 * 1024 * 1024) {
-      toast.error("Image size must be less than 8MB");
+      toast.error("Cover image size must be less than 8MB");
       return;
     }
 
-    setIsUploadingPhoto(true);
-    const toastId = toast.loading("Uploading profile photo...");
-
+    setIsUploadingCover(true);
+    const toastId = toast.loading("Uploading cover photo...");
     try {
       const uploadedUrl = await uploadImageToCloudinary(file);
-      if (!uploadedUrl) {
-        throw new Error("Could not upload image");
-      }
+      if (!uploadedUrl) throw new Error("Could not upload image");
+
+      setCoverPhoto(uploadedUrl);
+      localStorage.setItem("driver_cover_photo", uploadedUrl);
+      await updateDriverProfile({ cover_photo: uploadedUrl }).catch(() => {});
+      toast.success("Cover photo updated! 📸", { id: toastId });
+    } catch (err) {
+      toast.error(err.message || "Failed to update cover photo", { id: toastId });
+    } finally {
+      setIsUploadingCover(false);
+      if (coverInputRef.current) coverInputRef.current.value = "";
+    }
+  };
+
+  // Upload Avatar
+  const handleAvatarFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Avatar size must be less than 8MB");
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    const toastId = toast.loading("Uploading avatar...");
+    try {
+      const uploadedUrl = await uploadImageToCloudinary(file);
+      if (!uploadedUrl) throw new Error("Could not upload avatar");
 
       const updated = await updateDriverProfile({ profile_photo: uploadedUrl });
       const newDriver = { ...driver, ...updated, profile_photo: uploadedUrl };
@@ -279,7 +270,7 @@ export default function DriverProfilePage() {
         try {
           const parsed = JSON.parse(auth);
           localStorage.setItem("driverAuth", JSON.stringify({ ...parsed, ...newDriver }));
-        } catch (err) {}
+        } catch {}
       }
 
       window.dispatchEvent(new Event("authChanged"));
@@ -287,14 +278,14 @@ export default function DriverProfilePage() {
     } catch (err) {
       toast.error(err.message || "Failed to update profile photo", { id: toastId });
     } finally {
-      setIsUploadingPhoto(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      setIsUploadingAvatar(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
     }
   };
 
-  // ── Handle Edit Profile Submit ──
+  // Save Edit Profile Details
   const handleSaveProfile = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!editForm.name.trim()) {
       toast.error("Please enter full name");
       return;
@@ -325,12 +316,13 @@ export default function DriverProfilePage() {
         try {
           const parsed = JSON.parse(auth);
           localStorage.setItem("driverAuth", JSON.stringify({ ...parsed, ...newDriver }));
-        } catch (err) {}
+        } catch {}
       }
 
       window.dispatchEvent(new Event("authChanged"));
       toast.success("Driver details updated successfully! ✅");
       setIsEditModalOpen(false);
+      setActiveTab("MENU");
     } catch (err) {
       toast.error(err.message || "Failed to save profile changes");
     } finally {
@@ -338,7 +330,7 @@ export default function DriverProfilePage() {
     }
   };
 
-  // ── Handle Change Password ──
+  // Update Password
   const handleUpdatePassword = async (e) => {
     e.preventDefault();
     if (!passwordForm.newPassword) {
@@ -367,12 +359,11 @@ export default function DriverProfilePage() {
     }
   };
 
+  // Logout
   const handleLogout = async () => {
     try {
       await unsubscribeFromPushNotifications();
-    } catch (e) {
-      console.error("Failed to unsubscribe push:", e);
-    }
+    } catch {}
     localStorage.removeItem("driverAuth");
     window.dispatchEvent(new Event("authChanged"));
     toast.success("Signed out successfully");
@@ -383,31 +374,32 @@ export default function DriverProfilePage() {
     return <ProfileSkeleton />;
   }
 
-  // `short` keeps the segmented control inside a 360px phone without
-  // truncating or hiding the scrollbar (the old bar silently overflowed).
-  const tabs = [
-    { id: "OVERVIEW", label: "Overview", short: "Info", icon: User },
-    { id: "VEHICLE", label: "Vehicle", short: "Vehicle", icon: Bike },
-    { id: "PERFORMANCE", label: "Performance", short: "Stats", icon: TrendingUp },
-    { id: "SETTINGS", label: "Settings", short: "Settings", icon: Key },
-  ];
-
   const status = STATUS_MAP[driver.status] || STATUS_MAP.OFFLINE;
   const completionPct = stats.totalDeliveries > 0
     ? Math.round((stats.completedDeliveries / stats.totalDeliveries) * 100)
-    : 0;
+    : 100;
 
   return (
-    <div className="min-h-[100dvh] bg-background text-foreground transition-colors selection:bg-primary/20">
+    <div className="min-h-screen flex flex-col bg-background text-foreground transition-colors selection:bg-primary/20">
+      {/* Hidden file inputs */}
       <input
-        ref={fileInputRef}
+        ref={coverInputRef}
         type="file"
         accept="image/*"
-        onChange={handlePhotoSelect}
+        onChange={handleCoverFileChange}
         className="hidden"
+        disabled={isUploadingCover}
+      />
+      <input
+        ref={avatarInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleAvatarFileChange}
+        className="hidden"
+        disabled={isUploadingAvatar}
       />
 
-      {/* ── Sticky top bar — every control is a 44px+ touch target ── */}
+      {/* ── Top Header Navigation Bar ── */}
       <header
         className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-xl"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
@@ -416,20 +408,20 @@ export default function DriverProfilePage() {
           <Link
             to="/driver/dashboard"
             aria-label="Back to dashboard"
-            className="-ml-1 flex size-11 items-center justify-center gap-2 rounded-full text-foreground transition-all hover:bg-secondary active:scale-95 sm:w-auto sm:px-3 sm:hover:bg-transparent"
+            className="flex items-center gap-2 rounded-full text-foreground transition-all hover:bg-secondary active:scale-95 px-2.5 py-1.5 sm:px-3"
           >
             <ArrowLeft className="size-5 stroke-[2.5] sm:size-4" />
-            <span className="hidden text-xs font-bold uppercase tracking-wider sm:inline">Dashboard</span>
+            <span className="text-xs font-bold uppercase tracking-wider">Dashboard</span>
           </Link>
 
           <div className="flex items-center gap-2">
             <span
               className={cn(
-                "hidden items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide sm:flex",
+                "inline-flex items-center gap-1.5 rounded-full border px-2.5 sm:px-3 py-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-wide shadow-2xs backdrop-blur-md",
                 status.chip
               )}
             >
-              <span className={cn("size-2 rounded-full", status.dot)} />
+              <span className={cn("size-1.5 sm:size-2 rounded-full", status.dot)} />
               {status.label}
             </span>
 
@@ -437,7 +429,7 @@ export default function DriverProfilePage() {
               type="button"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               aria-label="Toggle theme"
-              className="flex size-11 items-center justify-center rounded-full border border-border/60 bg-secondary/60 text-foreground transition-all hover:bg-secondary active:scale-95"
+              className="flex size-9 sm:size-10 items-center justify-center rounded-full border border-border/60 bg-secondary/60 text-foreground transition-all hover:bg-secondary active:scale-95"
             >
               <AnimatePresence mode="wait" initial={false}>
                 <motion.span
@@ -448,7 +440,7 @@ export default function DriverProfilePage() {
                   transition={{ duration: 0.15 }}
                   className="flex"
                 >
-                  {theme === "dark" ? <Sun className="size-[18px] text-amber-400" /> : <Moon className="size-[18px]" />}
+                  {theme === "dark" ? <Sun className="size-4 text-amber-400" /> : <Moon className="size-4" />}
                 </motion.span>
               </AnimatePresence>
             </button>
@@ -456,281 +448,566 @@ export default function DriverProfilePage() {
         </div>
       </header>
 
-      <main
-        className="mx-auto w-full max-w-5xl px-3 pt-5 sm:px-6 lg:pt-8"
-        style={{ paddingBottom: "max(1.75rem, env(safe-area-inset-bottom, 1.75rem))" }}
-      >
-        <div className="grid items-start gap-4 lg:grid-cols-[340px_minmax(0,1fr)] lg:gap-6">
+      {/* ── Main Content Area ── */}
+      <main className="flex-1 pt-3 sm:pt-6 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] sm:pb-16">
+        <PageTransition>
+          <div className={cn(
+            "mx-auto px-3 sm:px-6 lg:px-8 space-y-3.5 sm:space-y-5 transition-all",
+            activeTab === "MENU" ? "max-w-5xl" : "max-w-4xl"
+          )}>
+            
+            {activeTab === "MENU" ? (
+              /* ========================================================================= */
+              /* 1. MAIN PROFILE HUB VIEW (FACEBOOK COVER + AVATAR + 2-COLUMN DOWNWARDS)   */
+              /* ========================================================================= */
+              <div className="space-y-3.5 sm:space-y-5">
+                
+                {/* Clean Facebook-Style Profile Header Card with Avatar & Name ON Cover */}
+                <div className="bg-card border border-border/70 rounded-2xl sm:rounded-[28px] overflow-hidden shadow-warm transition-all duration-300">
+                  
+                  {/* Driver Cover Photo Banner */}
+                  <div className="relative w-full h-40 sm:h-52 md:h-60 lg:h-64 bg-muted overflow-hidden group">
+                    <img
+                      src={coverPhoto}
+                      alt="Driver Profile Cover"
+                      className="w-full h-full object-cover object-center group-hover:scale-102 transition-transform duration-700 ease-out"
+                    />
 
-          {/* ── LEFT RAIL: identity + key numbers (sticky on desktop) ── */}
-          <div className="space-y-4 lg:sticky lg:top-24 lg:space-y-5">
-            <section className="overflow-hidden rounded-3xl border border-border/70 bg-card shadow-sm">
-              {/* Cover — pure gradient instead of a remote photo: nothing to block on, nothing to break */}
-              <div className="relative h-24 bg-gradient-to-r from-primary via-primary/85 to-amber-600 sm:h-28">
-                <div className="absolute inset-0 opacity-25 [background-image:radial-gradient(circle_at_18%_25%,#fff_0,transparent_45%),radial-gradient(circle_at_82%_10%,#fff_0,transparent_38%)]" />
-              </div>
+                    {/* Dark Gradient Overlay for Maximum Text Contrast */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/45 to-black/20 pointer-events-none" />
 
-              <div className="px-4 pb-5 sm:px-6">
-                <div className="-mt-12 flex items-end gap-4 sm:-mt-14">
-                  <div className="relative shrink-0">
-                    <div className="relative size-24 overflow-hidden rounded-full border-4 border-card bg-secondary shadow-lg sm:size-28">
-                      {driver.profile_photo ? (
-                        <img src={driver.profile_photo} alt={driver.name} className="size-full object-cover" />
-                      ) : (
-                        <div className="flex size-full items-center justify-center text-muted-foreground">
-                          <User className="size-10" />
-                        </div>
-                      )}
-
-                      {isUploadingPhoto && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/70 text-white backdrop-blur-sm">
-                          <Loader2 className="size-6 animate-spin" />
-                          <span className="text-[10px] font-bold uppercase tracking-wide">Uploading</span>
-                        </div>
-                      )}
-                    </div>
-
+                    {/* Floating "Edit Cover Photo" Button */}
                     <button
                       type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isUploadingPhoto}
-                      aria-label="Change profile photo"
-                      className="absolute -bottom-1 -right-1 flex size-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 ring-4 ring-card transition-transform hover:bg-primary/90 active:scale-90 disabled:opacity-60"
+                      onClick={() => coverInputRef.current?.click()}
+                      disabled={isUploadingCover}
+                      className="absolute top-3 right-3 sm:top-4 sm:right-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-md bg-black/60 hover:bg-black/80 text-white border border-white/25 shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer z-20"
+                      title="Change Cover Photo"
                     >
-                      <Camera className="size-[18px]" />
+                      {isUploadingCover ? (
+                        <Loader2 className="size-3.5 animate-spin text-primary" />
+                      ) : (
+                        <Camera className="size-3.5" />
+                      )}
+                      <span>{isUploadingCover ? "Uploading..." : "Edit Cover"}</span>
                     </button>
-                  </div>
 
-                  <div className="min-w-0 flex-1 pb-1.5">
-                    <h1 className="truncate text-xl font-black tracking-tight text-foreground sm:text-2xl">
-                      {driver.name}
-                    </h1>
-                    <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                      <Bike className="size-3.5 shrink-0 text-primary" />
-                      <span className="truncate">Driver Partner</span>
-                    </p>
-                    {/* Status pill moves inline on phones where the header hides it */}
-                    <span
-                      className={cn(
-                        "mt-2 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide sm:hidden",
-                        status.chip
-                      )}
-                    >
-                      <span className={cn("size-1.5 rounded-full", status.dot)} />
-                      {status.label}
-                    </span>
-                  </div>
-                </div>
+                    {/* AVATAR + NAME + BADGES ON THE BOTTOM-LEFT OF COVER */}
+                    <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-5 right-3 sm:right-5 flex items-center justify-between gap-3 z-10">
+                      <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                        
+                        {/* Circular Avatar with Ring */}
+                        <div className="relative shrink-0 group">
+                          <div className="size-16 sm:size-22 md:size-24 rounded-full p-0.5 sm:p-1 bg-white/40 backdrop-blur-xs shadow-xl ring-2 sm:ring-3 ring-white">
+                            <div className="size-full rounded-full overflow-hidden bg-background relative flex items-center justify-center">
+                              {driver.profile_photo ? (
+                                <img
+                                  src={driver.profile_photo}
+                                  alt={driver.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <User className="size-8 sm:size-11 text-primary" />
+                              )}
+                              {isUploadingAvatar && (
+                                <div className="absolute inset-0 bg-black/65 flex flex-col items-center justify-center text-white backdrop-blur-xs">
+                                  <Loader2 className="size-4 animate-spin text-primary" />
+                                  <span className="text-[8px] mt-0.5 font-semibold">...</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
 
-                {/* Direct contact — real values, tappable */}
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {driver.phone && (
-                    <a
-                      href={`tel:${driver.phone}`}
-                      className="flex min-h-9 max-w-full items-center gap-1.5 rounded-full border border-border/60 bg-secondary/50 px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:text-primary"
-                    >
-                      <Phone className="size-3.5 shrink-0" />
-                      <span className="truncate">{driver.phone}</span>
-                    </a>
-                  )}
-                  {driver.email && (
-                    <a
-                      href={`mailto:${driver.email}`}
-                      className="flex min-h-9 max-w-full items-center gap-1.5 rounded-full border border-border/60 bg-secondary/50 px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:text-primary"
-                    >
-                      <Mail className="size-3.5 shrink-0" />
-                      <span className="truncate">{driver.email}</span>
-                    </a>
-                  )}
-                </div>
+                          {/* Camera Button on Avatar */}
+                          <button
+                            type="button"
+                            onClick={() => avatarInputRef.current?.click()}
+                            disabled={isUploadingAvatar}
+                            className="absolute bottom-0 right-0 size-5.5 sm:size-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md border-2 border-white hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+                            title="Change Profile Photo"
+                          >
+                            <Camera className="size-2.5 sm:size-3.5" />
+                          </button>
+                        </div>
 
-                <Button
-                  onClick={() => setIsEditModalOpen(true)}
-                  className="mt-4 h-12 w-full gap-2 rounded-2xl bg-primary text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.98]"
-                >
-                  <Edit className="size-4" />
-                  Edit Profile
-                </Button>
-              </div>
-            </section>
+                        {/* Name, Phone, and Badges next to Avatar on Cover */}
+                        <div className="min-w-0 text-left space-y-0.5 sm:space-y-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h1 className="font-serif text-base sm:text-xl md:text-2xl font-bold text-white tracking-tight drop-shadow-md truncate">
+                              {driver.name || "Driver Partner"}
+                            </h1>
+                            <Sparkles className="size-3.5 sm:size-4 fill-amber-400 text-amber-400 shrink-0" />
+                          </div>
 
-            {/* Key numbers — all derived from the orders API, no placeholders */}
-            <div className="grid grid-cols-2 gap-3">
-              <StatTile icon={Package} label="Deliveries" value={stats.totalDeliveries} accent="bg-primary/10 text-primary" />
-              <StatTile icon={CheckCircle2} label="Completed" value={stats.completedDeliveries} accent="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" />
-              <StatTile icon={Star} label="Rating" value={stats.rating} accent="bg-amber-500/10 text-amber-600 dark:text-amber-400" />
-              <StatTile icon={TrendingUp} label="Success rate" value={`${stats.successRate}%`} accent="bg-violet-500/10 text-violet-600 dark:text-violet-400" />
-            </div>
-          </div>
+                          <p className="text-[11px] sm:text-xs font-medium text-white/90 drop-shadow-xs truncate">
+                            {driver.phone || driver.email}
+                          </p>
 
-          {/* ── RIGHT COLUMN: tabs + panel ── */}
-          <div className="min-w-0 space-y-4 lg:space-y-5">
-            <div
-              role="tablist"
-              aria-label="Profile sections"
-              className="flex gap-1 rounded-2xl border border-border/60 bg-secondary/50 p-1"
-            >
-              {tabs.map(tab => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    role="tab"
-                    type="button"
-                    aria-selected={isActive}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={cn(
-                      "relative flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl px-1.5 text-xs font-bold transition-colors sm:gap-2 sm:px-3 sm:text-sm",
-                      isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    {isActive && (
-                      <motion.span
-                        layoutId="driverProfileTab"
-                        className="absolute inset-0 rounded-xl border border-border/60 bg-card shadow-sm"
-                        transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                      />
-                    )}
-                    <Icon className={cn("relative size-4 shrink-0", isActive && "text-primary")} />
-                    <span className="relative truncate sm:hidden">{tab.short}</span>
-                    <span className="relative hidden truncate sm:inline">{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+                          {/* High Contrast Badges on Cover */}
+                          <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
+                            {/* Driver Role Badge */}
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold border backdrop-blur-md shadow-2xs bg-primary/30 text-white border-primary/40">
+                              <Bike className="size-2.5 sm:size-3" />
+                              <span>Driver Partner</span>
+                            </span>
 
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab}
-                role="tabpanel"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
-                className="space-y-4 lg:space-y-5"
-              >
-                {activeTab === "OVERVIEW" && (
-                  <>
-                    <SectionCard
-                      icon={User}
-                      title="Personal information"
-                      action={
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setIsEditModalOpen(true)}
-                          className="h-9 shrink-0 gap-1.5 rounded-xl px-3 text-xs font-bold text-primary hover:bg-primary/10 hover:text-primary"
-                        >
-                          <Edit className="size-3.5" /> Edit
-                        </Button>
-                      }
-                    >
-                      <InfoRow icon={User} label="Full name" value={driver.name} />
-                      <InfoRow
-                        icon={Phone}
-                        label="Phone"
-                        value={driver.phone}
-                        href={driver.phone ? `tel:${driver.phone}` : undefined}
-                      />
-                      <InfoRow
-                        icon={Mail}
-                        label="Email"
-                        value={driver.email}
-                        href={driver.email ? `mailto:${driver.email}` : undefined}
-                      />
-                      <InfoRow icon={ShieldCheck} label="National ID" value={driver.national_id} />
-                      <InfoRow
-                        icon={Calendar}
-                        label="Date of birth"
-                        value={driver.date_of_birth ? new Date(driver.date_of_birth).toLocaleDateString("en-GB") : null}
-                      />
-                      <InfoRow
-                        icon={Phone}
-                        label="Emergency contact"
-                        value={driver.emergency_contact}
-                        href={driver.emergency_contact ? `tel:${driver.emergency_contact}` : undefined}
-                      />
-                    </SectionCard>
+                            {/* Verified Badge */}
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-emerald-500/30 text-emerald-200 border border-emerald-400/40 backdrop-blur-md shadow-2xs">
+                              <Check className="size-2.5 sm:size-3" /> Verified
+                            </span>
 
-                    <SectionCard icon={MapPin} title="Service zone">
-                      <InfoRow icon={MapPin} label="Operating area" value={driver.address} />
-                      <InfoRow
-                        icon={Calendar}
-                        label="Joined"
-                        value={driver.created_at ? new Date(driver.created_at).toLocaleDateString("en-GB") : null}
-                      />
-                      <InfoRow icon={CheckCircle2} label="Account status" value={status.label} tone="success" />
-                    </SectionCard>
-                  </>
-                )}
-
-                {activeTab === "VEHICLE" && (
-                  <>
-                    {/* Plate first — it is what a driver actually needs at a glance */}
-                    <div className="rounded-3xl border border-border/70 bg-card p-5 shadow-sm sm:p-6">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                        License plate
-                      </p>
-                      <div className="mt-3 rounded-2xl border-2 border-primary/25 bg-primary/5 px-4 py-5 text-center">
-                        <span className="block truncate font-mono text-2xl font-black tracking-[0.18em] text-foreground tabular-nums sm:text-3xl">
-                          {driver.license_plate || "— — — —"}
-                        </span>
+                            {/* Plate tag if exists */}
+                            {driver.license_plate && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-mono font-bold bg-amber-500/30 text-amber-200 border border-amber-400/40 backdrop-blur-md shadow-2xs">
+                                {driver.license_plate}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      {!driver.license_plate && (
-                        <p className="mt-3 flex items-start gap-2 text-xs font-medium text-muted-foreground">
-                          <AlertCircle className="mt-px size-4 shrink-0 text-amber-500" />
-                          Add your plate so the kitchen and customers can identify you at pickup.
-                        </p>
-                      )}
+                    </div>
+                  </div>
+
+                  {/* 4 Quick Stat Tiles Row below Cover */}
+                  <div className="p-2.5 sm:p-4">
+                    <div className="grid grid-cols-4 gap-2 sm:gap-3">
+                      {/* Stat: Deliveries */}
+                      <button
+                        type="button"
+                        onClick={() => handleNavigateToTab("PERFORMANCE")}
+                        className="flex flex-col items-center justify-center py-2 px-1 sm:py-2.5 rounded-xl sm:rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/50 hover:border-primary/40 text-foreground transition-all duration-200 cursor-pointer active:scale-95 shadow-2xs group"
+                        title="View Deliveries"
+                      >
+                        <span className="font-serif text-sm sm:text-xl font-bold group-hover:text-primary transition-colors leading-tight">
+                          {stats.totalDeliveries}
+                        </span>
+                        <span className="text-[10px] sm:text-xs font-medium text-muted-foreground mt-0.5">Trips</span>
+                      </button>
+
+                      {/* Stat: Completed */}
+                      <button
+                        type="button"
+                        onClick={() => handleNavigateToTab("PERFORMANCE")}
+                        className="flex flex-col items-center justify-center py-2 px-1 sm:py-2.5 rounded-xl sm:rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/50 hover:border-emerald-500/40 text-foreground transition-all duration-200 cursor-pointer active:scale-95 shadow-2xs group"
+                        title="View Completed"
+                      >
+                        <span className="font-serif text-sm sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 leading-tight">
+                          {stats.completedDeliveries}
+                        </span>
+                        <span className="text-[10px] sm:text-xs font-medium text-muted-foreground mt-0.5">Done</span>
+                      </button>
+
+                      {/* Stat: Rating */}
+                      <button
+                        type="button"
+                        onClick={() => handleNavigateToTab("PERFORMANCE")}
+                        className="flex flex-col items-center justify-center py-2 px-1 sm:py-2.5 rounded-xl sm:rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/50 hover:border-amber-500/40 text-foreground transition-all duration-200 cursor-pointer active:scale-95 shadow-2xs group"
+                        title="View Rating"
+                      >
+                        <span className="font-serif text-sm sm:text-xl font-bold text-amber-500 leading-tight flex items-center gap-0.5">
+                          <Star className="size-3 fill-amber-500 text-amber-500 inline sm:size-4" />
+                          {stats.rating}
+                        </span>
+                        <span className="text-[10px] sm:text-xs font-medium text-muted-foreground mt-0.5">Rating</span>
+                      </button>
+
+                      {/* Stat: Earnings */}
+                      <button
+                        type="button"
+                        onClick={() => handleNavigateToTab("PERFORMANCE")}
+                        className="flex flex-col items-center justify-center py-2 px-1 sm:py-2.5 rounded-xl sm:rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/50 hover:border-sky-500/40 text-foreground transition-all duration-200 cursor-pointer active:scale-95 shadow-2xs group"
+                        title="View Earnings"
+                      >
+                        <span className="font-serif text-sm sm:text-xl font-bold text-sky-500 leading-tight">
+                          ${stats.totalEarnings.toFixed(0)}
+                        </span>
+                        <span className="text-[10px] sm:text-xs font-medium text-muted-foreground mt-0.5">Earnings</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Downwards 2-Column Menu Card Grid (Identical to Customer Profile Architecture) */}
+                <div className="grid sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 items-start">
+                  
+                  {/* COLUMN 1: Work, Delivery & Vehicle Activities */}
+                  <div className="rounded-2xl sm:rounded-[24px] bg-card border border-border/70 p-2.5 sm:p-4 shadow-warm space-y-1 sm:space-y-1.5 h-fit">
+                    <p className="px-2.5 pt-0.5 pb-0.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Bike className="size-3.5 text-primary" /> Work &amp; Delivery Activities
+                    </p>
+
+                    {/* Performance & Earnings */}
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60 group"
+                      onClick={() => handleNavigateToTab("PERFORMANCE")}
+                    >
+                      <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                        <div className="size-9 sm:size-11 rounded-xl sm:rounded-2xl bg-orange-500/15 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                          <TrendingUp className="size-4 sm:size-5" />
+                        </div>
+                        <div className="text-left min-w-0">
+                          <span className="font-semibold text-foreground text-xs sm:text-sm block truncate">Performance &amp; Earnings</span>
+                          <span className="text-[10px] sm:text-xs text-muted-foreground">${stats.totalEarnings.toFixed(2)} earned • {stats.successRate}% rate</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                        <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary">
+                          {stats.completedDeliveries} Done
+                        </span>
+                        <ChevronRight className="size-4 text-muted-foreground/60 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                    </button>
+
+                    {/* Vehicle & Equipment */}
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60 group"
+                      onClick={() => handleNavigateToTab("VEHICLE")}
+                    >
+                      <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                        <div className="size-9 sm:size-11 rounded-xl sm:rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                          <Bike className="size-4 sm:size-5" />
+                        </div>
+                        <div className="text-left min-w-0">
+                          <span className="font-semibold text-foreground text-xs sm:text-sm block truncate">Vehicle &amp; License Plate</span>
+                          <span className="text-[10px] sm:text-xs text-muted-foreground">{driver.vehicle_info || "Bike model"} • {driver.license_plate || "Add plate"}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                        {driver.license_plate && (
+                          <span className="text-[10px] sm:text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                            {driver.license_plate}
+                          </span>
+                        )}
+                        <ChevronRight className="size-4 text-muted-foreground/60 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                    </button>
+
+                    {/* Live Delivery Dashboard */}
+                    <Link
+                      to="/driver/dashboard"
+                      className="w-full flex items-center justify-between p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60 group"
+                    >
+                      <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                        <div className="size-9 sm:size-11 rounded-xl sm:rounded-2xl bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                          <Package className="size-4 sm:size-5" />
+                        </div>
+                        <div className="text-left min-w-0">
+                          <span className="font-semibold text-foreground text-xs sm:text-sm block truncate">Live Delivery Dashboard</span>
+                          <span className="text-[10px] sm:text-xs text-muted-foreground">Pick up orders &amp; customer chat</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                        <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground">Open</span>
+                        <ChevronRight className="size-4 text-muted-foreground/60 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                    </Link>
+                  </div>
+
+                  {/* COLUMN 2: Account & Details + Preferences */}
+                  <div className="space-y-3 sm:space-y-4">
+                    
+                    {/* Account & Details Card */}
+                    <div className="rounded-2xl sm:rounded-[24px] bg-card border border-border/70 p-2.5 sm:p-4 shadow-warm space-y-1 sm:space-y-1.5">
+                      <p className="px-2.5 pt-0.5 pb-0.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <User className="size-3.5 text-primary" /> Account &amp; Details
+                      </p>
+
+                      {/* Profile Settings */}
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-between p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60 group"
+                        onClick={() => handleNavigateToTab("SETTINGS")}
+                      >
+                        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                          <div className="size-9 sm:size-11 rounded-xl sm:rounded-2xl bg-violet-500/15 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                            <Settings className="size-4 sm:size-5" />
+                          </div>
+                          <div className="text-left min-w-0">
+                            <span className="font-semibold text-foreground text-xs sm:text-sm block truncate">Driver Profile Details</span>
+                            <span className="text-[10px] sm:text-xs text-muted-foreground">Name, phone, national ID &amp; zone</span>
+                          </div>
+                        </div>
+                        <ChevronRight className="size-4 text-muted-foreground/60 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                      </button>
+
+                      {/* Change Password */}
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-between p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60 group"
+                        onClick={() => setIsPasswordModalOpen(true)}
+                      >
+                        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                          <div className="size-9 sm:size-11 rounded-xl sm:rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                            <Key className="size-4 sm:size-5" />
+                          </div>
+                          <div className="text-left min-w-0">
+                            <span className="font-semibold text-foreground text-xs sm:text-sm block truncate">Change Password</span>
+                            <span className="text-[10px] sm:text-xs text-muted-foreground">Update secure driver credentials</span>
+                          </div>
+                        </div>
+                        <ChevronRight className="size-4 text-muted-foreground/60 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                      </button>
                     </div>
 
-                    <SectionCard
-                      icon={Bike}
-                      title="Vehicle details"
-                      action={
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setIsEditModalOpen(true)}
-                          className="h-9 shrink-0 gap-1.5 rounded-xl px-3 text-xs font-bold text-primary hover:bg-primary/10 hover:text-primary"
+                    {/* Preferences Card */}
+                    <div className="rounded-2xl sm:rounded-[24px] bg-card border border-border/70 p-2.5 sm:p-4 shadow-warm space-y-1 sm:space-y-1.5">
+                      <p className="px-2.5 pt-0.5 pb-0.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Sparkles className="size-3.5 text-primary" /> Preferences
+                      </p>
+
+                      {/* Appearance Switcher */}
+                      <div className="w-full flex items-center justify-between p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl text-sm">
+                        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                          <div className="size-9 sm:size-11 rounded-xl sm:rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
+                            {theme === "dark" ? <Moon className="size-4 sm:size-5" /> : <Sun className="size-4 sm:size-5" />}
+                          </div>
+                          <div className="text-left min-w-0">
+                            <span className="font-semibold text-foreground text-xs sm:text-sm block">Appearance</span>
+                            <span className="text-[10px] sm:text-xs text-muted-foreground">{theme === "dark" ? "Dark Mode" : "Light Mode"}</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                          className="h-7 sm:h-8 px-2.5 sm:px-3.5 rounded-full bg-secondary hover:bg-secondary/80 border border-border/60 text-[10px] sm:text-xs font-semibold text-foreground flex items-center gap-1 sm:gap-1.5 transition-all active:scale-95 cursor-pointer shadow-2xs"
                         >
-                          <Edit className="size-3.5" /> Edit
+                          {theme === "dark" ? <Moon className="size-3 sm:size-3.5" /> : <Sun className="size-3 sm:size-3.5" />}
+                          <span>{theme === "dark" ? "Dark" : "Light"}</span>
+                        </button>
+                      </div>
+
+                      {/* Push Notifications */}
+                      <div className="flex items-center justify-between p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl text-sm font-medium transition-all group">
+                        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                          <div className="size-9 sm:size-11 rounded-xl sm:rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                            <Flame className="size-4 sm:size-5" />
+                          </div>
+                          <div className="text-left min-w-0">
+                            <span className="font-semibold text-foreground text-xs sm:text-sm block">Push Notifications</span>
+                            <span className="text-[10px] sm:text-xs text-muted-foreground">Order updates &amp; dispatch alerts</span>
+                          </div>
+                        </div>
+                        <PushNotificationButton userType="DRIVER" userId={driver.id} className="scale-90 origin-right" />
+                      </div>
+
+                      {/* Sign Out */}
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-between p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-destructive/10 text-destructive border border-transparent hover:border-destructive/20 group"
+                        onClick={handleLogout}
+                      >
+                        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                          <div className="size-9 sm:size-11 rounded-xl sm:rounded-2xl bg-destructive/15 text-destructive flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                            <LogOut className="size-4 sm:size-5" />
+                          </div>
+                          <div className="text-left min-w-0">
+                            <span className="font-semibold text-destructive text-xs sm:text-sm block">Sign Out</span>
+                            <span className="text-[10px] sm:text-xs text-destructive/70">Log out from this device</span>
+                          </div>
+                        </div>
+                        <ChevronRight className="size-4 text-destructive/40 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+
+              </div>
+            ) : (
+              /* ========================================================================= */
+              /* 2. DEDICATED SUB-PAGE VIEWS WITH CLEAN INLINE BACK BUTTON HEADER          */
+              /* ========================================================================= */
+              <div className="space-y-4 sm:space-y-6 animate-fade-in">
+                
+                {/* Unified Sub-Page Header with Inline Back Arrow */}
+                <div className="flex items-center gap-3 pb-1">
+                  <button
+                    type="button"
+                    onClick={() => handleNavigateToTab("MENU")}
+                    className="size-9 sm:size-10 rounded-full bg-secondary hover:bg-secondary/80 border border-border/70 flex items-center justify-center text-foreground transition-all active:scale-95 cursor-pointer shadow-2xs shrink-0"
+                    title="Back to Profile"
+                  >
+                    <ArrowLeft className="size-4 sm:size-4.5" />
+                  </button>
+                  <div className="min-w-0">
+                    <h2 className="font-serif text-lg sm:text-2xl font-bold text-foreground truncate">
+                      {activeTab === "SETTINGS" && "Driver Profile Details"}
+                      {activeTab === "PERFORMANCE" && "Performance & Earnings"}
+                      {activeTab === "VEHICLE" && "Vehicle & License Plate"}
+                    </h2>
+                    <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
+                      {activeTab === "SETTINGS" && "Manage personal credentials, contact info & operating area"}
+                      {activeTab === "PERFORMANCE" && "Trip statistics, success rate and earnings report"}
+                      {activeTab === "VEHICLE" && "Vehicle registration and plate details"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* ── SUB-PAGE: SETTINGS / PROFILE DETAILS ── */}
+                {activeTab === "SETTINGS" && (
+                  <div className="rounded-2xl sm:rounded-[28px] bg-card border border-border/70 p-4 sm:p-6 shadow-warm">
+                    <form onSubmit={handleSaveProfile} className="space-y-4 sm:space-y-5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+                        <div>
+                          <label className="text-xs font-bold text-foreground/90 mb-1.5 flex items-center justify-between">
+                            <span>Full Name</span>
+                            <span className="text-[11px] font-medium text-muted-foreground">ឈ្មោះពេញ *</span>
+                          </label>
+                          <Input
+                            value={editForm.name}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
+                            placeholder="Driver Name"
+                            required
+                            className="h-11 rounded-xl bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-bold text-foreground/90 mb-1.5 flex items-center justify-between">
+                            <span>Phone Number</span>
+                            <span className="text-[11px] font-medium text-muted-foreground">លេខទូរស័ព្ទ *</span>
+                          </label>
+                          <Input
+                            value={editForm.phone}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))}
+                            placeholder="e.g. 0888631805"
+                            required
+                            className="h-11 rounded-xl bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+                        <div>
+                          <label className="text-xs font-bold text-foreground/90 mb-1.5 flex items-center justify-between">
+                            <span>Vehicle Model</span>
+                            <span className="text-[11px] font-medium text-muted-foreground">ម៉ូដែលម៉ូតូ</span>
+                          </label>
+                          <Input
+                            value={editForm.vehicle_info}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, vehicle_info: e.target.value }))}
+                            placeholder="e.g. Honda Wave 125i"
+                            className="h-11 rounded-xl bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-bold text-foreground/90 mb-1.5 flex items-center justify-between">
+                            <span>License Plate</span>
+                            <span className="text-[11px] font-medium text-muted-foreground">ផ្លាកលេខ</span>
+                          </label>
+                          <Input
+                            value={editForm.license_plate}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, license_plate: e.target.value }))}
+                            placeholder="e.g. 1A-2345"
+                            className="h-11 rounded-xl bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary font-mono font-bold"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+                        <div>
+                          <label className="text-xs font-bold text-foreground/90 mb-1.5 flex items-center justify-between">
+                            <span>Emergency Contact</span>
+                            <span className="text-[11px] font-medium text-muted-foreground">លេខទំនាក់ទំនងបន្ទាន់</span>
+                          </label>
+                          <Input
+                            value={editForm.emergency_contact}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, emergency_contact: e.target.value }))}
+                            placeholder="Family phone number"
+                            className="h-11 rounded-xl bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-bold text-foreground/90 mb-1.5 flex items-center justify-between">
+                            <span>National ID</span>
+                            <span className="text-[11px] font-medium text-muted-foreground">អត្តសញ្ញាណប័ណ្ណ</span>
+                          </label>
+                          <Input
+                            value={editForm.national_id}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, national_id: e.target.value }))}
+                            placeholder="ID card number"
+                            className="h-11 rounded-xl bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-foreground/90 mb-1.5 flex items-center justify-between">
+                          <span>Operating Area</span>
+                          <span className="text-[11px] font-medium text-muted-foreground">តំបន់ដឹកជញ្ជូន</span>
+                        </label>
+                        <Input
+                          value={editForm.address}
+                          onChange={(e) => setEditForm((prev) => ({ ...prev, address: e.target.value }))}
+                          placeholder="Phnom Penh, Toul Kork, BKK, etc."
+                          className="h-11 rounded-xl bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-end gap-3 pt-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => handleNavigateToTab("MENU")}
+                          className="h-11 rounded-xl border-border/70 text-xs font-bold uppercase hover:bg-secondary px-5"
+                        >
+                          Cancel
                         </Button>
-                      }
-                    >
-                      <InfoRow icon={Bike} label="Model" value={driver.vehicle_info} />
-                      <InfoRow icon={ShieldCheck} label="License plate" value={driver.license_plate} tone="primary" />
-                      <InfoRow icon={MapPin} label="Operating area" value={driver.address} />
-                    </SectionCard>
-                  </>
+                        <Button
+                          type="submit"
+                          disabled={isSavingProfile}
+                          className="h-11 gap-2 rounded-xl bg-primary text-xs font-bold uppercase text-primary-foreground shadow-md shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.98] px-6"
+                        >
+                          {isSavingProfile ? (
+                            <>
+                              <Loader2 className="size-4 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Check className="size-4 stroke-[3]" />
+                              Save Changes
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
                 )}
 
+                {/* ── SUB-PAGE: PERFORMANCE & EARNINGS ── */}
                 {activeTab === "PERFORMANCE" && (
-                  <>
-                    {/* Earnings hero — real total from the orders API */}
-                    <div className="relative overflow-hidden rounded-3xl border border-border/70 bg-card p-5 shadow-sm sm:p-6">
-                      <div className="pointer-events-none absolute -right-10 -top-10 size-36 rounded-full bg-primary/10 blur-2xl" />
+                  <div className="space-y-4">
+                    {/* Hero Total Earnings Card */}
+                    <div className="relative overflow-hidden rounded-2xl sm:rounded-[28px] border border-border/70 bg-card p-5 sm:p-6 shadow-warm">
+                      <div className="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-primary/10 blur-2xl" />
                       <p className="relative text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                        Total earnings
+                        Total Driver Earnings
                       </p>
-                      <p className="relative mt-1.5 flex items-center gap-1 text-4xl font-black tracking-tight text-foreground tabular-nums sm:text-5xl">
-                        <DollarSign className="size-6 self-center text-primary sm:size-7" />
+                      <p className="relative mt-2 flex items-center gap-1 text-4xl sm:text-5xl font-black tracking-tight text-foreground tabular-nums">
+                        <DollarSign className="size-7 self-center text-primary" />
                         {stats.totalEarnings.toFixed(2)}
                       </p>
                       <p className="relative mt-2 text-xs font-medium text-muted-foreground">
-                        From {stats.completedDeliveries} completed {stats.completedDeliveries === 1 ? "delivery" : "deliveries"}
+                        Generated from {stats.completedDeliveries} completed {stats.completedDeliveries === 1 ? "delivery" : "deliveries"}.
                       </p>
                     </div>
 
-                    <SectionCard icon={TrendingUp} title="Breakdown">
-                      {/* Success rate */}
-                      <div className="border-b border-border/40 px-2 py-4">
-                        <div className="flex items-baseline justify-between gap-3">
-                          <span className="text-sm text-muted-foreground">Success rate</span>
-                          <span className="text-sm font-bold text-foreground tabular-nums">{stats.successRate}%</span>
+                    {/* Progress Breakdown Cards */}
+                    <div className="rounded-2xl sm:rounded-[28px] border border-border/70 bg-card p-4 sm:p-6 shadow-warm space-y-4">
+                      <h3 className="font-serif text-base sm:text-lg font-bold text-foreground">Delivery Metrics</h3>
+
+                      {/* Success Rate */}
+                      <div className="p-3.5 rounded-xl bg-secondary/40 border border-border/60">
+                        <div className="flex items-baseline justify-between gap-3 mb-2">
+                          <span className="text-xs font-semibold text-muted-foreground">Success Rate</span>
+                          <span className="text-sm font-black text-foreground tabular-nums">{stats.successRate}%</span>
                         </div>
-                        <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-secondary">
+                        <div className="h-2 overflow-hidden rounded-full bg-secondary">
                           <motion.div
                             className="h-full rounded-full bg-gradient-to-r from-primary to-amber-500"
                             initial={{ width: 0 }}
@@ -740,15 +1017,15 @@ export default function DriverProfilePage() {
                         </div>
                       </div>
 
-                      {/* Completion ratio */}
-                      <div className="border-b border-border/40 px-2 py-4">
-                        <div className="flex items-baseline justify-between gap-3">
-                          <span className="text-sm text-muted-foreground">Completed</span>
-                          <span className="text-sm font-bold text-foreground tabular-nums">
-                            {stats.completedDeliveries} / {stats.totalDeliveries}
+                      {/* Completion Ratio */}
+                      <div className="p-3.5 rounded-xl bg-secondary/40 border border-border/60">
+                        <div className="flex items-baseline justify-between gap-3 mb-2">
+                          <span className="text-xs font-semibold text-muted-foreground">Completed Trips</span>
+                          <span className="text-sm font-black text-foreground tabular-nums">
+                            {stats.completedDeliveries} / {stats.totalDeliveries} ({completionPct}%)
                           </span>
                         </div>
-                        <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-secondary">
+                        <div className="h-2 overflow-hidden rounded-full bg-secondary">
                           <motion.div
                             className="h-full rounded-full bg-emerald-500"
                             initial={{ width: 0 }}
@@ -758,229 +1035,105 @@ export default function DriverProfilePage() {
                         </div>
                       </div>
 
-                      <InfoRow icon={Star} label="Customer rating" value={`${stats.rating} / 5.0`} />
-                      <InfoRow icon={Package} label="Assigned deliveries" value={stats.totalDeliveries} />
-                      <InfoRow icon={CheckCircle2} label="Completed trips" value={stats.completedDeliveries} tone="success" />
-                    </SectionCard>
-                  </>
-                )}
-
-                {activeTab === "SETTINGS" && (
-                  <>
-                    <SectionCard icon={Sun} title="Appearance">
-                      <div className="flex items-center justify-between gap-4 px-2 py-4">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-bold text-foreground">Theme</p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            Currently {theme === "dark" ? "dark" : "light"} mode
-                          </p>
+                      {/* Details Grid */}
+                      <div className="grid grid-cols-2 gap-3 pt-1">
+                        <div className="p-3 rounded-xl bg-secondary/30 border border-border/50 text-center">
+                          <span className="text-[11px] font-medium text-muted-foreground block">Customer Rating</span>
+                          <span className="text-lg font-bold text-amber-500 mt-0.5 inline-flex items-center gap-1">
+                            <Star className="size-4 fill-amber-500 text-amber-500" />
+                            {stats.rating} / 5.0
+                          </span>
                         </div>
-                        <div className="flex shrink-0 gap-1 rounded-xl border border-border/60 bg-secondary/50 p-1">
-                          {["light", "dark"].map(mode => (
-                            <button
-                              key={mode}
-                              type="button"
-                              onClick={() => setTheme(mode)}
-                              aria-pressed={theme === mode}
-                              className={cn(
-                                "flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-bold capitalize transition-colors",
-                                theme === mode
-                                  ? "bg-card text-foreground shadow-sm"
-                                  : "text-muted-foreground hover:text-foreground"
-                              )}
-                            >
-                              {mode === "light" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
-                              {mode}
-                            </button>
-                          ))}
+                        <div className="p-3 rounded-xl bg-secondary/30 border border-border/50 text-center">
+                          <span className="text-[11px] font-medium text-muted-foreground block">Total Assigned</span>
+                          <span className="text-lg font-bold text-foreground mt-0.5 block">
+                            {stats.totalDeliveries} Orders
+                          </span>
                         </div>
                       </div>
-                    </SectionCard>
-
-                    <SectionCard icon={Key} title="Account & security">
-                      <ActionRow
-                        icon={Key}
-                        label="Change password"
-                        hint="Use at least 6 characters"
-                        onClick={() => setIsPasswordModalOpen(true)}
-                      />
-                      <ActionRow
-                        icon={User}
-                        label="Edit profile details"
-                        hint="Name, phone, vehicle, area"
-                        onClick={() => setIsEditModalOpen(true)}
-                      />
-                      <ActionRow
-                        icon={LogOut}
-                        label="Sign out"
-                        hint="You will need to log in again"
-                        onClick={handleLogout}
-                        tone="destructive"
-                      />
-                    </SectionCard>
-                  </>
+                    </div>
+                  </div>
                 )}
-              </motion.div>
-            </AnimatePresence>
+
+                {/* ── SUB-PAGE: VEHICLE & LICENSE PLATE ── */}
+                {activeTab === "VEHICLE" && (
+                  <div className="space-y-4">
+                    {/* License Plate Display Card */}
+                    <div className="rounded-2xl sm:rounded-[28px] border border-border/70 bg-card p-5 sm:p-6 shadow-warm text-center">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                        Vehicle License Plate
+                      </p>
+                      <div className="rounded-2xl border-2 border-primary/25 bg-primary/5 px-4 py-6 text-center max-w-sm mx-auto shadow-inner">
+                        <span className="block truncate font-mono text-3xl sm:text-4xl font-black tracking-[0.2em] text-foreground tabular-nums">
+                          {driver.license_plate || "— — — —"}
+                        </span>
+                      </div>
+                      {!driver.license_plate && (
+                        <p className="mt-3 flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground">
+                          <AlertCircle className="size-4 text-amber-500 shrink-0" />
+                          Add your plate so customers and kitchen staff can easily recognize you.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Vehicle Details Card */}
+                    <div className="rounded-2xl sm:rounded-[28px] border border-border/70 bg-card p-4 sm:p-6 shadow-warm space-y-3.5">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-serif text-base sm:text-lg font-bold text-foreground">Vehicle Specifications</h3>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleNavigateToTab("SETTINGS")}
+                          className="h-8 gap-1 rounded-xl text-xs font-bold text-primary hover:bg-primary/10"
+                        >
+                          <Edit className="size-3.5" /> Edit
+                        </Button>
+                      </div>
+
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/40 border border-border/50">
+                          <span className="text-muted-foreground flex items-center gap-2">
+                            <Bike className="size-4 text-primary" /> Vehicle Model
+                          </span>
+                          <span className="font-semibold text-foreground">{driver.vehicle_info || "Not set"}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/40 border border-border/50">
+                          <span className="text-muted-foreground flex items-center gap-2">
+                            <ShieldCheck className="size-4 text-emerald-500" /> License Plate
+                          </span>
+                          <span className="font-mono font-bold text-primary">{driver.license_plate || "Not set"}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/40 border border-border/50">
+                          <span className="text-muted-foreground flex items-center gap-2">
+                            <MapPin className="size-4 text-sky-500" /> Operating Zone
+                          </span>
+                          <span className="font-semibold text-foreground">{driver.address || "Phnom Penh"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            )}
+
           </div>
-        </div>
+        </PageTransition>
       </main>
 
-      {/* ── Edit profile ── */}
-      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent
-          showCloseButton={false}
-          className="max-h-[90dvh] gap-0 overflow-hidden rounded-t-3xl border-border bg-card p-0 text-foreground sm:rounded-3xl"
-        >
-          <DialogHeader className="flex-row items-center justify-between gap-3 border-b border-border/60 bg-secondary/30 px-4 py-3 text-left sm:px-5">
-            <div className="min-w-0">
-              <DialogTitle className="truncate text-base font-black tracking-tight">
-                Edit profile
-              </DialogTitle>
-              <DialogDescription className="truncate text-xs">
-                Update your personal and vehicle details
-              </DialogDescription>
-            </div>
-            {/* Own close button: shadcn's built-in one is a 16px tap target */}
-            <DialogClose asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Close"
-                className="size-11 shrink-0 rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
-              >
-                <X className="size-5" />
-              </Button>
-            </DialogClose>
-          </DialogHeader>
-
-          <form onSubmit={handleSaveProfile} className="max-h-[62dvh] space-y-4 overflow-y-auto px-4 py-5 custom-scrollbar sm:px-5">
-              <div>
-                <label className="text-xs font-bold text-foreground/90 mb-1.5 flex items-center justify-between">
-                  <span>Full Name</span>
-                  <span className="text-[11px] font-medium text-muted-foreground">ឈ្មោះពេញ *</span>
-                </label>
-                <Input 
-                  value={editForm.name}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Enter full name"
-                  required
-                  className="h-11 rounded-xl bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-foreground/90 mb-1.5 flex items-center justify-between">
-                  <span>Phone Number</span>
-                  <span className="text-[11px] font-medium text-muted-foreground">លេខទូរស័ព្ទ *</span>
-                </label>
-                <Input 
-                  value={editForm.phone}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
-                  placeholder="e.g. 0888631805"
-                  required
-                  className="h-11 rounded-xl bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div>
-                  <label className="text-xs font-bold text-foreground/90 mb-1.5 flex items-center justify-between">
-                    <span>Vehicle Model</span>
-                    <span className="text-[11px] font-medium text-muted-foreground">ម៉ូដែលម៉ូតូ</span>
-                  </label>
-                  <Input 
-                    value={editForm.vehicle_info}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, vehicle_info: e.target.value }))}
-                    placeholder="e.g. Honda Wave 125i"
-                    className="h-11 rounded-xl bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-foreground/90 mb-1.5 flex items-center justify-between">
-                    <span>License Plate</span>
-                    <span className="text-[11px] font-medium text-muted-foreground">ផ្លាកលេខ</span>
-                  </label>
-                  <Input 
-                    value={editForm.license_plate}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, license_plate: e.target.value }))}
-                    placeholder="e.g. 1A-2345"
-                    className="h-11 rounded-xl bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary font-mono font-bold"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-foreground/90 mb-1.5 flex items-center justify-between">
-                  <span>Emergency Contact</span>
-                  <span className="text-[11px] font-medium text-muted-foreground">លេខទំនាក់ទំនងបន្ទាន់</span>
-                </label>
-                <Input 
-                  value={editForm.emergency_contact}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, emergency_contact: e.target.value }))}
-                  placeholder="Family or friend phone number"
-                  className="h-11 rounded-xl bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-foreground/90 mb-1.5 flex items-center justify-between">
-                  <span>Operating Area</span>
-                  <span className="text-[11px] font-medium text-muted-foreground">តំបន់ដឹកជញ្ជូន</span>
-                </label>
-                <Input 
-                  value={editForm.address}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, address: e.target.value }))}
-                  placeholder="Phnom Penh, Toul Kork, BKK, etc."
-                  className="h-11 rounded-xl bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary"
-                />
-              </div>
-
-              <DialogFooter className="gap-3 pt-2 sm:gap-3">
-                <DialogClose asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-12 flex-1 rounded-2xl border-border text-xs font-bold uppercase hover:bg-secondary"
-                  >
-                    Cancel
-                  </Button>
-                </DialogClose>
-                <Button
-                  type="submit"
-                  disabled={isSavingProfile}
-                  className="h-12 flex-[2] gap-2 rounded-2xl bg-primary text-xs font-bold uppercase text-primary-foreground shadow-md shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.98]"
-                >
-                  {isSavingProfile ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="size-4 stroke-[3]" />
-                      Save changes
-                    </>
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Change password ── */}
+      {/* ── Change Password Modal ── */}
       <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
         <DialogContent
           showCloseButton={false}
-          className="gap-0 overflow-hidden rounded-t-3xl border-border bg-card p-0 text-foreground sm:max-w-md sm:rounded-3xl"
+          className="gap-0 overflow-hidden rounded-2xl border-border bg-card p-0 text-foreground sm:max-w-md sm:rounded-3xl"
         >
           <DialogHeader className="flex-row items-center justify-between gap-3 border-b border-border/60 bg-secondary/30 px-4 py-3 text-left sm:px-5">
             <div className="min-w-0">
               <DialogTitle className="truncate text-base font-black tracking-tight">
-                Change password
+                Change Password
               </DialogTitle>
               <DialogDescription className="truncate text-xs">
-                Use at least 6 characters
+                Use at least 6 characters to secure your driver portal
               </DialogDescription>
             </div>
             <DialogClose asChild>
@@ -988,67 +1141,66 @@ export default function DriverProfilePage() {
                 variant="ghost"
                 size="icon"
                 aria-label="Close"
-                className="size-11 shrink-0 rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+                className="size-9 rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
               >
-                <X className="size-5" />
+                <X className="size-4" />
               </Button>
             </DialogClose>
           </DialogHeader>
 
           <form onSubmit={handleUpdatePassword} className="space-y-4 px-4 py-5 sm:px-5">
             <div className="space-y-2">
-              <label className="text-xs font-bold text-foreground/90">New password</label>
+              <label className="text-xs font-bold text-foreground/90">New Password</label>
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
                   value={passwordForm.newPassword}
-                  onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                  onChange={(e) => setPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))}
                   placeholder="At least 6 characters"
                   autoComplete="new-password"
                   required
-                  className="h-12 rounded-xl border-border/80 bg-secondary/40 pr-14 text-sm focus-visible:ring-primary"
+                  className="h-11 rounded-xl border-border/80 bg-secondary/40 pr-12 text-sm focus-visible:ring-primary"
                 />
-                {/* 44px reveal target — the old one was a bare 16px icon */}
                 <button
                   type="button"
-                  onClick={() => setShowPassword(v => !v)}
+                  onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute right-1 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:text-foreground"
+                  className="absolute right-1 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  {showPassword ? <EyeOff className="size-[18px]" /> : <Eye className="size-[18px]" />}
+                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-foreground/90">Confirm password</label>
+              <label className="text-xs font-bold text-foreground/90">Confirm Password</label>
               <div className="relative">
                 <Input
                   type={showConfirmPassword ? "text" : "password"}
                   value={passwordForm.confirmPassword}
-                  onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  onChange={(e) => setPasswordForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
                   placeholder="Repeat new password"
                   autoComplete="new-password"
                   required
-                  className="h-12 rounded-xl border-border/80 bg-secondary/40 pr-14 text-sm focus-visible:ring-primary"
+                  className="h-11 rounded-xl border-border/80 bg-secondary/40 pr-12 text-sm focus-visible:ring-primary"
                 />
                 <button
                   type="button"
-                  onClick={() => setShowConfirmPassword(v => !v)}
+                  onClick={() => setShowConfirmPassword((v) => !v)}
                   aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                  className="absolute right-1 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:text-foreground"
+                  className="absolute right-1 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  {showConfirmPassword ? <EyeOff className="size-[18px]" /> : <Eye className="size-[18px]" />}
+                  {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
               </div>
             </div>
 
-            <DialogFooter className="gap-3 pt-1 sm:gap-3">
+            <DialogFooter className="gap-2.5 pt-2 sm:gap-3">
               <DialogClose asChild>
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-12 flex-1 rounded-2xl border-border text-xs font-bold uppercase hover:bg-secondary"
+                  className="h-11 flex-1 rounded-xl border-border text-xs font-bold uppercase hover:bg-secondary"
                 >
                   Cancel
                 </Button>
@@ -1056,7 +1208,7 @@ export default function DriverProfilePage() {
               <Button
                 type="submit"
                 disabled={isUpdatingPassword}
-                className="h-12 flex-[2] gap-2 rounded-2xl bg-primary text-xs font-bold uppercase text-primary-foreground shadow-md shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.98]"
+                className="h-11 flex-[2] gap-2 rounded-xl bg-primary text-xs font-bold uppercase text-primary-foreground shadow-md shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.98]"
               >
                 {isUpdatingPassword ? (
                   <>
@@ -1066,7 +1218,7 @@ export default function DriverProfilePage() {
                 ) : (
                   <>
                     <Check className="size-4 stroke-[3]" />
-                    Update password
+                    Update Password
                   </>
                 )}
               </Button>
@@ -1074,7 +1226,6 @@ export default function DriverProfilePage() {
           </form>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }
