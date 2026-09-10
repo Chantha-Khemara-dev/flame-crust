@@ -431,7 +431,7 @@ function WheelBulbs({ spinning }) {
         <span key={i} className="absolute inset-0" style={{ transform: `rotate(${(360 / BULB_COUNT) * i}deg)` }}>
           <span
             className={cn(
-              "absolute top-[2px] left-1/2 -translate-x-1/2 block size-[7px] rounded-full border border-amber-200/60 shadow-[0_0_6px_2px_rgba(253,224,71,0.5)]",
+              "absolute top-[2px] left-1/2 -translate-x-1/2 block size-[5px] sm:size-[7px] rounded-full border border-amber-200/60 shadow-[0_0_6px_2px_rgba(253,224,71,0.5)]",
               spinning ? "bg-yellow-200 animate-pulse" : i % 2 === 0 ? "bg-yellow-300" : "bg-amber-400/80"
             )}
             style={spinning ? { animationDelay: `${(i % 4) * 90}ms`, animationDuration: "350ms" } : undefined}
@@ -452,16 +452,16 @@ function Wheel({ rotation, isSpinning, onSpin, disabled, spinsRemaining = 0 }) {
       <motion.div
         animate={isSpinning ? { scale: [1, 1.015, 1] } : { scale: 1 }}
         transition={isSpinning ? { repeat: Infinity, duration: 0.9 } : { duration: 0.3 }}
-        className="absolute size-[290px] sm:size-[326px] rounded-full bg-gradient-to-br from-orange-500/35 via-amber-400/20 to-red-500/35 blur-2xl pointer-events-none"
+        className="absolute size-[230px] xs:size-[254px] sm:size-[326px] rounded-full bg-gradient-to-br from-orange-500/35 via-amber-400/20 to-red-500/35 blur-2xl pointer-events-none"
       />
 
-      <div className="relative size-[268px] sm:size-[300px] rounded-full bg-[conic-gradient(from_0deg,#FDE68A,#F59E0B,#B45309,#FBBF24,#FDE68A)] p-[10px] shadow-[0_24px_70px_rgba(234,88,12,0.45),inset_0_2px_6px_rgba(255,255,255,0.6)]">
-        <div className="absolute inset-[5px] rounded-full border-2 border-amber-900/25 pointer-events-none z-20" />
+      <div className="relative size-[218px] xs:size-[240px] sm:size-[300px] rounded-full bg-[conic-gradient(from_0deg,#FDE68A,#F59E0B,#B45309,#FBBF24,#FDE68A)] p-[7px] sm:p-[10px] shadow-[0_16px_50px_rgba(234,88,12,0.45),inset_0_2px_6px_rgba(255,255,255,0.6)]">
+        <div className="absolute inset-[4px] sm:inset-[5px] rounded-full border border-amber-900/25 pointer-events-none z-20" />
         <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/35 via-transparent to-black/25 pointer-events-none z-20" />
 
         <WheelBulbs spinning={isSpinning} />
 
-        <div className="relative size-full rounded-full bg-zinc-950 p-[6px] shadow-[inset_0_4px_14px_rgba(0,0,0,0.65)]">
+        <div className="relative size-full rounded-full bg-zinc-950 p-[4px] sm:p-[6px] shadow-[inset_0_4px_14px_rgba(0,0,0,0.65)]">
           <svg
             viewBox="0 0 400 400"
             className="size-full rounded-full transition-transform will-change-transform"
@@ -550,35 +550,35 @@ function Wheel({ rotation, isSpinning, onSpin, disabled, spinsRemaining = 0 }) {
             disabled={disabled}
             whileHover={disabled ? undefined : { scale: 1.06 }}
             whileTap={disabled ? undefined : { scale: 0.94 }}
-            className="absolute inset-0 m-auto size-[84px] sm:size-24 rounded-full bg-[radial-gradient(circle_at_32%_28%,#3F3F46,#18181B_70%)] border-[3px] border-amber-400 flex flex-col items-center justify-center shadow-[0_10px_28px_rgba(0,0,0,0.55)] cursor-pointer disabled:cursor-not-allowed z-30 group"
+            className="absolute inset-0 m-auto size-[68px] xs:size-[74px] sm:size-24 rounded-full bg-[radial-gradient(circle_at_32%_28%,#3F3F46,#18181B_70%)] border-[2.5px] sm:border-[3px] border-amber-400 flex flex-col items-center justify-center shadow-[0_8px_24px_rgba(0,0,0,0.55)] cursor-pointer disabled:cursor-not-allowed z-30 group"
           >
             {!disabled && (
               <motion.span
                 animate={{ opacity: [0.35, 0.85, 0.35] }}
                 transition={{ repeat: Infinity, duration: 1.8 }}
-                className="absolute inset-0 rounded-full ring-4 ring-amber-400/40 pointer-events-none"
+                className="absolute inset-0 rounded-full ring-3 sm:ring-4 ring-amber-400/40 pointer-events-none"
               />
             )}
-            <Flame className={cn("size-6 transition-transform", isSpinning ? "text-amber-400" : disabled ? "text-zinc-500" : "text-orange-500 group-hover:scale-110")} />
-            <span className={cn("text-[11px] font-black tracking-[0.14em] uppercase mt-1", disabled ? "text-zinc-400" : "text-amber-300")}>
+            <Flame className={cn("size-4 xs:size-5 sm:size-6 transition-transform", isSpinning ? "text-amber-400" : disabled ? "text-zinc-500" : "text-orange-500 group-hover:scale-110")} />
+            <span className={cn("text-[9px] xs:text-[10px] sm:text-[11px] font-black tracking-[0.1em] sm:tracking-[0.14em] uppercase mt-0.5 sm:mt-1", disabled ? "text-zinc-400" : "text-amber-300")}>
               {isSpinning ? "LUCKY" : disabled ? "DONE" : "SPIN"}
             </span>
-            <span className="text-[8px] font-bold text-amber-200/60 uppercase tracking-wider">
+            <span className="text-[7px] sm:text-[8px] font-bold text-amber-200/60 uppercase tracking-wider">
               {isSpinning ? "..." : disabled ? "0 Left" : `${spinsRemaining} Left`}
             </span>
           </motion.button>
         </div>
       </div>
 
-      <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center">
+      <div className="absolute -top-1 sm:-top-1.5 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center">
         <motion.div
           animate={isSpinning ? { rotate: [0, -9, 7, 0] } : { rotate: 0 }}
           transition={isSpinning ? { repeat: Infinity, duration: 0.45 } : { duration: 0.2 }}
           style={{ originY: 0.15 }}
-          className="flex flex-col items-center drop-shadow-[0_5px_7px_rgba(0,0,0,0.45)]"
+          className="flex flex-col items-center drop-shadow-[0_4px_6px_rgba(0,0,0,0.45)]"
         >
-          <div className="size-5 rounded-full bg-[radial-gradient(circle_at_35%_30%,#FEF3C7,#F59E0B_65%,#92400E)] ring-2 ring-amber-200/70 shadow-md" />
-          <svg width="30" height="30" viewBox="0 0 30 30" className="-mt-1.5">
+          <div className="size-4 sm:size-5 rounded-full bg-[radial-gradient(circle_at_35%_30%,#FEF3C7,#F59E0B_65%,#92400E)] ring-1.5 sm:ring-2 ring-amber-200/70 shadow-md" />
+          <svg viewBox="0 0 30 30" className="w-5 h-5 sm:w-[30px] sm:h-[30px] -mt-1 sm:-mt-1.5">
             <defs>
               <linearGradient id="pointerGold" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#FDE68A" />
@@ -800,7 +800,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto no-scrollbar">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto no-scrollbar">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -814,28 +814,28 @@ export function LuckyDrawModal({ open, onOpenChange }) {
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.94, opacity: 0, y: 12 }}
           transition={{ type: "spring", damping: 26, stiffness: 320 }}
-          className="relative w-full max-w-[460px] max-h-[92vh] overflow-y-auto custom-scrollbar rounded-3xl bg-card border border-amber-500/30 shadow-[0_20px_60px_rgba(234,88,12,0.22)] p-4 sm:p-5 text-card-foreground z-10"
+          className="relative w-full max-w-[430px] max-h-[88vh] sm:max-h-[92vh] overflow-y-auto custom-scrollbar rounded-2xl sm:rounded-3xl bg-card border border-amber-500/30 shadow-[0_20px_60px_rgba(234,88,12,0.22)] p-3 sm:p-5 text-card-foreground z-10"
         >
           <div className="absolute top-0 right-1/4 w-32 h-32 bg-gradient-to-br from-orange-500/15 to-transparent rounded-full blur-2xl pointer-events-none" />
           <div className="absolute bottom-0 left-1/4 w-32 h-32 bg-gradient-to-tr from-amber-500/15 to-transparent rounded-full blur-2xl pointer-events-none" />
 
           <div className="relative">
-            <div className="flex items-center justify-between pb-3 border-b border-border/60">
-              <div className="flex items-center gap-2.5">
-                <div className="size-10 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white shadow-md shadow-orange-500/30">
-                  <Sparkles className="size-5" />
+            <div className="flex items-center justify-between pb-2.5 sm:pb-3 border-b border-border/60">
+              <div className="flex items-center gap-2 sm:gap-2.5">
+                <div className="size-8 sm:size-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white shadow-md shadow-orange-500/30 shrink-0">
+                  <Sparkles className="size-4 sm:size-5" />
                 </div>
                 <div>
-                  <h3 className="font-serif text-lg font-bold text-foreground flex items-center gap-2">
+                  <h3 className="font-serif text-base sm:text-lg font-bold text-foreground flex items-center gap-1.5 sm:gap-2">
                     Lucky Wheel
-                    <Badge className="border border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10 text-[9px] font-black uppercase px-1.5 py-0 rounded-full">
+                    <Badge className="border border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10 text-[8px] sm:text-[9px] font-black uppercase px-1.5 py-0 rounded-full">
                       Earn by Ordering 🍕
                     </Badge>
                   </h3>
-                  <div className="flex items-center gap-1.5 mt-0.5 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1.5 mt-0.5 text-[11px] sm:text-xs text-muted-foreground">
                     <span
                       className={cn(
-                        "inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold text-[10px]",
+                        "inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full font-bold text-[9px] sm:text-[10px]",
                         account.isLoggedIn
                           ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25"
                           : "bg-secondary text-muted-foreground border border-border/60"
@@ -845,64 +845,64 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                       {account.isLoggedIn ? account.name : "Guest"}
                     </span>
                     <span>•</span>
-                    <span className="font-bold text-amber-600 dark:text-amber-400 text-[11px]">
+                    <span className="font-bold text-amber-600 dark:text-amber-400 text-[10px] sm:text-[11px]">
                       {spinsRemaining > 0 ? `${spinsRemaining} spins left` : "0 spins left"}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1 sm:gap-1.5">
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => setSoundEnabled(!soundEnabled)}
-                  className="size-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  className="size-8 sm:size-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary"
                   title={soundEnabled ? "Mute audio" : "Enable audio"}
                 >
-                  {soundEnabled ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
+                  {soundEnabled ? <Volume2 className="size-3.5 sm:size-4" /> : <VolumeX className="size-3.5 sm:size-4" />}
                 </Button>
                 <Button
                   variant="ghost"
                   size="icon"
                   disabled={isSpinning}
                   onClick={() => onOpenChange(false)}
-                  className="size-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  className="size-8 sm:size-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary"
                 >
-                  <X className="size-4" />
+                  <X className="size-3.5 sm:size-4" />
                 </Button>
               </div>
             </div>
 
-            <div className="flex items-center justify-center my-3">
-              <div className="inline-flex items-center gap-1 p-1 rounded-full bg-secondary/70 border border-border/60">
+            <div className="flex items-center justify-center my-2 sm:my-3">
+              <div className="inline-flex items-center gap-1 p-0.5 sm:p-1 rounded-full bg-secondary/70 border border-border/60">
                 <button
                   type="button"
                   onClick={() => setViewHistory(false)}
                   className={cn(
-                    "px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                    "px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
                     !viewHistory
                       ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/30"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <RotateCw className="size-3.5" /> Lucky Wheel
+                  <RotateCw className="size-3 sm:size-3.5" /> Lucky Wheel
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewHistory(true)}
                   className={cn(
-                    "px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                    "px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
                     viewHistory
                       ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/30"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <History className="size-3.5" /> My Vouchers
+                  <History className="size-3 sm:size-3.5" /> My Vouchers
                   {wonCoupons.length > 0 && (
                     <span
                       className={cn(
-                        "min-w-4.5 h-4.5 px-1 rounded-full text-[9px] font-black flex items-center justify-center",
+                        "min-w-4 h-4 sm:min-w-4.5 sm:h-4.5 px-1 rounded-full text-[8px] sm:text-[9px] font-black flex items-center justify-center",
                         viewHistory ? "bg-white/25 text-white" : "bg-primary/15 text-primary"
                       )}
                     >
@@ -915,18 +915,18 @@ export function LuckyDrawModal({ open, onOpenChange }) {
 
             {/* Earn Spins by Ordering Notice */}
             {!viewHistory && (
-              <div className="w-full mb-2.5 px-3 py-2 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent border border-amber-500/25 flex items-center justify-between gap-2 text-xs">
+              <div className="w-full mb-2 sm:mb-2.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent border border-amber-500/25 flex items-center justify-between gap-1.5 sm:gap-2 text-[10px] sm:text-xs">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-base shrink-0">🍕</span>
-                  <span className="text-[11px] font-medium text-amber-900 dark:text-amber-200 truncate">
-                    Order more to earn spins! <strong className="text-amber-600 dark:text-amber-400">+1 Spin per order</strong>
+                  <span className="text-sm sm:text-base shrink-0">🍕</span>
+                  <span className="text-[10px] sm:text-[11px] font-medium text-amber-900 dark:text-amber-200 truncate">
+                    Order to earn spins! <strong className="text-amber-600 dark:text-amber-400">+1 Spin/order</strong>
                   </span>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <span className="text-[10px] bg-secondary px-1.5 py-0.5 rounded-full border border-border/60 text-muted-foreground">
+                  <span className="text-[9px] sm:text-[10px] bg-secondary px-1.5 py-0.5 rounded-full border border-border/60 text-muted-foreground">
                     {spinsData.dailyRemaining} Free
                   </span>
-                  <span className="text-[10px] bg-amber-500/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-full border border-amber-500/30 font-bold">
+                  <span className="text-[9px] sm:text-[10px] bg-amber-500/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-full border border-amber-500/30 font-bold">
                     +{spinsData.bonusRemaining} Orders
                   </span>
                 </div>
@@ -935,7 +935,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
 
             {!viewHistory ? (
               <>
-                <div className="flex flex-col items-center justify-center py-2">
+                <div className="flex flex-col items-center justify-center py-1 sm:py-2">
                   <Wheel rotation={rotation} isSpinning={isSpinning} onSpin={handleSpin} disabled={isSpinning || spinsRemaining <= 0} spinsRemaining={spinsRemaining} />
                 </div>
 
@@ -947,62 +947,62 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                       animate={{ scale: 1, opacity: 1, y: 0 }}
                       exit={{ scale: 0.9, opacity: 0 }}
                       transition={{ type: "spring", damping: 20, stiffness: 280 }}
-                      className="mt-4"
+                      className="mt-2.5 sm:mt-4"
                     >
-                      <div className="relative p-4 rounded-2xl border-2 border-amber-500/40 bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-transparent shadow-lg shadow-orange-500/15 overflow-hidden">
-                        <div className="absolute top-2 right-2 flex items-center gap-1 text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
-                          <Sparkles className="size-3" />
+                      <div className="relative p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 border-amber-500/40 bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-transparent shadow-lg shadow-orange-500/15 overflow-hidden">
+                        <div className="absolute top-2 right-2 flex items-center gap-1 text-[9px] sm:text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
+                          <Sparkles className="size-2.5 sm:size-3" />
                           Won Prize
                         </div>
 
                         <div className="flex flex-col items-center text-center">
-                          <div className={cn("size-14 rounded-2xl bg-gradient-to-br flex items-center justify-center shadow-md mb-2.5", winningPrize.bgGradient)}>
-                            <WinIcon className="size-7 text-white" />
+                          <div className={cn("size-11 sm:size-14 rounded-xl sm:rounded-2xl bg-gradient-to-br flex items-center justify-center shadow-md mb-2 sm:mb-2.5", winningPrize.bgGradient)}>
+                            <WinIcon className="size-5 sm:size-7 text-white" />
                           </div>
 
-                          <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-0.5">
+                          <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-0.5">
                             {winningPrize.tier} Prize
                           </span>
-                          <h4 className="font-serif text-xl font-black text-foreground mb-1">
+                          <h4 className="font-serif text-lg sm:text-xl font-black text-foreground mb-1">
                             {winningPrize.label}
                           </h4>
 
-                          <div className="my-2.5 px-3 py-1.5 rounded-xl bg-background/80 border border-border/60 flex items-center gap-2">
+                          <div className="my-2 sm:my-2.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl bg-background/80 border border-border/60 flex items-center gap-2">
                             <span className="text-[10px] font-bold text-muted-foreground">Code:</span>
-                            <span className="font-mono font-black text-base text-primary tracking-wider">
+                            <span className="font-mono font-black text-sm sm:text-base text-primary tracking-wider">
                               {winningPrize.code}
                             </span>
                           </div>
 
-                          <p className="text-[11px] text-muted-foreground mb-3 text-center">
+                          <p className="text-[10px] sm:text-[11px] text-muted-foreground mb-2.5 sm:mb-3 text-center">
                             Valid for 7 days on orders over ${winningPrize.minOrder}.
                           </p>
 
-                          <div className="flex items-center gap-2 justify-center flex-wrap">
+                          <div className="flex items-center gap-1.5 sm:gap-2 justify-center flex-wrap">
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => handleCopyCode(winningPrize.code)}
-                              className="rounded-xl border-border/80 text-xs font-bold gap-1.5 hover:bg-secondary"
+                              className="h-8 sm:h-9 rounded-lg sm:rounded-xl border-border/80 text-[11px] sm:text-xs font-bold gap-1.5 hover:bg-secondary"
                             >
-                              {hasCopied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+                              {hasCopied ? <Check className="size-3 sm:size-3.5 text-emerald-500" /> : <Copy className="size-3 sm:size-3.5" />}
                               {hasCopied ? "Copied" : "Copy Code"}
                             </Button>
                             <Button
                               size="sm"
                               onClick={() => handleApplyToCart(winningPrize)}
-                              className="rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600 text-xs font-bold gap-1.5 shadow-lg shadow-orange-500/30"
+                              className="h-8 sm:h-9 rounded-lg sm:rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600 text-[11px] sm:text-xs font-bold gap-1.5 shadow-lg shadow-orange-500/30"
                             >
-                              <ShoppingBag className="size-3.5" /> Apply to Cart
+                              <ShoppingBag className="size-3 sm:size-3.5" /> Apply to Cart
                             </Button>
                             {spinsRemaining > 0 && (
                               <Button
                                 size="sm"
                                 variant="secondary"
                                 onClick={() => setWinningPrize(null)}
-                                className="rounded-xl border border-amber-500/30 text-xs font-bold gap-1.5 hover:bg-amber-500/15"
+                                className="h-8 sm:h-9 rounded-lg sm:rounded-xl border border-amber-500/30 text-[11px] sm:text-xs font-bold gap-1.5 hover:bg-amber-500/15"
                               >
-                                <RotateCw className="size-3.5 text-amber-500" />
+                                <RotateCw className="size-3 sm:size-3.5 text-amber-500" />
                                 Spin Again
                               </Button>
                             )}
@@ -1016,16 +1016,16 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
-                      className="mt-4 w-full p-4 rounded-2xl bg-secondary/60 border border-border/80 flex flex-col items-center justify-center gap-2.5 text-center"
+                      className="mt-2.5 sm:mt-4 w-full p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-secondary/60 border border-border/80 flex flex-col items-center justify-center gap-2 text-center"
                     >
-                      <div className="size-11 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-2xl">
+                      <div className="size-9 sm:size-11 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-xl sm:text-2xl">
                         🍕
                       </div>
                       <div>
-                        <h5 className="font-serif font-bold text-sm text-foreground">
+                        <h5 className="font-serif font-bold text-xs sm:text-sm text-foreground">
                           Want More Lucky Spins?
                         </h5>
-                        <p className="text-xs text-muted-foreground mt-0.5 max-w-xs">
+                        <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 max-w-xs">
                           Place any order in the app to unlock <span className="font-bold text-amber-600 dark:text-amber-400">+1 Bonus Spin</span> immediately!
                         </p>
                       </div>
@@ -1035,25 +1035,25 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                           onOpenChange(false);
                           navigate("/menu");
                         }}
-                        className="w-full h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-xs shadow-md shadow-orange-500/25 gap-1.5 cursor-pointer"
+                        className="w-full h-9 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-[11px] sm:text-xs shadow-md shadow-orange-500/25 gap-1.5 cursor-pointer"
                       >
                         <ShoppingBag className="size-3.5" /> Order Now to Earn Spins
                       </Button>
-                      <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground mt-0.5">
-                        <Clock className="size-3.5 text-amber-500 shrink-0" />
+                      <div className="flex items-center justify-center gap-1.5 text-[10px] sm:text-[11px] text-muted-foreground mt-0.5">
+                        <Clock className="size-3 sm:size-3.5 text-amber-500 shrink-0" />
                         <span>Daily free spin resets in:</span>
                         <span className="font-mono font-bold text-foreground tabular-nums">{formatCooldown(cooldownRemaining)}</span>
                       </div>
                     </motion.div>
                   ) : (
-                    <motion.div key="cta" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-4 w-full">
+                    <motion.div key="cta" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-2.5 sm:mt-4 w-full">
                       <Button
                         onClick={handleSpin}
                         disabled={isSpinning}
-                        className="group relative w-full h-12 rounded-2xl bg-gradient-to-r from-orange-500 via-amber-500 to-red-500 hover:from-orange-600 hover:via-amber-600 hover:to-red-600 text-white font-bold text-sm shadow-lg shadow-orange-500/35 active:scale-[0.98] transition-all gap-2 overflow-hidden"
+                        className="group relative w-full h-10 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-r from-orange-500 via-amber-500 to-red-500 hover:from-orange-600 hover:via-amber-600 hover:to-red-600 text-white font-bold text-xs sm:text-sm shadow-lg shadow-orange-500/35 active:scale-[0.98] transition-all gap-2 overflow-hidden"
                       >
                         <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 pointer-events-none" />
-                        <Sparkles className="size-4" />
+                        <Sparkles className="size-3.5 sm:size-4" />
                         {`SPIN THE WHEEL (${spinsRemaining} SPINS AVAILABLE)`}
                       </Button>
                     </motion.div>

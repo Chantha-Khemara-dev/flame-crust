@@ -33,33 +33,54 @@ export function LuckyDrawFloatingButton() {
       <AnimatePresence>
         {isHeroPage && !isScrolledPastHero && (
           <motion.div
+            drag
+            dragMomentum={false}
+            dragElastic={0.1}
             initial={{ scale: 0, opacity: 0, y: -10 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.8, opacity: 0, y: -10 }}
             transition={{ type: "spring", stiffness: 350, damping: 25 }}
-            className="fixed top-[calc(4.5rem+env(safe-area-inset-top))] right-3.5 sm:top-24 sm:right-6 z-30 select-none"
+            className="fixed top-[calc(4.75rem+env(safe-area-inset-top))] right-2.5 sm:top-24 sm:right-6 z-30 select-none touch-none"
+            whileTap={{ scale: 0.94 }}
           >
             <button
               type="button"
               onClick={() => setModalOpen(true)}
-              className="group relative flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 p-[1.5px] shadow-[0_4px_16px_rgba(234,88,12,0.35)] hover:shadow-[0_6px_20px_rgba(234,88,12,0.55)] hover:scale-105 active:scale-95 transition-all cursor-pointer border border-amber-300/40"
+              className="group relative flex items-center rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 p-[1.5px] shadow-[0_4px_14px_rgba(234,88,12,0.35)] hover:shadow-[0_6px_20px_rgba(234,88,12,0.55)] transition-all cursor-pointer border border-amber-300/50"
               aria-label="Open Lucky Draw Wheel"
             >
-              <span className="relative flex items-center gap-1.5 w-full rounded-full bg-gradient-to-r from-orange-500 via-amber-500 to-red-500 px-2 py-0.5 sm:px-2.5 sm:py-1 overflow-hidden">
-                <span className="absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/35 to-transparent skew-x-[-20deg] group-hover:left-[110%] transition-all duration-700 ease-out pointer-events-none" />
-
-                <span className="relative flex items-center justify-center size-5 sm:size-5.5 rounded-full bg-white/20 ring-1 ring-white/30 shadow-inner shrink-0">
+              {/* Mobile Compact View (Icon + Mini Label) */}
+              <span className="flex sm:hidden items-center gap-1 rounded-full bg-gradient-to-r from-orange-500 via-amber-500 to-red-500 px-2 py-1 overflow-hidden">
+                <span className="relative flex items-center justify-center size-5 rounded-full bg-white/20 ring-1 ring-white/30 shadow-inner shrink-0">
                   <motion.span
                     animate={{ rotate: [0, -10, 10, 0] }}
                     transition={{ repeat: Infinity, duration: 2.5, repeatDelay: 1.5 }}
                   >
-                    <Gift className="size-3 sm:size-3.5 text-white" />
+                    <Gift className="size-3 text-white" />
+                  </motion.span>
+                </span>
+                <span className="text-[10px] font-black text-white tracking-tight leading-none whitespace-nowrap pr-0.5">
+                  Spin
+                </span>
+                <Sparkles className="size-2 text-amber-200 animate-pulse" />
+              </span>
+
+              {/* Desktop View (Full Pill with shimmer) */}
+              <span className="hidden sm:flex items-center gap-1.5 w-full rounded-full bg-gradient-to-r from-orange-500 via-amber-500 to-red-500 px-2.5 py-1 overflow-hidden">
+                <span className="absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/35 to-transparent skew-x-[-20deg] group-hover:left-[110%] transition-all duration-700 ease-out pointer-events-none" />
+
+                <span className="relative flex items-center justify-center size-5.5 rounded-full bg-white/20 ring-1 ring-white/30 shadow-inner shrink-0">
+                  <motion.span
+                    animate={{ rotate: [0, -10, 10, 0] }}
+                    transition={{ repeat: Infinity, duration: 2.5, repeatDelay: 1.5 }}
+                  >
+                    <Gift className="size-3.5 text-white" />
                   </motion.span>
                 </span>
 
-                <span className="relative flex items-center gap-1 text-[11px] sm:text-xs font-black text-white tracking-tight leading-none whitespace-nowrap">
+                <span className="relative flex items-center gap-1 text-xs font-black text-white tracking-tight leading-none whitespace-nowrap">
                   <span>Spin &amp; Win</span>
-                  <Sparkles className="size-2.5 sm:size-3 text-amber-200 animate-pulse" />
+                  <Sparkles className="size-3 text-amber-200 animate-pulse" />
                 </span>
               </span>
             </button>
