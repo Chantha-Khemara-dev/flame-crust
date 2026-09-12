@@ -34,7 +34,8 @@ import {
   Loader2,
   Pencil,
   Building2,
-  Copy
+  Copy,
+  Bell
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1430,6 +1431,26 @@ export default function ProfilePage() {
                           </Button>
                         </div>
                       </form>
+                    </div>
+
+                    {/* Card 2: Push Notifications Settings */}
+                    <div className="bg-card border border-border/70 rounded-2xl sm:rounded-[24px] p-4 sm:p-7 shadow-warm">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+                          <div className="size-10 sm:size-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0 shadow-2xs">
+                            <Bell className="size-5 sm:size-6" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-sm sm:text-base text-foreground">Push Notifications</h4>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Receive instant order status alerts, kitchen prep updates, and courier delivery tracking
+                            </p>
+                          </div>
+                        </div>
+                        <div className="self-start sm:self-auto shrink-0">
+                          <PushNotificationButton userType="CUSTOMER" userId={customer.id} />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

@@ -72,34 +72,44 @@ function ProductDetailPage() {
     async function fetchProduct() {
       try {
         let prod = null;
+        let allProds = [];
         try {
-          const products = await fetchFoodItems();
-          prod = products.find(p => String(p.id) === String(id) || String(p.sku).toLowerCase() === String(id).toLowerCase());
+          allProds = await fetchFoodItems();
+          if (Array.isArray(allProds)) {
+            prod = allProds.find(p => String(p.id) === String(id) || String(p.sku || "").toLowerCase() === String(id).toLowerCase() || String(p.slug || "").toLowerCase() === String(id).toLowerCase());
+          }
         } catch (e) {}
 
         if (!prod) {
           const fallbackList = getCachedFoodItems();
-          prod = fallbackList.find(p => String(p.id) === String(id) || String(p.sku).toLowerCase() === String(id).toLowerCase());
+          if (allProds.length === 0) allProds = fallbackList;
+          prod = fallbackList.find(p => String(p.id) === String(id) || String(p.sku || "").toLowerCase() === String(id).toLowerCase() || String(p.slug || "").toLowerCase() === String(id).toLowerCase());
         }
 
         if (!prod) {
-          prod = DEFAULT_FALLBACK_PRODUCTS.find(p => String(p.id) === String(id) || String(p.sku).toLowerCase() === String(id).toLowerCase()) || DEFAULT_FALLBACK_PRODUCTS[0];
+          if (allProds.length === 0) allProds = DEFAULT_FALLBACK_PRODUCTS;
+          prod = DEFAULT_FALLBACK_PRODUCTS.find(p => String(p.id) === String(id) || String(p.sku || "").toLowerCase() === String(id).toLowerCase() || String(p.slug || "").toLowerCase() === String(id).toLowerCase()) || DEFAULT_FALLBACK_PRODUCTS[0];
         }
 
         if (!isMounted) return;
 
-        let allOptions = (prod.options && prod.options.length > 0) ? prod.options : [
-          {
-            id: 1,
-            name: "Size",
-            is_required: true,
-            variants: [
-              { id: 1, name: 'Small', price_adjustment: 0.00, active: true },
-              { id: 2, name: 'Medium', price_adjustment: 2.00, active: true },
-              { id: 3, name: 'Large', price_adjustment: 4.00, active: true }
-            ]
-          }
-        ];
+        const isPizzaCategory = prod.category === 'pizza' || prod.category_id === 1 || (prod.name && prod.name.toLowerCase().includes('pizza'));
+        let allOptions = (prod.options && prod.options.length > 0)
+          ? prod.options
+          : isPizzaCategory
+            ? [
+                {
+                  id: 1,
+                  name: "Size",
+                  is_required: true,
+                  variants: [
+                    { id: 1, name: 'Small', price_adjustment: 0.00, active: true },
+                    { id: 2, name: 'Medium', price_adjustment: 2.00, active: true },
+                    { id: 3, name: 'Large', price_adjustment: 4.00, active: true }
+                  ]
+                }
+              ]
+            : [];
 
         let allVariants = [];
         allOptions.forEach(opt => {
@@ -143,6 +153,14 @@ function ProductDetailPage() {
         setOptions(prodOptions);
         setVariants(prodVariants);
         setSelectedVariants(defaults);
+
+        // Populate related products from the same category
+        if (Array.isArray(allProds) && allProds.length > 0) {
+          const rel = allProds
+            .filter(p => String(p.id) !== String(prod.id) && (p.category === prod.category || p.category_id === prod.category_id))
+            .slice(0, 4);
+          setRelated(rel);
+        }
 
         // Filter reviews for current product (matching by ID or SKU)
         let productReviews = allReviews
@@ -218,14 +236,14 @@ function ProductDetailPage() {
       }));
     }
 
-    let finalPrice = product.price;
+    let finalPrice = Number(product.price || 0);
     const variantDetailsForCart = {};
 
     Object.entries(selectedVariants).forEach(([optId, varId]) => {
       const opt = options.find(o => String(o.id) === String(optId));
       const v = variants.find(v => String(v.id) === String(varId));
       if (v) {
-        finalPrice += (v.price_adjustment || 0);
+        finalPrice += Number(v.price_adjustment || 0);
         if (opt) variantDetailsForCart[opt.name] = v.name;
       }
     });
@@ -277,11 +295,17 @@ function ProductDetailPage() {
       return;
     }
 
+    const auth = localStorage.getItem("customerAuth");
+    const currentCustomer = auth ? JSON.parse(auth) : null;
+    const custId = currentCustomer?.id || 2;
+    const custName = currentCustomer?.name || (currentCustomer?.email ? currentCustomer.email.split('@')[0] : "Customer");
+    const custAvatar = currentCustomer?.avatar || currentCustomer?.profile_image || "https://res.cloudinary.com/gdkctwwo/image/upload/v1787849244/gxbpcvwqzmdsi2pwuzyu.jpg";
+
     setSubmittingReview(true);
     try {
       const createdReview = await create("reviews", {
         product_id: Number(product?.id || id),
-        customer_id: 2, // Khemara
+        customer_id: Number(custId),
         rating: newRating,
         comment: newComment.trim(),
         is_verified_purchase: 1,
@@ -290,9 +314,9 @@ function ProductDetailPage() {
       const newReviewItem = {
         id: createdReview?.id || Date.now(),
         product_id: Number(product?.id || id),
-        customer_id: 2,
-        customer_name: "Khemara",
-        customer_avatar: "https://res.cloudinary.com/gdkctwwo/image/upload/v1787849244/gxbpcvwqzmdsi2pwuzyu.jpg",
+        customer_id: Number(custId),
+        customer_name: custName,
+        customer_avatar: custAvatar,
         rating: newRating,
         comment: newComment.trim(),
         created_at: new Date().toISOString(),
@@ -309,9 +333,9 @@ function ProductDetailPage() {
       const localReview = {
         id: Date.now(),
         product_id: Number(product?.id || id),
-        customer_id: 2,
-        customer_name: "Khemara",
-        customer_avatar: "https://res.cloudinary.com/gdkctwwo/image/upload/v1787849244/gxbpcvwqzmdsi2pwuzyu.jpg",
+        customer_id: Number(custId),
+        customer_name: custName,
+        customer_avatar: custAvatar,
         rating: newRating,
         comment: newComment.trim(),
         created_at: new Date().toISOString(),
@@ -391,6 +415,10 @@ function ProductDetailPage() {
                           src={getImageUrl(product.image)}
                           alt={product.name}
                           onLoad={() => setImgLoaded(true)}
+                          onError={(e) => {
+                            e.currentTarget.src = "https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1000&auto=format&fit=crop";
+                            setImgLoaded(true);
+                          }}
                           className={cn(
                             "pd-image",
                             imgLoaded ? "opacity-100 blur-0" : "opacity-0 blur-sm"
@@ -404,7 +432,7 @@ function ProductDetailPage() {
                               className={cn(
                                 "rounded-full px-3 py-1 text-[11px] sm:text-xs font-semibold backdrop-blur-md transition-all",
                                 t.toLowerCase().includes("bestseller") || t.toLowerCase().includes("favorite")
-                                  ? "bg-primary/90 text-primary-foreground"
+                                    ? "bg-primary/90 text-primary-foreground"
                                   : "bg-background/85 text-foreground"
                               )}
                             >
@@ -474,7 +502,7 @@ function ProductDetailPage() {
                                 <div className="pd-variants-list">
                                   {optVars.map(v => {
                                     const isSelected = String(selectedVariants[opt.id]) === String(v.id);
-                                    const variantPrice = (product.price + (v.price_adjustment || 0)).toFixed(2);
+                                    const variantPrice = (Number(product.price || 0) + Number(v.price_adjustment || 0)).toFixed(2);
                                     return (
                                       <button
                                         key={v.id}
@@ -506,10 +534,10 @@ function ProductDetailPage() {
                         <div className="pd-price-col">
                           <span className="pd-price-value">
                             ${(() => {
-                              let p = product.price;
+                              let p = Number(product.price || 0);
                               Object.values(selectedVariants).forEach(varId => {
                                 const v = variants.find(v => String(v.id) === String(varId));
-                                if (v) p += (v.price_adjustment || 0);
+                                if (v) p += Number(v.price_adjustment || 0);
                               });
                               return (p * qty).toFixed(2);
                             })()}
@@ -921,21 +949,48 @@ function ProductDetailPage() {
                 )}
               </section>
             )}
+
+            {/* Related Products - Handcrafted Recommendations */}
+            {!loading && product && related.length > 0 && (
+              <section className="mt-12 sm:mt-16 pt-8 sm:pt-12 border-t border-border/70">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                      You Might Also Like
+                    </h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      More authentic dishes from our wood-fired kitchen
+                    </p>
+                  </div>
+                  <Link
+                    to="/menu"
+                    className="text-xs sm:text-sm font-semibold text-primary hover:underline flex items-center gap-1"
+                  >
+                    View All →
+                  </Link>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+                  {related.map(item => (
+                    <FoodCard key={item.id} item={item} />
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         </PageTransition>
       </main>
 
       {/* Mobile Sticky Bottom Action Bar (Floating Glass Pill) */}
       {!loading && product && !isCartOpen && (
-        <div className="block sm:hidden fixed bottom-6 inset-x-4 z-50 pointer-events-none">
-          <div className="flex items-center gap-2 bg-card/85 backdrop-blur-xl border border-border/50 p-2 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.25)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.5)] pointer-events-auto">
+        <div className="block sm:hidden fixed bottom-[max(1rem,env(safe-area-inset-bottom,1rem))] inset-x-4 z-50 pointer-events-none">
+          <div className="flex items-center gap-2 bg-card/90 backdrop-blur-xl border border-border/60 p-2 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.25)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.5)] pointer-events-auto">
             <div className="flex flex-col min-w-[90px] pl-3 shrink-0">
               <span className="font-serif text-xl font-bold text-primary tabular-nums whitespace-nowrap truncate leading-none">
                 ${(() => {
-                  let p = product.price;
+                  let p = Number(product.price || 0);
                   Object.values(selectedVariants).forEach(varId => {
                     const v = variants.find(v => String(v.id) === String(varId));
-                    if (v) p += (v.price_adjustment || 0);
+                    if (v) p += Number(v.price_adjustment || 0);
                   });
                   return (p * qty).toFixed(2);
                 })()}
@@ -949,7 +1004,7 @@ function ProductDetailPage() {
               <button
                 type="button"
                 onClick={() => setQty(Math.max(1, qty - 1))}
-                className="size-8 rounded-full bg-background/50 hover:bg-primary hover:text-primary-foreground flex items-center justify-center transition-colors shrink-0"
+                className="size-8 rounded-full bg-background/50 hover:bg-primary hover:text-primary-foreground flex items-center justify-center transition-colors shrink-0 cursor-pointer"
                 aria-label="Decrease quantity"
               >
                 <Minus className="size-3.5" />
@@ -965,7 +1020,7 @@ function ProductDetailPage() {
               <button
                 type="button"
                 onClick={() => setQty(qty + 1)}
-                className="size-8 rounded-full bg-background/50 hover:bg-primary hover:text-primary-foreground flex items-center justify-center transition-colors shrink-0"
+                className="size-8 rounded-full bg-background/50 hover:bg-primary hover:text-primary-foreground flex items-center justify-center transition-colors shrink-0 cursor-pointer"
                 aria-label="Increase quantity"
               >
                 <Plus className="size-3.5" />
@@ -975,7 +1030,7 @@ function ProductDetailPage() {
             <Button
               onClick={handleAdd}
               size="lg"
-              className="h-12 px-5 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-[0_4px_14px_rgba(227,52,47,0.3)] shrink-0 text-sm"
+              className="h-12 px-5 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-[0_4px_14px_rgba(227,52,47,0.3)] shrink-0 text-sm cursor-pointer"
             >
               <ShoppingCart className="size-4 mr-1.5" />
               Add

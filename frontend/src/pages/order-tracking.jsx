@@ -29,8 +29,6 @@ import { PageTransition } from "@/components/shared/page-transition";
 import { OrderChatModal, showChatNotificationToast } from "@/components/food/order-chat-modal";
 import { FloatingChatHead } from "@/components/food/floating-chat-head";
 import { list, get, update, getOrderMessages } from "@/lib/api";
-import { PushNotificationButton } from "@/components/common/PushNotificationButton";
-import { PushNotificationPromptModal } from "@/components/common/PushNotificationPromptModal";
 import { subscribeToPushNotifications } from "@/lib/push-notifications";
 import { cn, formatDate } from "@/lib/utils";
 import { getImageUrl } from "@/lib/food-api";
@@ -503,7 +501,6 @@ export default function OrderTrackingPage() {
                 </Button>
 
                 <div className="flex items-center gap-2">
-                  <PushNotificationButton userType="CUSTOMER" userId={order?.customerId || order?.customer_id} className="scale-90 sm:scale-95 origin-right" />
                   <span className={cn("text-[11px] sm:text-xs font-bold px-3 py-1 rounded-full", statusInfo.badge)}>
                     {statusInfo.title}
                   </span>
@@ -968,9 +965,6 @@ export default function OrderTrackingPage() {
           }}
         />
       )}
-
-      {/* Automatic Push Notification Prompt Modal for Customer */}
-      <PushNotificationPromptModal userType="CUSTOMER" userId={order?.customerId || order?.customer_id} autoOpenDelay={1200} />
     </div>
   );
 }
