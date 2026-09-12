@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Flame } from "lucide-react";
+import { Flame } from "lucide-react";
 import { LuckyDrawModal, getCurrentAccount, getSpinsData } from "./lucky-draw-modal.jsx";
 
 const HIDE_ROUTES = [
@@ -19,6 +19,13 @@ const HIDE_ROUTES = [
 export function LuckyDrawFloatingButton() {
   const [modalOpen, setModalOpen] = useState(false);
   const [spinsRemaining, setSpinsRemaining] = useState(1);
+  const [isTimeDriverExpanded, setIsTimeDriverExpanded] = useState(() => {
+    try {
+      return sessionStorage.getItem("flame_time_driver_expanded") === "true";
+    } catch {
+      return false;
+    }
+  });
   const location = useLocation();
 
   const updateSpins = useCallback(() => {
@@ -35,86 +42,54 @@ export function LuckyDrawFloatingButton() {
     updateSpins();
     const handleOpen = () => setModalOpen(true);
     const handleSpinsUpdated = () => updateSpins();
+    const handleTimeDriverState = (e) => {
+      setIsTimeDriverExpanded(Boolean(e?.detail?.isExpanded));
+    };
 
     window.addEventListener("openLuckyDraw", handleOpen);
     window.addEventListener("flame_lucky_spins_updated", handleSpinsUpdated);
     window.addEventListener("authChanged", updateSpins);
+    window.addEventListener("timeDriverStateChange", handleTimeDriverState);
 
     return () => {
       window.removeEventListener("openLuckyDraw", handleOpen);
       window.removeEventListener("flame_lucky_spins_updated", handleSpinsUpdated);
       window.removeEventListener("authChanged", updateSpins);
+      window.removeEventListener("timeDriverStateChange", handleTimeDriverState);
     };
   }, [updateSpins]);
 
-  // Hide on admin/driver/checkout screens where clutter should be minimized
+  // Hide on admin/driver/checkout screens
   const isHidden = HIDE_ROUTES.some((route) => location.pathname.startsWith(route));
+
+  // When time driver is open big (expanded), hide the spin button ("ពេលយើងបើក time driver ឲធំវា បាត់ span")
+  const shouldShow = !isHidden && !isTimeDriverExpanded;
 
   return (
     <>
       <AnimatePresence>
-        {!isHidden && (
+        {shouldShow && (
           <motion.div
             drag
             dragMomentum={false}
             dragElastic={0.12}
-            initial={{ scale: 0, opacity: 0, y: 15 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.8, opacity: 0, y: 15 }}
-            transition={{ type: "spring", stiffness: 360, damping: 26 }}
-            className="fixed bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+5.25rem)] left-3.5 sm:bottom-6 sm:left-6 z-30 select-none touch-none"
-            whileTap={{ scale: 0.93 }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ type: "spring", stiffness: 350, damping: 26 }}
+            className="fixed z-30 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+4.75rem)] left-3 md:bottom-6 md:left-6 select-none cursor-pointer"
+            title="Open Lucky Draw"
+            onClick={() => setModalOpen(true)}
           >
-            <button
-              type="button"
-              onClick={() => setModalOpen(true)}
-              className="group relative flex items-center rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 p-[1.5px] shadow-[0_6px_20px_rgba(234,88,12,0.4)] hover:shadow-[0_8px_26px_rgba(234,88,12,0.6)] transition-all cursor-pointer border border-amber-300/60 active:scale-95"
-              aria-label="Open Lucky Draw"
-              title="Lucky Draw (Spin & Win)"
-            >
-              {/* Pulsing ambient glow */}
-              <span className="absolute -inset-1 rounded-full bg-gradient-to-r from-orange-500/30 via-amber-400/30 to-red-500/30 blur-md animate-pulse pointer-events-none" />
-
-              {/* Mobile Compact View (Icon + Spin Label + Live Badge) */}
-              <span className="flex sm:hidden items-center gap-1.5 rounded-full bg-gradient-to-r from-orange-500 via-amber-500 to-red-500 px-2.5 py-1.5 overflow-hidden">
-                <span className="relative flex items-center justify-center size-5 rounded-full bg-white/20 ring-1 ring-white/40 shadow-inner shrink-0">
-                  <motion.span
-                    animate={{ rotate: [0, -12, 12, 0] }}
-                    transition={{ repeat: Infinity, duration: 2.2, repeatDelay: 1 }}
-                  >
-                    <Flame className="size-3.5 text-white" />
-                  </motion.span>
-                </span>
-                <span className="text-[11px] font-black text-white tracking-tight leading-none whitespace-nowrap">
-                  Spin
-                </span>
-                <span className="text-[9px] font-black bg-white/25 text-yellow-100 px-1.5 py-0.2 rounded-full border border-white/30">
-                  {spinsRemaining > 0 ? spinsRemaining : "0"}
-                </span>
+            {/* Exactly matches the dimensions, padding, rounded-full, and style of the minimized time driver pill */}
+            <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-card/95 backdrop-blur-xl border border-amber-500/40 shadow-xl text-xs font-bold text-foreground hover:scale-105 transition-all">
+              <span className="size-2 rounded-full bg-amber-500 animate-ping" />
+              <Flame className="size-4 text-amber-500 animate-pulse" />
+              <span>Lucky Draw</span>
+              <span className="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded-md bg-secondary text-foreground/80 border border-border/50">
+                {spinsRemaining > 0 ? `${spinsRemaining} Left` : "0 Left"}
               </span>
-
-              {/* Desktop View (Full Capsule with Shimmer) */}
-              <span className="hidden sm:flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 via-amber-500 to-red-500 px-3.5 py-1.5 overflow-hidden">
-                <span className="absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-[-20deg] group-hover:left-[110%] transition-all duration-700 ease-out pointer-events-none" />
-
-                <span className="relative flex items-center justify-center size-6 rounded-full bg-white/20 ring-1 ring-white/40 shadow-inner shrink-0">
-                  <motion.span
-                    animate={{ rotate: [0, -12, 12, 0] }}
-                    transition={{ repeat: Infinity, duration: 2.2, repeatDelay: 1 }}
-                  >
-                    <Flame className="size-4 text-white" />
-                  </motion.span>
-                </span>
-
-                <span className="relative flex items-center gap-1.5 text-xs font-black text-white tracking-tight leading-none whitespace-nowrap">
-                  <span>Lucky Draw</span>
-                  <span className="text-[10px] font-black bg-white/25 text-yellow-100 px-2 py-0.5 rounded-full border border-white/30 shadow-xs">
-                    {spinsRemaining > 0 ? `${spinsRemaining} Free` : "0 Left"}
-                  </span>
-                  <Sparkles className="size-3 text-amber-200 animate-pulse" />
-                </span>
-              </span>
-            </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

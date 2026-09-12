@@ -115,6 +115,24 @@ export function ActiveOrderWidget() {
     };
   }, [location.pathname]);
 
+  useEffect(() => {
+    const isHiddenRoute = HIDDEN_ROUTES.some((route) => location.pathname.startsWith(route));
+    const isBig = !isHiddenRoute && !isCartOpen && activeOrders.length > 0 && !isDismissed && !modalOpen;
+    try {
+      sessionStorage.setItem("flame_time_driver_expanded", isBig ? "true" : "false");
+    } catch {}
+    window.dispatchEvent(new CustomEvent("timeDriverStateChange", { detail: { isExpanded: isBig } }));
+  }, [location.pathname, isCartOpen, activeOrders.length, isDismissed, modalOpen]);
+
+  useEffect(() => {
+    return () => {
+      try {
+        sessionStorage.setItem("flame_time_driver_expanded", "false");
+      } catch {}
+      window.dispatchEvent(new CustomEvent("timeDriverStateChange", { detail: { isExpanded: false } }));
+    };
+  }, []);
+
   if (isCartOpen || HIDDEN_ROUTES.some((route) => location.pathname.startsWith(route))) {
     return null;
   }
@@ -269,20 +287,6 @@ export function ActiveOrderWidget() {
 
                 {/* Right Action Button & Dismiss */}
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {/* Lucky Spin button right next to driver time */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      window.dispatchEvent(new CustomEvent("openLuckyDraw"));
-                    }}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:to-red-600 text-white text-xs font-black shadow-md shadow-orange-500/20 active:scale-95 transition-all cursor-pointer border border-amber-300/40"
-                    title="Spin Lucky Draw & Win Vouchers"
-                  >
-                    <Sparkles className="size-3.5 text-yellow-200 animate-pulse" />
-                    <span className="tracking-tight">Spin</span>
-                  </button>
-
                   <button
                     type="button"
                     onClick={(e) => {

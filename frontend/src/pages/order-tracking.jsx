@@ -831,28 +831,6 @@ export default function OrderTrackingPage() {
                           )}
                         </div>
                       )}
-
-                      {/* Lucky Draw CTA Strip near driver delivery time */}
-                      {!isCancelled && order?.status !== "DELIVERED" && (
-                        <div className="p-3 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent border-t border-amber-500/20 flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="size-8 sm:size-9 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center shadow-xs shrink-0">
-                              <Sparkles className="size-4 animate-pulse" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-xs font-bold text-foreground truncate">Spin while waiting for driver!</p>
-                              <p className="text-[11px] text-muted-foreground truncate">Win vouchers up to 20% OFF for your next pizza</p>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => window.dispatchEvent(new CustomEvent("openLuckyDraw"))}
-                            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs shadow-xs active:scale-95 transition-all shrink-0 cursor-pointer border border-amber-300/40"
-                          >
-                            Spin 🎰
-                          </button>
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}
