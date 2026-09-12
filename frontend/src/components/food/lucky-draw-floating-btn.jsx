@@ -83,23 +83,19 @@ export function LuckyDrawFloatingButton() {
       <AnimatePresence>
         {shouldShow && (
           <motion.div
-            drag
-            dragMomentum={false}
-            dragElastic={0.12}
-            dragConstraints={{ left: 0, right: 60, top: -100, bottom: 0 }}
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             transition={{ type: "spring", stiffness: 350, damping: 26 }}
-            className="fixed z-30 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+5.25rem)] left-3 md:bottom-6 md:left-6 select-none cursor-pointer"
+            className="fixed z-30 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+5.25rem)] left-3 md:bottom-6 md:left-6 select-none cursor-pointer touch-manipulation"
             title="Open Lucky Draw"
             onClick={() => setModalOpen(true)}
           >
-            {/* Exactly matches the dimensions, padding, rounded-full, and style of the minimized time driver pill */}
-            <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-card/95 backdrop-blur-xl border border-amber-500/40 shadow-xl text-xs font-bold text-foreground hover:scale-105 transition-all max-w-[calc(50vw-1.25rem)]">
+            {/* Clean, fixed-position pill without drag and without truncation */}
+            <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-card/95 backdrop-blur-xl border border-amber-500/40 shadow-xl text-xs font-bold text-foreground hover:scale-105 active:scale-95 transition-all whitespace-nowrap">
               <span className="size-2 rounded-full bg-amber-500 animate-ping shrink-0" />
               <Flame className="size-4 text-amber-500 animate-pulse shrink-0" />
-              <span className="truncate">Lucky Draw</span>
+              <span className="whitespace-nowrap font-bold">Lucky Draw</span>
               <span className="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded-md bg-secondary text-foreground/80 border border-border/50 shrink-0">
                 {spinsRemaining > 0 ? `${spinsRemaining} Left` : "0 Left"}
               </span>

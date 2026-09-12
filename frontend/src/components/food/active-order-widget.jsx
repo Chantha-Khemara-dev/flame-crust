@@ -215,10 +215,10 @@ export function ActiveOrderWidget() {
               className="fixed z-30 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+5.25rem)] right-3 md:bottom-6 md:right-6 select-none cursor-pointer"
               title="Open Live Order Tracking"
             >
-              <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-card/95 backdrop-blur-xl border border-primary/40 shadow-xl text-xs font-bold text-foreground hover:scale-105 transition-all max-w-[calc(50vw-1.25rem)]">
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-card/95 backdrop-blur-xl border border-primary/40 shadow-xl text-xs font-bold text-foreground hover:scale-105 active:scale-95 transition-all whitespace-nowrap">
                 <span className="size-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
                 <StatusIcon className="size-4 text-primary animate-pulse shrink-0" />
-                <span className="truncate">{isMultiple ? "Orders" : "Order"}</span>
+                <span className="whitespace-nowrap font-bold">{isMultiple ? "Orders" : "Order"}</span>
                 <span className="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded-md bg-secondary text-foreground/80 border border-border/50 shrink-0">
                   {activeOrders.length || 1}
                 </span>
