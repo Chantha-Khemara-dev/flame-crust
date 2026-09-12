@@ -1308,9 +1308,7 @@ export default function DriverDashboardPage() {
             {/* Swap tiles instead of remounting the whole map (key={theme} forced
                 a full Leaflet teardown + re-init, which froze the UI on toggle) */}
             <TileLayer
-              url={theme === "dark"
-                ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"}
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             
             {/* Store Central Kitchen Marker */}

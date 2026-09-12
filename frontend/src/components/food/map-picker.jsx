@@ -81,7 +81,7 @@ export function MapPicker({ onConfirm, onClose }) {
         <MapContainer center={position} zoom={15} style={{ height: "100%", width: "100%" }}>
           <TileLayer
             attribution='&copy; OpenStreetMap'
-            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <LocationMarker position={position} setPosition={setPosition} />
         </MapContainer>

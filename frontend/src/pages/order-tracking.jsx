@@ -300,17 +300,21 @@ export default function OrderTrackingPage() {
       if (!resolvedItems || resolvedItems.length === 0) {
         try {
           const allItems = await list("order_items", { limit: -1 });
-          resolvedItems = (allItems || []).filter(item => 
-            String(item.orderId || item.order_id) === String(orderData.id) ||
-            (orderData.order_number && String(item.order_number || item.orderNumber) === String(orderData.order_number))
-          );
+          resolvedItems = (allItems || []).filter(item => {
+            const itemOrderId = item.orderId || item.order_id;
+            const targetOrderId = orderData.id;
+            const itemOrderNum = item.orderNumber || item.order_number;
+            const targetOrderNum = orderData.order_number || orderData.orderNumber;
+            return (
+              (itemOrderId !== undefined && targetOrderId !== undefined && String(itemOrderId) === String(targetOrderId)) ||
+              (itemOrderNum && targetOrderNum && String(itemOrderNum) === String(targetOrderNum))
+            );
+          });
         } catch(e) {}
       }
 
-      if (resolvedItems && resolvedItems.length > 0) {
-        setItems(resolvedItems);
-        itemsLoadedRef.current = true;
-      }
+      setItems(resolvedItems || []);
+      itemsLoadedRef.current = true;
 
       // Fetch products for matching and image resolution
       try {
@@ -718,7 +722,7 @@ export default function OrderTrackingPage() {
                           attributionControl={false}
                         >
                           <TileLayer
-                            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                           />
 
                           {/* 1. Restaurant Marker */}
@@ -900,7 +904,7 @@ export default function OrderTrackingPage() {
                           const itemProdName = item.productName || item.product_name || "";
                           const dbProduct = products.find(p => 
                             (itemProdId && String(p.id) === String(itemProdId)) ||
-                            (p.name && itemProdName && p.name.toLowerCase().trim() === itemProdName.toLowerCase().trim())
+                            (p.name && itemProdName && String(p.name).toLowerCase().trim() === String(itemProdName).toLowerCase().trim())
                           );
                           const rawImage = item.image || item.product_image || dbProduct?.image || dbProduct?.img;
                           const displayImage = rawImage ? getImageUrl(rawImage) : "/images/library/pizza.jpg";
