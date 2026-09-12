@@ -19,7 +19,9 @@ import {
   Star,
   Crown,
   Zap,
-  User,
+  Grid,
+  Disc3,
+  PartyPopper
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -154,6 +156,19 @@ export const DAILY_FREE_LIMIT = 1;
 export const DAILY_SPIN_LIMIT = 3;
 const SEGMENT_ANGLE = 360 / PRIZES.length;
 const BULB_COUNT = 16;
+
+// Clockwise layout order mapping for the 3x3 perimeter (8 positions)
+// 0: top-left, 1: top-center, 2: top-right, 3: mid-right, 4: bot-right, 5: bot-center, 6: bot-left, 7: mid-left
+const GRID_CELL_MAPPING = [
+  { index: 0, row: 1, col: 1 },
+  { index: 1, row: 1, col: 2 },
+  { index: 2, row: 1, col: 3 },
+  { index: 3, row: 2, col: 3 },
+  { index: 4, row: 3, col: 3 },
+  { index: 5, row: 3, col: 2 },
+  { index: 6, row: 3, col: 1 },
+  { index: 7, row: 2, col: 1 },
+];
 
 export function getCurrentAccount() {
   try {
@@ -385,6 +400,7 @@ export function formatWonVouchersAsCoupons(wonVouchers) {
     });
 }
 
+// Synthesize high-tech step tick sound
 function playTickSound(audioCtxRef) {
   try {
     const ctx = audioCtxRef.current || (typeof window !== "undefined" && new (window.AudioContext || window.webkitAudioContext)());
@@ -396,17 +412,45 @@ function playTickSound(audioCtxRef) {
     const gain = ctx.createGain();
 
     osc.type = "sine";
-    osc.frequency.setValueAtTime(440, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.035);
+    osc.frequency.setValueAtTime(560, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(140, ctx.currentTime + 0.03);
 
-    gain.gain.setValueAtTime(0.2, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.035);
+    gain.gain.setValueAtTime(0.18, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.03);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start();
-    osc.stop(ctx.currentTime + 0.04);
+    osc.stop(ctx.currentTime + 0.035);
+  } catch {}
+}
+
+// Synthesize victory chime arpeggio
+function playWinSound(audioCtxRef) {
+  try {
+    const ctx = audioCtxRef.current || (typeof window !== "undefined" && new (window.AudioContext || window.webkitAudioContext)());
+    if (!ctx) return;
+    audioCtxRef.current = ctx;
+    if (ctx.state === "suspended") ctx.resume();
+
+    const notes = [523.25, 659.25, 783.99, 1046.50];
+    notes.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.08);
+
+      gain.gain.setValueAtTime(0, ctx.currentTime + idx * 0.08);
+      gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + idx * 0.08 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.08 + 0.38);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(ctx.currentTime + idx * 0.08);
+      osc.stop(ctx.currentTime + idx * 0.08 + 0.4);
+    });
   } catch {}
 }
 
@@ -414,35 +458,128 @@ function TierBadge({ tier, className }) {
   const config = {
     common: { label: "Common", color: "text-slate-400 bg-slate-500/10 border-slate-500/25" },
     rare: { label: "Rare", color: "text-sky-400 bg-sky-500/10 border-sky-500/25" },
-    legendary: { label: "Legendary", color: "text-amber-400 bg-amber-500/10 border-amber-500/30" },
+    legendary: { label: "Legendary", color: "text-amber-400 bg-amber-500/10 border-amber-500/30 shadow-[0_0_8px_rgba(251,191,36,0.3)]" },
   };
   const c = config[tier] || config.common;
   return (
-    <span className={cn("text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full border", c.color, className)}>
+    <span className={cn("text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded-full border", c.color, className)}>
       {c.label}
     </span>
   );
 }
 
-function WheelBulbs({ spinning }) {
+// 1. Modern 9-Grid Fortune Matrix Component
+function FortuneGrid({ activeIndex, isSpinning, onDraw, disabled, spinsRemaining = 0 }) {
   return (
-    <div className="absolute inset-0 rounded-full pointer-events-none z-20">
-      {Array.from({ length: BULB_COUNT }).map((_, i) => (
-        <span key={i} className="absolute inset-0" style={{ transform: `rotate(${(360 / BULB_COUNT) * i}deg)` }}>
-          <span
+    <div className="relative w-full max-w-[360px] mx-auto p-2 sm:p-2.5 rounded-2xl bg-zinc-950/80 border border-amber-500/25 shadow-[0_12px_40px_rgba(0,0,0,0.6),inset_0_1px_3px_rgba(255,255,255,0.1)] backdrop-blur-md">
+      {/* Ambient background glow */}
+      <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 via-transparent to-orange-500/10 rounded-2xl pointer-events-none" />
+
+      <div className="grid grid-cols-3 grid-rows-3 gap-2 sm:gap-2.5 relative z-10 aspect-square">
+        {/* Render 8 Perimeter Prize Cards */}
+        {GRID_CELL_MAPPING.map(({ index, row, col }) => {
+          const prize = PRIZES[index];
+          const Icon = getPrizeIcon(prize);
+          const isActive = activeIndex === index;
+          const isLegendary = prize.tier === "legendary";
+          const isRare = prize.tier === "rare";
+
+          return (
+            <motion.div
+              key={prize.id}
+              style={{
+                gridRowStart: row,
+                gridColumnStart: col,
+              }}
+              animate={isActive ? { scale: 1.05 } : { scale: 1 }}
+              transition={{ duration: 0.12 }}
+              className={cn(
+                "relative rounded-xl p-1.5 sm:p-2 flex flex-col items-center justify-center text-center transition-all duration-150 overflow-hidden select-none border",
+                isActive
+                  ? "bg-gradient-to-b from-amber-500/30 to-orange-600/30 border-amber-300 ring-2 ring-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.85)] z-20"
+                  : isLegendary
+                  ? "bg-zinc-900/90 border-purple-500/30 hover:border-purple-500/60"
+                  : isRare
+                  ? "bg-zinc-900/90 border-sky-500/25 hover:border-sky-500/50"
+                  : "bg-zinc-900/80 border-border/50 hover:border-amber-500/30"
+              )}
+            >
+              {/* Active kinetic glow tracer beam */}
+              {isActive && (
+                <span className="absolute inset-0 bg-amber-400/20 animate-pulse pointer-events-none" />
+              )}
+
+              {/* Tier indicator dot */}
+              <span
+                className={cn(
+                  "absolute top-1 right-1 size-1.5 rounded-full",
+                  isLegendary ? "bg-amber-400 animate-ping" : isRare ? "bg-sky-400" : "bg-zinc-600"
+                )}
+              />
+
+              <div
+                className={cn(
+                  "size-7 sm:size-8 rounded-lg flex items-center justify-center mb-1 shadow-sm shrink-0",
+                  prize.bgGradient ? `bg-gradient-to-br ${prize.bgGradient}` : "bg-orange-500"
+                )}
+              >
+                <Icon className="size-3.5 sm:size-4 text-white" />
+              </div>
+
+              <span className="font-serif font-black text-xs sm:text-sm text-foreground tracking-tight leading-tight">
+                {prize.label}
+              </span>
+
+              <span className="text-[9px] font-semibold text-muted-foreground mt-0.5 leading-none">
+                {prize.subtext}
+              </span>
+            </motion.div>
+          );
+        })}
+
+        {/* Center Draw Action Core Button (Row 2, Col 2) */}
+        <div style={{ gridRowStart: 2, gridColumnStart: 2 }} className="relative flex items-center justify-center">
+          <motion.button
+            type="button"
+            onClick={onDraw}
+            disabled={disabled}
+            whileHover={disabled ? undefined : { scale: 1.05 }}
+            whileTap={disabled ? undefined : { scale: 0.94 }}
             className={cn(
-              "absolute top-[2px] left-1/2 -translate-x-1/2 block size-[5px] sm:size-[7px] rounded-full border border-amber-200/60 shadow-[0_0_6px_2px_rgba(253,224,71,0.5)]",
-              spinning ? "bg-yellow-200 animate-pulse" : i % 2 === 0 ? "bg-yellow-300" : "bg-amber-400/80"
+              "relative size-full rounded-xl flex flex-col items-center justify-center p-1 cursor-pointer transition-all shadow-lg border overflow-hidden group",
+              disabled
+                ? "bg-zinc-900/90 border-zinc-800 text-zinc-500 cursor-not-allowed"
+                : "bg-gradient-to-br from-amber-500 via-orange-500 to-red-600 border-amber-300 text-white shadow-orange-500/40 hover:shadow-orange-500/60"
             )}
-            style={spinning ? { animationDelay: `${(i % 4) * 90}ms`, animationDuration: "350ms" } : undefined}
-          />
-        </span>
-      ))}
+          >
+            {/* Gloss reflection shimmer */}
+            {!disabled && (
+              <span className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/25 to-transparent pointer-events-none" />
+            )}
+
+            <Flame
+              className={cn(
+                "size-5 sm:size-6 transition-transform",
+                isSpinning ? "animate-bounce text-yellow-200" : disabled ? "text-zinc-600" : "text-white group-hover:scale-110"
+              )}
+            />
+
+            <span className="font-black text-[10px] sm:text-xs tracking-wider uppercase mt-0.5">
+              {isSpinning ? "ROLLING" : disabled ? "NO SPINS" : "DRAW"}
+            </span>
+
+            <span className={cn("text-[8px] font-extrabold uppercase", disabled ? "text-zinc-500" : "text-amber-100/80")}>
+              {isSpinning ? "..." : disabled ? "0 Left" : `${spinsRemaining} Left`}
+            </span>
+          </motion.button>
+        </div>
+      </div>
     </div>
   );
 }
 
-function Wheel({ rotation, isSpinning, onSpin, disabled, spinsRemaining = 0 }) {
+// 2. Futuristic Cyber Wheel Component (Secondary Mode)
+function CyberWheel({ rotation, isSpinning, onSpin, disabled, spinsRemaining = 0 }) {
   const r = 188;
   const cx = 200;
   const cy = 200;
@@ -450,18 +587,13 @@ function Wheel({ rotation, isSpinning, onSpin, disabled, spinsRemaining = 0 }) {
   return (
     <div className="relative flex items-center justify-center">
       <motion.div
-        animate={isSpinning ? { scale: [1, 1.015, 1] } : { scale: 1 }}
-        transition={isSpinning ? { repeat: Infinity, duration: 0.9 } : { duration: 0.3 }}
-        className="absolute size-[230px] xs:size-[254px] sm:size-[326px] rounded-full bg-gradient-to-br from-orange-500/35 via-amber-400/20 to-red-500/35 blur-2xl pointer-events-none"
+        animate={isSpinning ? { scale: [1, 1.02, 1] } : { scale: 1 }}
+        transition={isSpinning ? { repeat: Infinity, duration: 0.8 } : { duration: 0.3 }}
+        className="absolute size-[230px] xs:size-[250px] sm:size-[310px] rounded-full bg-gradient-to-br from-orange-500/30 via-amber-400/20 to-red-500/30 blur-2xl pointer-events-none"
       />
 
-      <div className="relative size-[218px] xs:size-[240px] sm:size-[300px] rounded-full bg-[conic-gradient(from_0deg,#FDE68A,#F59E0B,#B45309,#FBBF24,#FDE68A)] p-[7px] sm:p-[10px] shadow-[0_16px_50px_rgba(234,88,12,0.45),inset_0_2px_6px_rgba(255,255,255,0.6)]">
-        <div className="absolute inset-[4px] sm:inset-[5px] rounded-full border border-amber-900/25 pointer-events-none z-20" />
-        <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/35 via-transparent to-black/25 pointer-events-none z-20" />
-
-        <WheelBulbs spinning={isSpinning} />
-
-        <div className="relative size-full rounded-full bg-zinc-950 p-[4px] sm:p-[6px] shadow-[inset_0_4px_14px_rgba(0,0,0,0.65)]">
+      <div className="relative size-[218px] xs:size-[240px] sm:size-[296px] rounded-full bg-gradient-to-br from-amber-400 via-orange-600 to-zinc-900 p-[7px] sm:p-[9px] shadow-[0_16px_50px_rgba(234,88,12,0.45),inset_0_2px_6px_rgba(255,255,255,0.6)]">
+        <div className="relative size-full rounded-full bg-zinc-950 p-[4px] sm:p-[6px] shadow-[inset_0_4px_14px_rgba(0,0,0,0.7)]">
           <svg
             viewBox="0 0 400 400"
             className="size-full rounded-full transition-transform will-change-transform"
@@ -479,69 +611,60 @@ function Wheel({ rotation, isSpinning, onSpin, disabled, spinsRemaining = 0 }) {
                   <stop offset="100%" stopColor={prize.color} stopOpacity="0.92" />
                 </radialGradient>
               ))}
-              <radialGradient id="hubGold" cx="35%" cy="30%" r="80%">
+              <radialGradient id="hubCyber" cx="35%" cy="30%" r="80%">
                 <stop offset="0%" stopColor="#FEF3C7" />
                 <stop offset="55%" stopColor="#F59E0B" />
                 <stop offset="100%" stopColor="#92400E" />
               </radialGradient>
-              <filter id="sliceShadow" x="-10%" y="-10%" width="120%" height="120%">
-                <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.35" />
-              </filter>
             </defs>
 
-            <circle cx={cx} cy={cy} r={r + 6} fill="#18181B" />
+            <circle cx={cx} cy={cy} r={r + 6} fill="#121215" />
 
             {PRIZES.map((prize, idx) => {
               const startAngle = idx * SEGMENT_ANGLE;
               const endAngle = (idx + 1) * SEGMENT_ANGLE;
-
               const startRad = ((startAngle - 90) * Math.PI) / 180;
               const endRad = ((endAngle - 90) * Math.PI) / 180;
-
               const x1 = cx + r * Math.cos(startRad);
               const y1 = cy + r * Math.sin(startRad);
               const x2 = cx + r * Math.cos(endRad);
               const y2 = cy + r * Math.sin(endRad);
-
               const pathData = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z`;
               const midAngle = startAngle + SEGMENT_ANGLE / 2;
 
               return (
                 <g key={prize.id}>
-                  <path d={pathData} fill={`url(#grad-${prize.id})`} stroke="#FEF3C7" strokeWidth="2" filter="url(#sliceShadow)" />
+                  <path d={pathData} fill={`url(#grad-${prize.id})`} stroke="#FEF3C7" strokeWidth="1.8" />
                   <g transform={`rotate(${midAngle}, ${cx}, ${cy})`}>
                     <text
                       x={cx}
-                      y={cy - 148}
+                      y={cy - 146}
                       fill={prize.textColor}
                       fontSize="17"
                       fontWeight="900"
                       textAnchor="middle"
                       dominantBaseline="central"
-                      style={{ textShadow: "0 2px 4px rgba(0,0,0,0.55)", letterSpacing: "0.02em" }}
+                      style={{ textShadow: "0 2px 4px rgba(0,0,0,0.6)" }}
                     >
                       {prize.label}
                     </text>
                     <text
                       x={cx}
-                      y={cy - 126}
-                      fill="rgba(255,255,255,0.82)"
+                      y={cy - 125}
+                      fill="rgba(255,255,255,0.85)"
                       fontSize="10"
                       fontWeight="700"
                       textAnchor="middle"
                       dominantBaseline="central"
-                      style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}
                     >
                       {prize.subtext}
                     </text>
-                    <circle cx={cx} cy={cy - 170} r="3.4" fill="#FEF3C7" opacity="0.9" />
                   </g>
                 </g>
               );
             })}
 
-            <circle cx={cx} cy={cy} r={80} fill="url(#hubGold)" />
-            <circle cx={cx} cy={cy} r={70} fill="none" stroke="#78350F" strokeWidth="2" opacity="0.45" />
+            <circle cx={cx} cy={cy} r={78} fill="url(#hubCyber)" />
           </svg>
 
           <motion.button
@@ -550,43 +673,30 @@ function Wheel({ rotation, isSpinning, onSpin, disabled, spinsRemaining = 0 }) {
             disabled={disabled}
             whileHover={disabled ? undefined : { scale: 1.06 }}
             whileTap={disabled ? undefined : { scale: 0.94 }}
-            className="absolute inset-0 m-auto size-[68px] xs:size-[74px] sm:size-24 rounded-full bg-[radial-gradient(circle_at_32%_28%,#3F3F46,#18181B_70%)] border-[2.5px] sm:border-[3px] border-amber-400 flex flex-col items-center justify-center shadow-[0_8px_24px_rgba(0,0,0,0.55)] cursor-pointer disabled:cursor-not-allowed z-30 group"
+            className="absolute inset-0 m-auto size-[68px] xs:size-[74px] sm:size-22 rounded-full bg-gradient-to-br from-zinc-800 to-zinc-950 border-[2.5px] border-amber-400 flex flex-col items-center justify-center shadow-lg cursor-pointer disabled:cursor-not-allowed z-30 group"
           >
-            {!disabled && (
-              <motion.span
-                animate={{ opacity: [0.35, 0.85, 0.35] }}
-                transition={{ repeat: Infinity, duration: 1.8 }}
-                className="absolute inset-0 rounded-full ring-3 sm:ring-4 ring-amber-400/40 pointer-events-none"
-              />
-            )}
-            <Flame className={cn("size-4 xs:size-5 sm:size-6 transition-transform", isSpinning ? "text-amber-400" : disabled ? "text-zinc-500" : "text-orange-500 group-hover:scale-110")} />
-            <span className={cn("text-[9px] xs:text-[10px] sm:text-[11px] font-black tracking-[0.1em] sm:tracking-[0.14em] uppercase mt-0.5 sm:mt-1", disabled ? "text-zinc-400" : "text-amber-300")}>
-              {isSpinning ? "LUCKY" : disabled ? "DONE" : "SPIN"}
+            <Flame className={cn("size-4 sm:size-5 transition-transform", isSpinning ? "text-amber-400" : disabled ? "text-zinc-500" : "text-orange-500 group-hover:scale-110")} />
+            <span className={cn("text-[9px] sm:text-[10px] font-black uppercase mt-0.5", disabled ? "text-zinc-400" : "text-amber-300")}>
+              {isSpinning ? "SPIN" : disabled ? "DONE" : "SPIN"}
             </span>
-            <span className="text-[7px] sm:text-[8px] font-bold text-amber-200/60 uppercase tracking-wider">
+            <span className="text-[7px] sm:text-[8px] font-bold text-amber-200/60 uppercase">
               {isSpinning ? "..." : disabled ? "0 Left" : `${spinsRemaining} Left`}
             </span>
           </motion.button>
         </div>
       </div>
 
-      <div className="absolute -top-1 sm:-top-1.5 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center">
+      {/* Top pointer pin */}
+      <div className="absolute -top-1 sm:-top-1.5 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center pointer-events-none">
         <motion.div
-          animate={isSpinning ? { rotate: [0, -9, 7, 0] } : { rotate: 0 }}
+          animate={isSpinning ? { rotate: [0, -8, 6, 0] } : { rotate: 0 }}
           transition={isSpinning ? { repeat: Infinity, duration: 0.45 } : { duration: 0.2 }}
           style={{ originY: 0.15 }}
-          className="flex flex-col items-center drop-shadow-[0_4px_6px_rgba(0,0,0,0.45)]"
+          className="flex flex-col items-center"
         >
-          <div className="size-4 sm:size-5 rounded-full bg-[radial-gradient(circle_at_35%_30%,#FEF3C7,#F59E0B_65%,#92400E)] ring-1.5 sm:ring-2 ring-amber-200/70 shadow-md" />
-          <svg viewBox="0 0 30 30" className="w-5 h-5 sm:w-[30px] sm:h-[30px] -mt-1 sm:-mt-1.5">
-            <defs>
-              <linearGradient id="pointerGold" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#FDE68A" />
-                <stop offset="55%" stopColor="#F59E0B" />
-                <stop offset="100%" stopColor="#B45309" />
-              </linearGradient>
-            </defs>
-            <path d="M15 29 L4.5 8 Q15 12.5 25.5 8 Z" fill="url(#pointerGold)" stroke="#78350F" strokeWidth="1" strokeLinejoin="round" />
+          <div className="size-4 rounded-full bg-amber-400 ring-2 ring-amber-200/80 shadow-md" />
+          <svg viewBox="0 0 30 30" className="w-5 h-5 -mt-1">
+            <path d="M15 29 L4.5 8 Q15 12.5 25.5 8 Z" fill="#F59E0B" stroke="#78350F" strokeWidth="1" strokeLinejoin="round" />
           </svg>
         </motion.div>
       </div>
@@ -598,7 +708,9 @@ export function LuckyDrawModal({ open, onOpenChange }) {
   const navigate = useNavigate();
   const { applyCoupon, openCart } = useCart();
   const [isSpinning, setIsSpinning] = useState(false);
+  const [activeGridIndex, setActiveGridIndex] = useState(0);
   const [rotation, setRotation] = useState(0);
+  const [drawMode, setDrawMode] = useState("grid"); // "grid" (default) or "wheel"
   const [winningPrize, setWinningPrize] = useState(null);
   const [hasCopied, setHasCopied] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -609,19 +721,18 @@ export function LuckyDrawModal({ open, onOpenChange }) {
   const [wonCoupons, setWonCoupons] = useState(() => getWonCoupons(getCurrentAccount().storageKey));
 
   const audioCtxRef = useRef(null);
+  const animTimeoutRef = useRef(null);
 
-  // Clean legacy single-account lockout on mount
   useEffect(() => {
-    try {
-      localStorage.removeItem("flame_lucky_last_spin");
-    } catch {}
+    return () => {
+      if (animTimeoutRef.current) clearTimeout(animTimeoutRef.current);
+    };
   }, []);
 
   const reloadAccountData = useCallback(async () => {
     const acc = getCurrentAccount();
     setAccount(acc);
 
-    // Sync bonus spins with customer's total completed orders if logged in
     if (acc.isLoggedIn && acc.id && acc.id !== "guest") {
       try {
         const { list } = await import("@/lib/api");
@@ -688,7 +799,97 @@ export function LuckyDrawModal({ open, onOpenChange }) {
     return `${h.toString().padStart(2, "0")}h ${m.toString().padStart(2, "0")}m ${s.toString().padStart(2, "0")}s`;
   };
 
-  const handleSpin = () => {
+  const finalizeWin = (targetPrize) => {
+    setIsSpinning(false);
+    setWinningPrize(targetPrize);
+
+    const currentAcc = getCurrentAccount();
+    recordSpinUsed(currentAcc.storageKey);
+    const updatedSpins = getSpinsData(currentAcc.storageKey);
+    setSpinsData(updatedSpins);
+
+    if (updatedSpins.totalRemaining <= 0) {
+      setCooldownRemaining(getSecondsUntilMidnight());
+    }
+
+    const { icon: _omittedIcon, ...safePrize } = targetPrize;
+    const newVoucher = {
+      ...safePrize,
+      account: currentAcc.name,
+      wonAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    };
+    setWonCoupons((prev) => {
+      const updated = [newVoucher, ...prev.slice(0, 29)];
+      localStorage.setItem(`flame_lucky_draw_vouchers_${currentAcc.storageKey}`, JSON.stringify(updated));
+      return updated;
+    });
+
+    if (soundEnabled) {
+      playWinSound(audioCtxRef);
+    }
+
+    confetti({
+      particleCount: 140,
+      spread: 85,
+      origin: { y: 0.6 },
+      colors: ["#EA580C", "#F59E0B", "#DC2626", "#10B981", "#6366F1", "#A855F7"],
+    });
+
+    toast.success(`🎉 Congratulations! You won ${targetPrize.label}!`);
+  };
+
+  // Kinetic draw handler for 9-Grid Fortune Matrix
+  const handleGridDraw = () => {
+    if (isSpinning || spinsRemaining <= 0) return;
+
+    setIsSpinning(true);
+    setWinningPrize(null);
+    setHasCopied(false);
+
+    const prizeIndex = Math.floor(Math.random() * PRIZES.length);
+    const targetPrize = PRIZES[prizeIndex];
+
+    const totalLaps = 4;
+    const stepsToTarget = ((prizeIndex - activeGridIndex) % 8 + 8) % 8;
+    const totalSteps = totalLaps * 8 + stepsToTarget;
+
+    let currentStep = 0;
+    let currentIndex = activeGridIndex;
+
+    const runStep = () => {
+      currentStep++;
+      currentIndex = (currentIndex + 1) % 8;
+      setActiveGridIndex(currentIndex);
+
+      if (soundEnabled) {
+        playTickSound(audioCtxRef);
+      }
+
+      if (currentStep >= totalSteps) {
+        finalizeWin(targetPrize);
+        return;
+      }
+
+      // Dynamic easing delay progression
+      let delay = 45;
+      const remainingSteps = totalSteps - currentStep;
+      if (currentStep < 5) {
+        delay = 140 - currentStep * 18;
+      } else if (remainingSteps <= 10) {
+        const decelerateDelays = [65, 85, 115, 155, 210, 280, 370, 480, 620, 780];
+        const decelIdx = 10 - remainingSteps;
+        delay = decelerateDelays[decelIdx] || 500;
+      }
+
+      animTimeoutRef.current = setTimeout(runStep, delay);
+    };
+
+    animTimeoutRef.current = setTimeout(runStep, 100);
+  };
+
+  // Wheel draw handler for Cyber Wheel mode
+  const handleWheelDraw = () => {
     if (isSpinning || spinsRemaining <= 0) return;
 
     setIsSpinning(true);
@@ -700,16 +901,13 @@ export function LuckyDrawModal({ open, onOpenChange }) {
 
     const segmentCenter = prizeIndex * SEGMENT_ANGLE + SEGMENT_ANGLE / 2;
     const targetOffset = 360 - segmentCenter;
-
     const currentBase = Math.floor(rotation / 360) * 360;
     const nextRotation = currentBase + 360 * 6 + targetOffset;
-
     setRotation(nextRotation);
 
     if (soundEnabled) {
       const start = Date.now();
       const duration = 4500;
-
       const scheduleTick = () => {
         const elapsed = Date.now() - start;
         if (elapsed < duration) {
@@ -722,40 +920,16 @@ export function LuckyDrawModal({ open, onOpenChange }) {
     }
 
     setTimeout(() => {
-      setIsSpinning(false);
-      setWinningPrize(targetPrize);
-
-      const currentAcc = getCurrentAccount();
-      recordSpinUsed(currentAcc.storageKey);
-      const updatedSpins = getSpinsData(currentAcc.storageKey);
-      setSpinsData(updatedSpins);
-
-      if (updatedSpins.totalRemaining <= 0) {
-        setCooldownRemaining(getSecondsUntilMidnight());
-      }
-
-      const { icon: _omittedIcon, ...safePrize } = targetPrize;
-      const newVoucher = {
-        ...safePrize,
-        account: currentAcc.name,
-        wonAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      };
-      setWonCoupons((prev) => {
-        const updated = [newVoucher, ...prev.slice(0, 29)];
-        localStorage.setItem(`flame_lucky_draw_vouchers_${currentAcc.storageKey}`, JSON.stringify(updated));
-        return updated;
-      });
-
-      confetti({
-        particleCount: 140,
-        spread: 85,
-        origin: { y: 0.6 },
-        colors: ["#EA580C", "#F59E0B", "#DC2626", "#10B981", "#6366F1", "#A855F7"],
-      });
-
-      toast.success(`🎉 Congratulations! You won ${targetPrize.label}!`);
+      finalizeWin(targetPrize);
     }, 4500);
+  };
+
+  const handleDraw = () => {
+    if (drawMode === "grid") {
+      handleGridDraw();
+    } else {
+      handleWheelDraw();
+    }
   };
 
   const handleCopyCode = async (code) => {
@@ -806,7 +980,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={() => !isSpinning && onOpenChange(false)}
-          className="fixed inset-0 bg-black/75 backdrop-blur-sm touch-none"
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm touch-none"
         />
 
         <motion.div
@@ -814,28 +988,30 @@ export function LuckyDrawModal({ open, onOpenChange }) {
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.94, opacity: 0, y: 12 }}
           transition={{ type: "spring", damping: 26, stiffness: 320 }}
-          className="relative w-full max-w-[430px] max-h-[88vh] sm:max-h-[92vh] overflow-y-auto custom-scrollbar rounded-2xl sm:rounded-3xl bg-card border border-amber-500/30 shadow-[0_20px_60px_rgba(234,88,12,0.22)] p-3 sm:p-5 text-card-foreground z-10"
+          className="relative w-full max-w-[430px] max-h-[90vh] overflow-y-auto custom-scrollbar rounded-3xl bg-card border border-amber-500/30 shadow-[0_20px_60px_rgba(234,88,12,0.25)] p-3.5 sm:p-5 text-card-foreground z-10"
         >
-          <div className="absolute top-0 right-1/4 w-32 h-32 bg-gradient-to-br from-orange-500/15 to-transparent rounded-full blur-2xl pointer-events-none" />
-          <div className="absolute bottom-0 left-1/4 w-32 h-32 bg-gradient-to-tr from-amber-500/15 to-transparent rounded-full blur-2xl pointer-events-none" />
+          {/* Top ambient lighting glows */}
+          <div className="absolute top-0 right-1/4 w-36 h-36 bg-gradient-to-br from-orange-500/15 to-transparent rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute bottom-0 left-1/4 w-36 h-36 bg-gradient-to-tr from-amber-500/15 to-transparent rounded-full blur-2xl pointer-events-none" />
 
           <div className="relative">
-            <div className="flex items-center justify-between pb-2.5 sm:pb-3 border-b border-border/60">
+            {/* Header with Account and Controls */}
+            <div className="flex items-center justify-between pb-3 border-b border-border/60">
               <div className="flex items-center gap-2 sm:gap-2.5">
-                <div className="size-8 sm:size-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white shadow-md shadow-orange-500/30 shrink-0">
-                  <Sparkles className="size-4 sm:size-5" />
+                <div className="size-9 sm:size-10 rounded-2xl bg-gradient-to-br from-orange-500 via-amber-500 to-red-500 flex items-center justify-center text-white shadow-md shadow-orange-500/30 shrink-0">
+                  <Sparkles className="size-4.5 sm:size-5" />
                 </div>
                 <div>
-                  <h3 className="font-serif text-base sm:text-lg font-bold text-foreground flex items-center gap-1.5 sm:gap-2">
-                    Lucky Wheel
+                  <h3 className="font-serif text-base sm:text-lg font-black text-foreground flex items-center gap-1.5">
+                    Flame Lucky Draw
                     <Badge className="border border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10 text-[8px] sm:text-[9px] font-black uppercase px-1.5 py-0 rounded-full">
-                      Earn by Ordering 🍕
+                      +1 Spin/Order 🍕
                     </Badge>
                   </h3>
-                  <div className="flex items-center gap-1.5 mt-0.5 text-[11px] sm:text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1.5 mt-0.5 text-[10px] sm:text-xs text-muted-foreground">
                     <span
                       className={cn(
-                        "inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full font-bold text-[9px] sm:text-[10px]",
+                        "inline-flex items-center gap-1 px-2 py-0.2 rounded-full font-bold text-[9px] sm:text-[10px]",
                         account.isLoggedIn
                           ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25"
                           : "bg-secondary text-muted-foreground border border-border/60"
@@ -845,14 +1021,14 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                       {account.isLoggedIn ? account.name : "Guest"}
                     </span>
                     <span>•</span>
-                    <span className="font-bold text-amber-600 dark:text-amber-400 text-[10px] sm:text-[11px]">
+                    <span className="font-extrabold text-amber-600 dark:text-amber-400 text-[10px] sm:text-[11px]">
                       {spinsRemaining > 0 ? `${spinsRemaining} spins left` : "0 spins left"}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1 sm:gap-1.5">
+              <div className="flex items-center gap-1">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -860,7 +1036,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                   className="size-8 sm:size-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary"
                   title={soundEnabled ? "Mute audio" : "Enable audio"}
                 >
-                  {soundEnabled ? <Volume2 className="size-3.5 sm:size-4" /> : <VolumeX className="size-3.5 sm:size-4" />}
+                  {soundEnabled ? <Volume2 className="size-3.5 sm:size-4" /> : <VolumeX className="size-3.5 sm:size-4 text-muted-foreground/50" />}
                 </Button>
                 <Button
                   variant="ghost"
@@ -869,40 +1045,41 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                   onClick={() => onOpenChange(false)}
                   className="size-8 sm:size-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary"
                 >
-                  <X className="size-3.5 sm:size-4" />
+                  <X className="size-4" />
                 </Button>
               </div>
             </div>
 
-            <div className="flex items-center justify-center my-2 sm:my-3">
-              <div className="inline-flex items-center gap-1 p-0.5 sm:p-1 rounded-full bg-secondary/70 border border-border/60">
+            {/* Navigation Tabs (Lucky Draw vs My Vouchers) */}
+            <div className="flex items-center justify-between my-2.5 sm:my-3 gap-2">
+              <div className="inline-flex items-center gap-1 p-0.5 rounded-full bg-secondary/70 border border-border/60">
                 <button
                   type="button"
                   onClick={() => setViewHistory(false)}
                   className={cn(
-                    "px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                    "px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
                     !viewHistory
-                      ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/30"
+                      ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/25"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <RotateCw className="size-3 sm:size-3.5" /> Lucky Wheel
+                  <Sparkles className="size-3" /> Lucky Draw
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewHistory(true)}
                   className={cn(
-                    "px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                    "px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
                     viewHistory
-                      ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/30"
+                      ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/25"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <History className="size-3 sm:size-3.5" /> My Vouchers
+                  <History className="size-3" /> My Vouchers
                   {wonCoupons.length > 0 && (
                     <span
                       className={cn(
-                        "min-w-4 h-4 sm:min-w-4.5 sm:h-4.5 px-1 rounded-full text-[8px] sm:text-[9px] font-black flex items-center justify-center",
+                        "min-w-4 h-4 px-1 rounded-full text-[8px] sm:text-[9px] font-black flex items-center justify-center",
                         viewHistory ? "bg-white/25 text-white" : "bg-primary/15 text-primary"
                       )}
                     >
@@ -911,13 +1088,47 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                   )}
                 </button>
               </div>
+
+              {/* Mode Switcher: Fortune Grid vs Cyber Wheel */}
+              {!viewHistory && (
+                <div className="inline-flex items-center gap-1 p-0.5 rounded-full bg-secondary/50 border border-border/60">
+                  <button
+                    type="button"
+                    onClick={() => setDrawMode("grid")}
+                    disabled={isSpinning}
+                    className={cn(
+                      "px-2 sm:px-2.5 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer",
+                      drawMode === "grid"
+                        ? "bg-primary text-primary-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    title="3x3 Fortune Grid"
+                  >
+                    <Grid className="size-3" /> Grid
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDrawMode("wheel")}
+                    disabled={isSpinning}
+                    className={cn(
+                      "px-2 sm:px-2.5 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer",
+                      drawMode === "wheel"
+                        ? "bg-primary text-primary-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    title="Cyber Wheel"
+                  >
+                    <Disc3 className="size-3" /> Wheel
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Earn Spins by Ordering Notice */}
+            {/* Order to earn bonus spins banner */}
             {!viewHistory && (
-              <div className="w-full mb-2 sm:mb-2.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent border border-amber-500/25 flex items-center justify-between gap-1.5 sm:gap-2 text-[10px] sm:text-xs">
+              <div className="w-full mb-2 sm:mb-2.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent border border-amber-500/25 flex items-center justify-between gap-1.5 text-[10px] sm:text-xs">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-sm sm:text-base shrink-0">🍕</span>
+                  <span className="text-sm shrink-0">🍕</span>
                   <span className="text-[10px] sm:text-[11px] font-medium text-amber-900 dark:text-amber-200 truncate">
                     Order to earn spins! <strong className="text-amber-600 dark:text-amber-400">+1 Spin/order</strong>
                   </span>
@@ -935,10 +1146,28 @@ export function LuckyDrawModal({ open, onOpenChange }) {
 
             {!viewHistory ? (
               <>
+                {/* Main Interactive Draw Arena */}
                 <div className="flex flex-col items-center justify-center py-1 sm:py-2">
-                  <Wheel rotation={rotation} isSpinning={isSpinning} onSpin={handleSpin} disabled={isSpinning || spinsRemaining <= 0} spinsRemaining={spinsRemaining} />
+                  {drawMode === "grid" ? (
+                    <FortuneGrid
+                      activeIndex={activeGridIndex}
+                      isSpinning={isSpinning}
+                      onDraw={handleDraw}
+                      disabled={isSpinning || spinsRemaining <= 0}
+                      spinsRemaining={spinsRemaining}
+                    />
+                  ) : (
+                    <CyberWheel
+                      rotation={rotation}
+                      isSpinning={isSpinning}
+                      onSpin={handleDraw}
+                      disabled={isSpinning || spinsRemaining <= 0}
+                      spinsRemaining={spinsRemaining}
+                    />
+                  )}
                 </div>
 
+                {/* Bottom Celebration or CTA state */}
                 <AnimatePresence mode="wait">
                   {winningPrize ? (
                     <motion.div
@@ -947,63 +1176,66 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                       animate={{ scale: 1, opacity: 1, y: 0 }}
                       exit={{ scale: 0.9, opacity: 0 }}
                       transition={{ type: "spring", damping: 20, stiffness: 280 }}
-                      className="mt-2.5 sm:mt-4"
+                      className="mt-3"
                     >
-                      <div className="relative p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 border-amber-500/40 bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-transparent shadow-lg shadow-orange-500/15 overflow-hidden">
-                        <div className="absolute top-2 right-2 flex items-center gap-1 text-[9px] sm:text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
-                          <Sparkles className="size-2.5 sm:size-3" />
-                          Won Prize
-                        </div>
+                      {/* Luxury VIP Perforated Ticket Card */}
+                      <div className="relative p-3.5 sm:p-4 rounded-2xl border-2 border-amber-500/50 bg-gradient-to-br from-amber-500/20 via-orange-500/10 to-transparent shadow-xl shadow-orange-500/15 overflow-hidden">
+                        {/* Notch cutouts */}
+                        <div className="absolute -left-3 top-1/2 -translate-y-1/2 size-5 rounded-full bg-card border border-amber-500/40" />
+                        <div className="absolute -right-3 top-1/2 -translate-y-1/2 size-5 rounded-full bg-card border border-amber-500/40" />
 
                         <div className="flex flex-col items-center text-center">
-                          <div className={cn("size-11 sm:size-14 rounded-xl sm:rounded-2xl bg-gradient-to-br flex items-center justify-center shadow-md mb-2 sm:mb-2.5", winningPrize.bgGradient)}>
-                            <WinIcon className="size-5 sm:size-7 text-white" />
+                          <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-amber-500 bg-amber-500/15 px-2.5 py-0.5 rounded-full border border-amber-500/30 mb-2">
+                            <PartyPopper className="size-3" />
+                            Congratulations!
                           </div>
 
-                          <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-0.5">
-                            {winningPrize.tier} Prize
-                          </span>
-                          <h4 className="font-serif text-lg sm:text-xl font-black text-foreground mb-1">
+                          <div className={cn("size-12 rounded-2xl bg-gradient-to-br flex items-center justify-center shadow-md mb-2", winningPrize.bgGradient)}>
+                            <WinIcon className="size-6 text-white" />
+                          </div>
+
+                          <TierBadge tier={winningPrize.tier} className="mb-1" />
+                          <h4 className="font-serif text-xl sm:text-2xl font-black text-foreground mb-1">
                             {winningPrize.label}
                           </h4>
 
-                          <div className="my-2 sm:my-2.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl bg-background/80 border border-border/60 flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-muted-foreground">Code:</span>
-                            <span className="font-mono font-black text-sm sm:text-base text-primary tracking-wider">
+                          <div className="my-2 px-3 py-1.5 rounded-xl bg-background/90 border border-border/70 flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase">Promo Code:</span>
+                            <span className="font-mono font-black text-base text-primary tracking-wider">
                               {winningPrize.code}
                             </span>
                           </div>
 
-                          <p className="text-[10px] sm:text-[11px] text-muted-foreground mb-2.5 sm:mb-3 text-center">
+                          <p className="text-[10px] sm:text-[11px] text-muted-foreground mb-3 text-center">
                             Valid for 7 days on orders over ${winningPrize.minOrder}.
                           </p>
 
-                          <div className="flex items-center gap-1.5 sm:gap-2 justify-center flex-wrap">
+                          <div className="flex items-center gap-2 justify-center flex-wrap w-full">
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => handleCopyCode(winningPrize.code)}
-                              className="h-8 sm:h-9 rounded-lg sm:rounded-xl border-border/80 text-[11px] sm:text-xs font-bold gap-1.5 hover:bg-secondary"
+                              className="h-9 rounded-xl border-border/80 text-xs font-bold gap-1.5 hover:bg-secondary flex-1 cursor-pointer"
                             >
-                              {hasCopied ? <Check className="size-3 sm:size-3.5 text-emerald-500" /> : <Copy className="size-3 sm:size-3.5" />}
+                              {hasCopied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
                               {hasCopied ? "Copied" : "Copy Code"}
                             </Button>
                             <Button
                               size="sm"
                               onClick={() => handleApplyToCart(winningPrize)}
-                              className="h-8 sm:h-9 rounded-lg sm:rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600 text-[11px] sm:text-xs font-bold gap-1.5 shadow-lg shadow-orange-500/30"
+                              className="h-9 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600 text-xs font-bold gap-1.5 shadow-md shadow-orange-500/25 flex-1 cursor-pointer"
                             >
-                              <ShoppingBag className="size-3 sm:size-3.5" /> Apply to Cart
+                              <ShoppingBag className="size-3.5" /> Apply Now
                             </Button>
                             {spinsRemaining > 0 && (
                               <Button
                                 size="sm"
                                 variant="secondary"
                                 onClick={() => setWinningPrize(null)}
-                                className="h-8 sm:h-9 rounded-lg sm:rounded-xl border border-amber-500/30 text-[11px] sm:text-xs font-bold gap-1.5 hover:bg-amber-500/15"
+                                className="h-9 px-3 rounded-xl border border-amber-500/30 text-xs font-bold gap-1.5 hover:bg-amber-500/15 cursor-pointer"
                               >
-                                <RotateCw className="size-3 sm:size-3.5 text-amber-500" />
-                                Spin Again
+                                <RotateCw className="size-3.5 text-amber-500" />
+                                Draw Again
                               </Button>
                             )}
                           </div>
@@ -1016,17 +1248,17 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
-                      className="mt-2.5 sm:mt-4 w-full p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-secondary/60 border border-border/80 flex flex-col items-center justify-center gap-2 text-center"
+                      className="mt-3 w-full p-3.5 rounded-2xl bg-secondary/60 border border-border/80 flex flex-col items-center justify-center gap-2 text-center"
                     >
-                      <div className="size-9 sm:size-11 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-xl sm:text-2xl">
+                      <div className="size-10 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-2xl">
                         🍕
                       </div>
                       <div>
                         <h5 className="font-serif font-bold text-xs sm:text-sm text-foreground">
-                          Want More Lucky Spins?
+                          Want More Lucky Draws?
                         </h5>
-                        <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 max-w-xs">
-                          Place any order in the app to unlock <span className="font-bold text-amber-600 dark:text-amber-400">+1 Bonus Spin</span> immediately!
+                        <p className="text-[11px] text-muted-foreground mt-0.5 max-w-xs">
+                          Place any pizza order in the app to unlock <span className="font-bold text-amber-600 dark:text-amber-400">+1 Bonus Draw</span> right away!
                         </p>
                       </div>
                       <Button
@@ -1035,7 +1267,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                           onOpenChange(false);
                           navigate("/menu");
                         }}
-                        className="w-full h-9 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-[11px] sm:text-xs shadow-md shadow-orange-500/25 gap-1.5 cursor-pointer"
+                        className="w-full h-9 sm:h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs shadow-md shadow-orange-500/25 gap-1.5 cursor-pointer"
                       >
                         <ShoppingBag className="size-3.5" /> Order Now to Earn Spins
                       </Button>
@@ -1046,24 +1278,25 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                       </div>
                     </motion.div>
                   ) : (
-                    <motion.div key="cta" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-2.5 sm:mt-4 w-full">
+                    <motion.div key="cta" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-3 w-full">
                       <Button
-                        onClick={handleSpin}
+                        onClick={handleDraw}
                         disabled={isSpinning}
-                        className="group relative w-full h-10 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-r from-orange-500 via-amber-500 to-red-500 hover:from-orange-600 hover:via-amber-600 hover:to-red-600 text-white font-bold text-xs sm:text-sm shadow-lg shadow-orange-500/35 active:scale-[0.98] transition-all gap-2 overflow-hidden"
+                        className="group relative w-full h-11 rounded-2xl bg-gradient-to-r from-orange-500 via-amber-500 to-red-500 hover:from-orange-600 hover:via-amber-600 hover:to-red-600 text-white font-black text-xs sm:text-sm shadow-lg shadow-orange-500/30 active:scale-[0.98] transition-all gap-2 overflow-hidden cursor-pointer"
                       >
                         <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 pointer-events-none" />
-                        <Sparkles className="size-3.5 sm:size-4" />
-                        {`SPIN THE WHEEL (${spinsRemaining} SPINS AVAILABLE)`}
+                        <Sparkles className="size-4" />
+                        {drawMode === "grid" ? `DRAW NOW (${spinsRemaining} SPINS)` : `SPIN WHEEL (${spinsRemaining} SPINS)`}
                       </Button>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </>
             ) : (
+              /* My Vouchers List Tab */
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="py-2">
                 <h4 className="text-xs font-black text-muted-foreground uppercase tracking-wider mb-3 flex items-center justify-between">
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-1.5">
                     <Ticket className="size-3.5" />
                     Your Won Vouchers
                   </span>
@@ -1078,7 +1311,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                       <Sparkles className="size-4 absolute -top-1 -right-2 text-amber-500/40" />
                     </div>
                     <p className="text-xs font-semibold text-muted-foreground">
-                      No vouchers yet for {account.name}. Spin the wheel to win your first discount!
+                      No vouchers yet for {account.name}. Tap Draw to win your first pizza discount!
                     </p>
                   </div>
                 ) : (
@@ -1098,7 +1331,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                           transition={{ delay: Math.min(i * 0.05, 0.3) }}
                           className="relative rounded-2xl border border-border/60 bg-gradient-to-br from-secondary/50 to-secondary/20 hover:border-amber-500/40 hover:shadow-md hover:shadow-orange-500/5 transition-all group overflow-hidden"
                         >
-                          <div className={cn("absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b", voucher?.bgGradient || "from-orange-500 to-amber-500")} />
+                          <div className={cn("absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b", voucher?.bgGradient || "from-orange-500 to-amber-500")} />
                           <div className="absolute -left-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-card border border-border/60" />
                           <div className="absolute -right-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-card border border-border/60" />
 
@@ -1129,7 +1362,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                                 size="icon"
                                 variant="ghost"
                                 onClick={() => handleCopyCode(voucher?.code)}
-                                className="size-8 rounded-lg hover:bg-secondary"
+                                className="size-8 rounded-lg hover:bg-secondary cursor-pointer"
                                 title="Copy Code"
                               >
                                 <Copy className="size-3.5 text-muted-foreground" />
@@ -1139,7 +1372,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                                 disabled={Boolean(voucher?.used)}
                                 onClick={() => handleApplyToCart(voucher)}
                                 className={cn(
-                                  "h-8 px-3 rounded-lg text-xs font-bold shadow-sm",
+                                  "h-8 px-3 rounded-lg text-xs font-bold shadow-sm cursor-pointer",
                                   voucher?.used
                                     ? "bg-muted text-muted-foreground cursor-not-allowed"
                                     : "bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600"

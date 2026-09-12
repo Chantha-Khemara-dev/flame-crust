@@ -1740,22 +1740,22 @@ export default function ProfilePage() {
                     <div className="relative overflow-hidden rounded-2xl sm:rounded-[24px] bg-gradient-to-r from-orange-500 via-amber-500 to-red-500 p-5 sm:p-6 text-white shadow-warm flex flex-col sm:flex-row items-center justify-between gap-4">
                       <div className="flex items-center gap-4">
                         <div className="size-14 sm:size-16 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-3xl sm:text-4xl shadow-inner shrink-0">
-                          🎡
+                          🎰
                         </div>
                         <div>
                           <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 text-[10px] font-black uppercase tracking-wider mb-1">
-                            <span>✨ Free Daily Spin</span>
+                            <span>✨ Free Daily Draw</span>
                           </div>
-                          <h4 className="text-lg sm:text-xl font-black">Flame Lucky Draw Wheel</h4>
-                          <p className="text-xs sm:text-sm text-white/85">Spin the lucky wheel daily to win up to 20% OFF and free crust vouchers!</p>
+                          <h4 className="text-lg sm:text-xl font-black">Flame Fortune Lucky Draw</h4>
+                          <p className="text-xs sm:text-sm text-white/85">Draw prizes daily to win up to 20% OFF and free pizza vouchers!</p>
                         </div>
                       </div>
                       <Button
                         type="button"
                         onClick={() => window.dispatchEvent(new CustomEvent("openLuckyDraw"))}
-                        className="w-full sm:w-auto h-11 px-6 rounded-xl bg-white text-orange-600 hover:bg-white/90 font-extrabold text-xs sm:text-sm shadow-md active:scale-95 shrink-0"
+                        className="w-full sm:w-auto h-11 px-6 rounded-xl bg-white text-orange-600 hover:bg-white/90 font-extrabold text-xs sm:text-sm shadow-md active:scale-95 shrink-0 cursor-pointer"
                       >
-                        Spin Wheel Now 🚀
+                        Draw Lucky Prize 🚀
                       </Button>
                     </div>
                     {loading ? (

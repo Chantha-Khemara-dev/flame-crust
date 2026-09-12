@@ -10,7 +10,8 @@ import {
   Clock,
   Flame,
   Layers,
-  ArrowRight
+  ArrowRight,
+  Sparkles
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { list, API_URL } from "@/lib/api";
@@ -268,6 +269,20 @@ export function ActiveOrderWidget() {
 
                 {/* Right Action Button & Dismiss */}
                 <div className="flex items-center gap-1.5 shrink-0">
+                  {/* Lucky Spin button right next to driver time */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.dispatchEvent(new CustomEvent("openLuckyDraw"));
+                    }}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:to-red-600 text-white text-xs font-black shadow-md shadow-orange-500/20 active:scale-95 transition-all cursor-pointer border border-amber-300/40"
+                    title="Spin Lucky Draw & Win Vouchers"
+                  >
+                    <Sparkles className="size-3.5 text-yellow-200 animate-pulse" />
+                    <span className="tracking-tight">Spin</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={(e) => {
