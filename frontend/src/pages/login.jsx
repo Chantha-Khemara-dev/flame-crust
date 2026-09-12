@@ -305,10 +305,15 @@ export default function LoginPage() {
       }
 
       const data = await response.json().catch(() => ({}));
-      toast.success("Verification code sent to " + email);
-      if (data.devOtp) {
-        toast.info("Test Mode OTP: " + data.devOtp, { duration: 8000 });
+      if (data.emailSent === false && data.devOtp) {
+        toast.warning("Email delivery unavailable. Your verification code is: " + data.devOtp, { duration: 10000 });
         setOtp(data.devOtp);
+      } else {
+        toast.success("Verification code sent to " + email);
+        if (data.devOtp) {
+          toast.info("Code: " + data.devOtp, { duration: 8000 });
+          setOtp(data.devOtp);
+        }
       }
       // Use OTP_VERIFY_SIGNUP to distinguish from normal passwordless OTP
       setStep("OTP_VERIFY_SIGNUP");
@@ -351,10 +356,15 @@ export default function LoginPage() {
       }
 
       const data = await response.json().catch(() => ({}));
-      toast.success("Verification code sent to " + email);
-      if (data.devOtp) {
-        toast.info("Test Mode OTP: " + data.devOtp, { duration: 8000 });
+      if (data.emailSent === false && data.devOtp) {
+        toast.warning("Email delivery unavailable. Your verification code is: " + data.devOtp, { duration: 10000 });
         setOtp(data.devOtp);
+      } else {
+        toast.success("Verification code sent to " + email);
+        if (data.devOtp) {
+          toast.info("Code: " + data.devOtp, { duration: 8000 });
+          setOtp(data.devOtp);
+        }
       }
       setStep("OTP_VERIFY");
     } catch (err) {

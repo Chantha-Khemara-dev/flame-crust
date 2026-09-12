@@ -54,6 +54,18 @@ jobs:
             echo "FLYWAY_ENABLED=false" >> .env
             echo "PORT=8080" >> .env
             echo "FRONTEND_URL=https://flame-crust-pizza.duckdns.org" >> .env
+            echo "MAIL_HOST=smtp.gmail.com" >> .env
+            echo "MAIL_PORT=587" >> .env
+            echo "MAIL_USERNAME=chanthakhemara12@gmail.com" >> .env
+            echo "MAIL_PASSWORD=yklkawmryphjodct" >> .env
+            echo "SPRING_MAIL_HOST=smtp.gmail.com" >> .env
+            echo "SPRING_MAIL_PORT=587" >> .env
+            echo "SPRING_MAIL_USERNAME=chanthakhemara12@gmail.com" >> .env
+            echo "SPRING_MAIL_PASSWORD=yklkawmryphjodct" >> .env
+            echo "BAKONG_API_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7ImlkIjoiOTYzZjdiMDAxMTZjNDgxNCJ9LCJpYXQiOjE3ODc4MzE2NTcsImV4cCI6MTc5NTYwNzY1N30.WByYtYb4p6zAMEqTKOrRXOx4xPcLK1G2m_30KZOh660" >> .env
+            echo "VAPID_PUBLIC_KEY=BL14cYA9vTebqA9HDHOl4o78Bzv7A7DIQfxDqYgPHZSpp8WloY2V8V2qe6Ri4bKsl_KSXr-iJuOzv_AsB_Rl0Qw" >> .env
+            echo "VAPID_PRIVATE_KEY=uKyvz2wgF1_FWMkj2u3Hz1lNfUskNFrhtWerK66l33M" >> .env
+            echo "VAPID_SUBJECT=mailto:support@flamecrust.com" >> .env
             mkdir -p src/main/resources
             cp .env src/main/resources/.env || true
             

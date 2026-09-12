@@ -87,9 +87,11 @@ public class AuthController {
         if (!emailSent) {
             log.warn("Failed to send verification email to {}. Bypassing error for testing.", email);
             resp.put("devOtp", otp);
+            resp.put("message", "Email delivery failed; test code provided.");
+        } else {
+            resp.put("message", "OTP sent to your email successfully");
         }
 
-        resp.put("message", "OTP generated successfully");
         resp.put("emailSent", emailSent);
 
         return ResponseEntity.ok(resp);

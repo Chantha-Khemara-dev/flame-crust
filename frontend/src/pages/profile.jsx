@@ -518,7 +518,17 @@ export default function ProfilePage() {
       if (!response.ok) {
         throw new Error("Failed to send OTP");
       }
-      toast.success("OTP sent to your email!");
+      const data = await response.json().catch(() => ({}));
+      if (data.emailSent === false && data.devOtp) {
+        toast.warning("Email delivery unavailable. Your verification code is: " + data.devOtp, { duration: 10000 });
+        setOtpCode(data.devOtp);
+      } else {
+        toast.success("OTP sent to your email!");
+        if (data.devOtp) {
+          toast.info("Code: " + data.devOtp, { duration: 8000 });
+          setOtpCode(data.devOtp);
+        }
+      }
       setShowOTPDialog(true);
     } catch (err) {
       toast.error(err.message || "Failed to send OTP.");
