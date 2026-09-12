@@ -48,6 +48,7 @@ import { useCart } from "@/lib/cart-store";
 import { create, list, API_URL } from "@/lib/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getImageUrl } from "@/lib/food-api";
 import {
   getCurrentAccount,
   getWonCoupons,
@@ -947,9 +948,10 @@ function CheckoutPage() {
                         {lines.map((line) => (
                           <div key={line.id} className="flex items-center gap-3">
                             <img
-                              src={line.image}
+                              src={line.image ? getImageUrl(line.image) : "/images/library/pizza.jpg"}
                               alt={line.name}
                               className="size-11 rounded-lg object-cover bg-secondary shrink-0 border border-border/40"
+                              onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/images/library/pizza.jpg"; }}
                             />
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-medium text-foreground truncate">{line.name}</p>
@@ -1494,9 +1496,10 @@ function CheckoutPage() {
                     {lines.map((line) => (
                       <div key={line.id} className="flex items-center gap-3">
                         <img
-                          src={line.image}
+                          src={line.image ? getImageUrl(line.image) : "/images/library/pizza.jpg"}
                           alt={line.name}
                           className="size-12 rounded-xl object-cover bg-secondary shrink-0 border border-border/40"
+                          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/images/library/pizza.jpg"; }}
                         />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-semibold text-foreground truncate">{line.name}</p>

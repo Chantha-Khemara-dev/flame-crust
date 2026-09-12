@@ -34,6 +34,7 @@ import { MapPicker } from "./map-picker";
 import { motion, AnimatePresence } from "framer-motion";
 import { list } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { getImageUrl } from "@/lib/food-api";
 import {
   getCurrentAccount,
   getWonCoupons,
@@ -435,13 +436,26 @@ export function PaymentForm({
           {/* Expanded Order Breakdown */}
           {showOrderSummary && (
             <div className="mt-3 pt-3 border-t border-border/40 space-y-2 text-xs animate-in fade-in-50 duration-150">
-              <div className="space-y-1.5 max-h-40 overflow-y-auto no-scrollbar">
-                {lines.map((line) => (
-                  <div key={line.id} className="flex justify-between items-center text-muted-foreground py-0.5">
-                    <span className="truncate pr-2">{line.qty}x {line.name}</span>
-                    <span className="font-semibold text-foreground shrink-0">${(line.price * line.qty).toFixed(2)}</span>
-                  </div>
-                ))}
+              <div className="space-y-2 max-h-48 overflow-y-auto no-scrollbar">
+                {lines.map((line) => {
+                  const lineImg = line.image ? getImageUrl(line.image) : "/images/library/pizza.jpg";
+                  return (
+                    <div key={line.id} className="flex justify-between items-center text-muted-foreground py-1 gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="size-8 rounded-lg overflow-hidden bg-secondary border border-border/40 shrink-0 flex items-center justify-center">
+                          <img 
+                            src={lineImg} 
+                            alt={line.name} 
+                            className="w-full h-full object-cover" 
+                            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/images/library/pizza.jpg"; }} 
+                          />
+                        </div>
+                        <span className="truncate pr-1 text-foreground font-medium">{line.qty}x {line.name}</span>
+                      </div>
+                      <span className="font-semibold text-foreground shrink-0">${(line.price * line.qty).toFixed(2)}</span>
+                    </div>
+                  );
+                })}
               </div>
               <div className="pt-2 border-t border-border/30 space-y-1 text-[11px]">
                 <div className="flex justify-between text-muted-foreground">

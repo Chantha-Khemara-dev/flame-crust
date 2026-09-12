@@ -31,7 +31,7 @@ import { FloatingChatHead } from "@/components/food/floating-chat-head";
 import { list, get, update, getOrderMessages } from "@/lib/api";
 import { subscribeToPushNotifications } from "@/lib/push-notifications";
 import { cn, formatDate } from "@/lib/utils";
-import { getImageUrl } from "@/lib/food-api";
+import { getImageUrl, getCachedFoodItems } from "@/lib/food-api";
 import { useTheme } from "@/components/theme-provider.jsx";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
@@ -161,7 +161,8 @@ export default function OrderTrackingPage() {
   }, [order?.customerId, order?.customer_id]);
   const [address, setAddress] = useState(null);
   const [items, setItems] = useState([]);
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState(() => getCachedFoodItems());
+  const itemsLoadedRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -237,7 +238,17 @@ export default function OrderTrackingPage() {
 
   const fetchOrderData = async () => {
     try {
-      const orderData = await get("orders", orderId);
+      let orderData = null;
+      if (/^\d+$/.test(String(orderId))) {
+        orderData = await get("orders", orderId);
+      } else {
+        const allOrders = await list("orders", { limit: -1 });
+        orderData = (allOrders || []).find(o => 
+          String(o.order_number) === String(orderId) || 
+          String(o.orderNumber) === String(orderId) || 
+          String(o.id) === String(orderId)
+        );
+      }
       if (!orderData) throw new Error("Order not found");
       setOrder(orderData);
 
@@ -281,15 +292,37 @@ export default function OrderTrackingPage() {
         } catch(e) {}
       }
 
-      if (items.length === 0) {
+      // Robust order items resolution
+      let resolvedItems = Array.isArray(orderData.items) && orderData.items.length > 0 
+        ? orderData.items 
+        : (Array.isArray(orderData.order_items) && orderData.order_items.length > 0 ? orderData.order_items : null);
+
+      if (!resolvedItems || resolvedItems.length === 0) {
         try {
-          const allItems = await list("order_items");
-          setItems(allItems.filter(item => String(item.orderId || item.order_id) === String(orderData.id)));
-          
-          const allProducts = await list("products");
-          setProducts(allProducts);
+          const allItems = await list("order_items", { limit: -1 });
+          resolvedItems = (allItems || []).filter(item => 
+            String(item.orderId || item.order_id) === String(orderData.id) ||
+            (orderData.order_number && String(item.order_number || item.orderNumber) === String(orderData.order_number))
+          );
         } catch(e) {}
       }
+
+      if (resolvedItems && resolvedItems.length > 0) {
+        setItems(resolvedItems);
+        itemsLoadedRef.current = true;
+      }
+
+      // Fetch products for matching and image resolution
+      try {
+        const allProducts = await list("products", { limit: -1 });
+        if (Array.isArray(allProducts) && allProducts.length > 0) {
+          const cached = getCachedFoodItems();
+          const productMap = new Map();
+          cached.forEach(p => productMap.set(String(p.id), p));
+          allProducts.forEach(p => productMap.set(String(p.id), { ...productMap.get(String(p.id)), ...p }));
+          setProducts(Array.from(productMap.values()));
+        }
+      } catch(e) {}
 
       if (orderData.status === "DELIVERED" && !confettiRef.current) {
         confettiRef.current = true;
@@ -863,34 +896,47 @@ export default function OrderTrackingPage() {
                     <div className="bg-secondary/20 rounded-2xl p-4 border border-border/40">
                       <div className="space-y-2 mb-3 max-h-[180px] lg:max-h-[220px] overflow-y-auto custom-scrollbar pr-1">
                         {items.map(item => {
-                          const dbProduct = products.find(p => String(p.id) === String(item.productId || item.product_id));
-                          const displayImage = dbProduct ? getImageUrl(dbProduct.image) : "/images/library/pizza.jpg";
+                          const itemProdId = item.productId || item.product_id;
+                          const itemProdName = item.productName || item.product_name || "";
+                          const dbProduct = products.find(p => 
+                            (itemProdId && String(p.id) === String(itemProdId)) ||
+                            (p.name && itemProdName && p.name.toLowerCase().trim() === itemProdName.toLowerCase().trim())
+                          );
+                          const rawImage = item.image || item.product_image || dbProduct?.image || dbProduct?.img;
+                          const displayImage = rawImage ? getImageUrl(rawImage) : "/images/library/pizza.jpg";
+                          const displayName = itemProdName || dbProduct?.name || "Order Item";
+                          const linePrice = Number(item.lineTotal ?? item.line_total ?? ((Number(item.unitPrice || item.unit_price || 0) * (item.quantity || 1))) ?? 0);
+
                           return (
                             <div 
-                              key={item.id} 
+                              key={item.id || item.order_item_id || `${itemProdId}-${Math.random()}`} 
                               className="flex justify-between items-center text-xs sm:text-sm gap-2 py-1.5"
                             >
                               <div className="flex items-center gap-2.5 min-w-0">
                                 <div className="size-8 sm:size-9 rounded-lg bg-secondary overflow-hidden shrink-0 border border-border/50 flex items-center justify-center">
-                                  {displayImage ? (
-                                    <img src={displayImage} alt={item.productName || item.product_name} className="w-full h-full object-cover" />
-                                  ) : (
-                                    <ShoppingBag className="size-4 text-primary/60" />
-                                  )}
+                                  <img 
+                                    src={displayImage} 
+                                    alt={displayName} 
+                                    className="w-full h-full object-cover" 
+                                    onError={(e) => {
+                                      e.currentTarget.onerror = null;
+                                      e.currentTarget.src = "/images/library/pizza.jpg";
+                                    }}
+                                  />
                                 </div>
                                 <span className="font-semibold text-foreground truncate">
-                                  {item.quantity}x {item.productName || item.product_name}
+                                  {item.quantity || 1}x {displayName}
                                 </span>
                               </div>
                               <span className="font-bold text-foreground whitespace-nowrap">
-                                ${Number(item.lineTotal || item.line_total || 0).toFixed(2)}
+                                ${linePrice.toFixed(2)}
                               </span>
                             </div>
                           );
                         })}
                         {items.length === 0 && (
                           <div className="text-center py-4 text-xs text-muted-foreground">
-                            Loading items...
+                            {loading ? "Loading items..." : "No items found"}
                           </div>
                         )}
                       </div>

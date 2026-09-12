@@ -254,9 +254,14 @@ export function list(resource, params = {}, options = {}) {
   if (params && typeof params === "object") {
     if (params.headers || params.signal || params.method) {
       options = params;
+      params = {};
     } else {
       isExplicitPaginate = Boolean(params.paginate) || params.page !== undefined;
       const searchParams = new URLSearchParams();
+      // Default limit=-1 for order_items and products so full datasets are returned unless pagination is explicitly requested
+      if ((resource === "order_items" || resource === "products") && params.limit === undefined && params.size === undefined && params.page === undefined) {
+        params = { ...params, limit: -1 };
+      }
       Object.entries(params).forEach(([k, v]) => {
         if (v !== undefined && v !== null && v !== "") {
           searchParams.append(k, v);
@@ -265,6 +270,8 @@ export function list(resource, params = {}, options = {}) {
       const qs = searchParams.toString();
       if (qs) query = `?${qs}`;
     }
+  } else if (!params && (resource === "order_items" || resource === "products")) {
+    query = "?limit=-1";
   }
   return request(`/admin/${encodeURIComponent(resource)}${query}`, options).then((res) => {
     if (isExplicitPaginate) return res;

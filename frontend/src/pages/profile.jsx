@@ -1992,8 +1992,15 @@ export default function ProfilePage() {
                     }
 
                     return itemsList.map((item, idx) => {
-                      const foodItem = allProducts.find(f => String(f.id) === String(item.product_id || item.productId) || f.name === (item.product_name || item.productName)) || {};
-                      const pName = item.product_name || item.productName || foodItem.name || "Item";
+                      const itemProdId = item.product_id || item.productId;
+                      const itemProdName = item.product_name || item.productName || "";
+                      const foodItem = allProducts.find(f => 
+                        (itemProdId && String(f.id) === String(itemProdId)) || 
+                        (f.name && itemProdName && f.name.toLowerCase().trim() === itemProdName.toLowerCase().trim())
+                      ) || {};
+                      const rawImg = item.image || item.product_image || foodItem.image;
+                      const displayImg = rawImg ? getImageUrl(rawImg) : "/images/library/pizza.jpg";
+                      const pName = itemProdName || foodItem.name || "Item";
                       const pQty = item.quantity || 1;
                       const pTotal = Number(item.line_total || item.lineTotal || (item.unit_price || item.unitPrice || 0) * pQty).toFixed(2);
 
@@ -2001,11 +2008,15 @@ export default function ProfilePage() {
                         <div key={item.id || `${item.product_id}-${idx}`} className="flex justify-between items-center text-sm gap-3 p-3 bg-secondary/30 rounded-xl border border-border/40">
                           <div className="flex items-center gap-3">
                             <div className="size-12 bg-secondary rounded-lg overflow-hidden shrink-0 border border-border/50 flex items-center justify-center">
-                              {foodItem.image ? (
-                                <img src={foodItem.image} alt={pName} className="w-full h-full object-cover" />
-                              ) : (
-                                <ShoppingBag className="size-5 text-primary/60" />
-                              )}
+                              <img 
+                                src={displayImg} 
+                                alt={pName} 
+                                className="w-full h-full object-cover" 
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = "/images/library/pizza.jpg";
+                                }}
+                              />
                             </div>
                             <div className="flex flex-col">
                               <span className="font-semibold text-foreground">
