@@ -864,7 +864,8 @@ export default function DriverDashboardPage() {
     }
     return () => {
       document.body.style.backgroundColor = '';
-      document.documentElement.classList.remove("dark");
+      const currentAppTheme = localStorage.getItem("flame-crust-theme") || "light";
+      document.documentElement.classList.toggle("dark", currentAppTheme === "dark");
     };
   }, [theme]);
 

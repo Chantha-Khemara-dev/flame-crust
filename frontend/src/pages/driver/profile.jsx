@@ -150,6 +150,8 @@ export default function DriverProfilePage() {
     }
     return () => {
       document.body.style.backgroundColor = "";
+      const currentAppTheme = localStorage.getItem("flame-crust-theme") || "light";
+      document.documentElement.classList.toggle("dark", currentAppTheme === "dark");
     };
   }, [theme]);
 

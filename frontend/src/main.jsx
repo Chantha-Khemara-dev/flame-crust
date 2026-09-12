@@ -6,6 +6,7 @@ import App from "./App.jsx";
 import "./app/globals.css";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { registerSW } from 'virtual:pwa-register';
+import { ErrorBoundary } from "./components/shared/error-boundary.jsx";
 
 let isRefreshing = false;
 
@@ -58,14 +59,25 @@ document.addEventListener("touchstart", (e) => {
   }
 }, { passive: false });
 
+
+// Handle Vite dynamic import chunk failure (e.g. after fresh deployments) to prevent blank black screens
+if (typeof window !== "undefined") {
+  window.addEventListener("vite:preloadError", (event) => {
+    event.preventDefault();
+    window.location.reload();
+  });
+}
+
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <BrowserRouter>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          <App />
-        </ThemeProvider>
-      </BrowserRouter>
-    </GoogleOAuthProvider>
+    <ErrorBoundary>
+      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+        <BrowserRouter>
+          <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+            <App />
+          </ThemeProvider>
+        </BrowserRouter>
+      </GoogleOAuthProvider>
+    </ErrorBoundary>
   </React.StrictMode>,
 );
