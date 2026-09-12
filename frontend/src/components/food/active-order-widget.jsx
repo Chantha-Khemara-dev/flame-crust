@@ -212,13 +212,16 @@ export function ActiveOrderWidget() {
                   localStorage.setItem("flame_active_order_minimized", "false");
                 } catch (err) { }
               }}
-              className="fixed z-30 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+4.75rem)] right-3 md:bottom-6 md:right-6 select-none cursor-pointer"
+              className="fixed z-30 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+5.25rem)] right-3 md:bottom-6 md:right-6 select-none cursor-pointer"
               title="Open Live Order Tracking"
             >
-              <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-card/95 backdrop-blur-xl border border-primary/40 shadow-xl text-xs font-bold text-foreground hover:scale-105 transition-all">
-                <span className="size-2 rounded-full bg-emerald-500 animate-ping" />
-                <StatusIcon className="size-4 text-primary animate-pulse" />
-                <span>#{currentOrder.order_number || currentOrder.id}</span>
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-card/95 backdrop-blur-xl border border-primary/40 shadow-xl text-xs font-bold text-foreground hover:scale-105 transition-all max-w-[calc(50vw-1.25rem)]">
+                <span className="size-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
+                <StatusIcon className="size-4 text-primary animate-pulse shrink-0" />
+                <span className="truncate">{isMultiple ? "Orders" : "Order"}</span>
+                <span className="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded-md bg-secondary text-foreground/80 border border-border/50 shrink-0">
+                  {activeOrders.length || 1}
+                </span>
               </div>
             </motion.div>
           ) : (
@@ -228,7 +231,7 @@ export function ActiveOrderWidget() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
               transition={{ type: "spring", stiffness: 350, damping: 28 }}
-              className="fixed z-30 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+4.75rem)] inset-x-3 max-w-md mx-auto md:bottom-6 md:right-6 md:left-auto md:mx-0 md:max-w-sm md:w-full select-none"
+              className="fixed z-30 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+5.25rem)] inset-x-3 max-w-md mx-auto md:bottom-6 md:right-6 md:left-auto md:mx-0 md:max-w-sm md:w-full select-none"
             >
               <div
                 onClick={handleWidgetClick}
