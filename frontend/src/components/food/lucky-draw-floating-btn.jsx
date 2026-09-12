@@ -19,6 +19,9 @@ const HIDE_ROUTES = [
 export function LuckyDrawFloatingButton() {
   const [modalOpen, setModalOpen] = useState(false);
   const [spinsRemaining, setSpinsRemaining] = useState(1);
+  const [isMobile, setIsMobile] = useState(() => {
+    return typeof window !== "undefined" ? window.innerWidth < 768 : false;
+  });
   const [isTimeDriverExpanded, setIsTimeDriverExpanded] = useState(() => {
     try {
       return sessionStorage.getItem("flame_time_driver_expanded") === "true";
@@ -27,6 +30,14 @@ export function LuckyDrawFloatingButton() {
     }
   });
   const location = useLocation();
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const updateSpins = useCallback(() => {
     try {
@@ -62,8 +73,10 @@ export function LuckyDrawFloatingButton() {
   // Hide on admin/driver/checkout screens
   const isHidden = HIDE_ROUTES.some((route) => location.pathname.startsWith(route));
 
-  // When time driver is open big (expanded), hide the spin button ("ពេលយើងបើក time driver ឲធំវា បាត់ span")
-  const shouldShow = !isHidden && !isTimeDriverExpanded;
+  // Only hide the spin button on mobile phone screens when time driver is expanded.
+  // On tablet and laptop (screens >= 768px), time driver is on bottom-right and spin is on bottom-left, so both stay visible.
+  const shouldHideForTimeDriver = isMobile && isTimeDriverExpanded;
+  const shouldShow = !isHidden && !shouldHideForTimeDriver;
 
   return (
     <>

@@ -456,13 +456,13 @@ function playWinSound(audioCtxRef) {
 
 function TierBadge({ tier, className }) {
   const config = {
-    common: { label: "Common", color: "text-slate-400 bg-slate-500/10 border-slate-500/25" },
+    common: { label: "Common", color: "text-zinc-400 bg-zinc-800/60 border-zinc-700/60" },
     rare: { label: "Rare", color: "text-sky-400 bg-sky-500/10 border-sky-500/25" },
     legendary: { label: "Legendary", color: "text-amber-400 bg-amber-500/10 border-amber-500/30 shadow-[0_0_8px_rgba(251,191,36,0.3)]" },
   };
   const c = config[tier] || config.common;
   return (
-    <span className={cn("text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded-full border", c.color, className)}>
+    <span className={cn("text-[8px] sm:text-[9px] md:text-[10px] font-black uppercase tracking-wider px-1.5 py-0.2 md:px-2 md:py-0.5 rounded-full border", c.color, className)}>
       {c.label}
     </span>
   );
@@ -471,11 +471,11 @@ function TierBadge({ tier, className }) {
 // 1. Modern 9-Grid Fortune Matrix Component
 function FortuneGrid({ activeIndex, isSpinning, onDraw, disabled, spinsRemaining = 0 }) {
   return (
-    <div className="relative w-full max-w-[275px] sm:max-w-[305px] mx-auto p-1.5 sm:p-2 rounded-2xl bg-zinc-950/90 border border-amber-500/30 shadow-[0_12px_40px_rgba(0,0,0,0.6),inset_0_1px_3px_rgba(255,255,255,0.1)] backdrop-blur-md">
+    <div className="relative w-full max-w-[275px] sm:max-w-[315px] md:max-w-[400px] lg:max-w-[430px] mx-auto p-1.5 sm:p-2 md:p-3 rounded-2xl md:rounded-3xl bg-zinc-950/90 border border-amber-500/30 shadow-[0_12px_40px_rgba(0,0,0,0.6),inset_0_1px_3px_rgba(255,255,255,0.1)] backdrop-blur-md">
       {/* Ambient background glow */}
-      <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 via-transparent to-orange-500/10 rounded-2xl pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 via-transparent to-orange-500/10 rounded-2xl md:rounded-3xl pointer-events-none" />
 
-      <div className="grid grid-cols-3 grid-rows-3 gap-1.5 sm:gap-2 relative z-10 aspect-square">
+      <div className="grid grid-cols-3 grid-rows-3 gap-1.5 sm:gap-2 md:gap-2.5 relative z-10 aspect-square">
         {/* Render 8 Perimeter Prize Cards */}
         {GRID_CELL_MAPPING.map(({ index, row, col }) => {
           const prize = PRIZES[index];
@@ -494,7 +494,7 @@ function FortuneGrid({ activeIndex, isSpinning, onDraw, disabled, spinsRemaining
               animate={isActive ? { scale: 1.05 } : { scale: 1 }}
               transition={{ duration: 0.12 }}
               className={cn(
-                "relative rounded-xl p-1 sm:p-1.5 flex flex-col items-center justify-center text-center transition-all duration-150 overflow-hidden select-none border",
+                "relative rounded-xl md:rounded-2xl p-1 sm:p-1.5 md:p-2 flex flex-col items-center justify-center text-center transition-all duration-150 overflow-hidden select-none border",
                 isActive
                   ? "bg-gradient-to-b from-amber-500/40 to-orange-600/40 border-amber-300 ring-2 ring-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.85)] z-20"
                   : isLegendary
@@ -512,25 +512,25 @@ function FortuneGrid({ activeIndex, isSpinning, onDraw, disabled, spinsRemaining
               {/* Tier indicator dot */}
               <span
                 className={cn(
-                  "absolute top-1 right-1 size-1.5 rounded-full",
+                  "absolute top-1 right-1 sm:top-1.5 sm:right-1.5 size-1.5 md:size-2 rounded-full",
                   isLegendary ? "bg-amber-400 animate-ping" : isRare ? "bg-sky-400" : "bg-zinc-600"
                 )}
               />
 
               <div
                 className={cn(
-                  "size-6 sm:size-7 rounded-lg flex items-center justify-center mb-0.5 shadow-xs shrink-0",
+                  "size-6 sm:size-7 md:size-10 lg:size-11 rounded-lg md:rounded-xl flex items-center justify-center mb-0.5 md:mb-1 shadow-xs shrink-0",
                   prize.bgGradient ? `bg-gradient-to-br ${prize.bgGradient}` : "bg-orange-500"
                 )}
               >
-                <Icon className="size-3 sm:size-3.5 text-white" />
+                <Icon className="size-3 sm:size-3.5 md:size-5 lg:size-5.5 text-white" />
               </div>
 
-              <span className="font-serif font-black text-[11px] sm:text-xs text-white tracking-tight leading-tight">
+              <span className="font-serif font-black text-[11px] sm:text-xs md:text-sm lg:text-[15px] text-white tracking-tight leading-tight">
                 {prize.label}
               </span>
 
-              <span className="text-[8px] sm:text-[9px] font-semibold text-zinc-400 mt-0.5 leading-none line-clamp-1">
+              <span className="text-[8px] sm:text-[9px] md:text-[11px] font-semibold text-zinc-400 mt-0.5 leading-none line-clamp-1">
                 {prize.subtext}
               </span>
             </motion.div>
@@ -546,7 +546,7 @@ function FortuneGrid({ activeIndex, isSpinning, onDraw, disabled, spinsRemaining
             whileHover={disabled ? undefined : { scale: 1.05 }}
             whileTap={disabled ? undefined : { scale: 0.94 }}
             className={cn(
-              "relative size-full rounded-xl flex flex-col items-center justify-center p-1 cursor-pointer transition-all shadow-lg border overflow-hidden group",
+              "relative size-full rounded-xl md:rounded-2xl flex flex-col items-center justify-center p-1 md:p-2 cursor-pointer transition-all shadow-lg border overflow-hidden group",
               disabled
                 ? "bg-zinc-900/90 border-zinc-800 text-zinc-500 cursor-not-allowed"
                 : "bg-gradient-to-br from-amber-500 via-orange-500 to-red-600 border-amber-300 text-white shadow-orange-500/40 hover:shadow-orange-500/60"
@@ -559,16 +559,16 @@ function FortuneGrid({ activeIndex, isSpinning, onDraw, disabled, spinsRemaining
 
             <Flame
               className={cn(
-                "size-4 sm:size-5 transition-transform",
+                "size-4 sm:size-5 md:size-8 transition-transform",
                 isSpinning ? "animate-bounce text-yellow-200" : disabled ? "text-zinc-600" : "text-white group-hover:scale-110"
               )}
             />
 
-            <span className="font-black text-[9px] sm:text-[10px] tracking-wider uppercase mt-0.5">
+            <span className="font-black text-[9px] sm:text-[10px] md:text-xs lg:text-sm tracking-wider uppercase mt-0.5">
               {isSpinning ? "ROLLING" : disabled ? "NO SPINS" : "DRAW"}
             </span>
 
-            <span className={cn("text-[7px] sm:text-[8px] font-extrabold uppercase", disabled ? "text-zinc-500" : "text-amber-100/80")}>
+            <span className={cn("text-[7px] sm:text-[8px] md:text-[10px] font-extrabold uppercase", disabled ? "text-zinc-500" : "text-amber-100/80")}>
               {isSpinning ? "..." : disabled ? "0 Left" : `${spinsRemaining} Left`}
             </span>
           </motion.button>
@@ -589,11 +589,11 @@ function CyberWheel({ rotation, isSpinning, onSpin, disabled, spinsRemaining = 0
       <motion.div
         animate={isSpinning ? { scale: [1, 1.02, 1] } : { scale: 1 }}
         transition={isSpinning ? { repeat: Infinity, duration: 0.8 } : { duration: 0.3 }}
-        className="absolute size-[230px] xs:size-[250px] sm:size-[310px] rounded-full bg-gradient-to-br from-orange-500/30 via-amber-400/20 to-red-500/30 blur-2xl pointer-events-none"
+        className="absolute size-[230px] xs:size-[250px] sm:size-[310px] md:size-[380px] lg:size-[410px] rounded-full bg-gradient-to-br from-orange-500/30 via-amber-400/20 to-red-500/30 blur-2xl pointer-events-none"
       />
 
-      <div className="relative size-[218px] xs:size-[240px] sm:size-[296px] rounded-full bg-gradient-to-br from-amber-400 via-orange-600 to-zinc-900 p-[7px] sm:p-[9px] shadow-[0_16px_50px_rgba(234,88,12,0.45),inset_0_2px_6px_rgba(255,255,255,0.6)]">
-        <div className="relative size-full rounded-full bg-zinc-950 p-[4px] sm:p-[6px] shadow-[inset_0_4px_14px_rgba(0,0,0,0.7)]">
+      <div className="relative size-[218px] xs:size-[240px] sm:size-[296px] md:size-[360px] lg:size-[390px] rounded-full bg-gradient-to-br from-amber-400 via-orange-600 to-zinc-900 p-[7px] sm:p-[9px] md:p-[11px] shadow-[0_16px_50px_rgba(234,88,12,0.45),inset_0_2px_6px_rgba(255,255,255,0.6)]">
+        <div className="relative size-full rounded-full bg-zinc-950 p-[4px] sm:p-[6px] md:p-[8px] shadow-[inset_0_4px_14px_rgba(0,0,0,0.7)]">
           <svg
             viewBox="0 0 400 400"
             className="size-full rounded-full transition-transform will-change-transform"
@@ -673,13 +673,13 @@ function CyberWheel({ rotation, isSpinning, onSpin, disabled, spinsRemaining = 0
             disabled={disabled}
             whileHover={disabled ? undefined : { scale: 1.06 }}
             whileTap={disabled ? undefined : { scale: 0.94 }}
-            className="absolute inset-0 m-auto size-[68px] xs:size-[74px] sm:size-22 rounded-full bg-gradient-to-br from-zinc-800 to-zinc-950 border-[2.5px] border-amber-400 flex flex-col items-center justify-center shadow-lg cursor-pointer disabled:cursor-not-allowed z-30 group"
+            className="absolute inset-0 m-auto size-[68px] xs:size-[74px] sm:size-22 md:size-28 lg:size-30 rounded-full bg-gradient-to-br from-zinc-800 to-zinc-950 border-[2.5px] md:border-[3px] border-amber-400 flex flex-col items-center justify-center shadow-lg cursor-pointer disabled:cursor-not-allowed z-30 group"
           >
-            <Flame className={cn("size-4 sm:size-5 transition-transform", isSpinning ? "text-amber-400" : disabled ? "text-zinc-500" : "text-orange-500 group-hover:scale-110")} />
-            <span className={cn("text-[9px] sm:text-[10px] font-black uppercase mt-0.5", disabled ? "text-zinc-400" : "text-amber-300")}>
+            <Flame className={cn("size-4 sm:size-5 md:size-7 lg:size-8 transition-transform", isSpinning ? "text-amber-400" : disabled ? "text-zinc-500" : "text-orange-500 group-hover:scale-110")} />
+            <span className={cn("text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-black uppercase mt-0.5", disabled ? "text-zinc-400" : "text-amber-300")}>
               {isSpinning ? "SPIN" : disabled ? "DONE" : "SPIN"}
             </span>
-            <span className="text-[7px] sm:text-[8px] font-bold text-amber-200/60 uppercase">
+            <span className="text-[7px] sm:text-[8px] md:text-[10px] font-bold text-amber-200/60 uppercase">
               {isSpinning ? "..." : disabled ? "0 Left" : `${spinsRemaining} Left`}
             </span>
           </motion.button>
@@ -687,15 +687,15 @@ function CyberWheel({ rotation, isSpinning, onSpin, disabled, spinsRemaining = 0
       </div>
 
       {/* Top pointer pin */}
-      <div className="absolute -top-1 sm:-top-1.5 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center pointer-events-none">
+      <div className="absolute -top-1 sm:-top-1.5 md:-top-2 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center pointer-events-none">
         <motion.div
           animate={isSpinning ? { rotate: [0, -8, 6, 0] } : { rotate: 0 }}
           transition={isSpinning ? { repeat: Infinity, duration: 0.45 } : { duration: 0.2 }}
           style={{ originY: 0.15 }}
           className="flex flex-col items-center"
         >
-          <div className="size-4 rounded-full bg-amber-400 ring-2 ring-amber-200/80 shadow-md" />
-          <svg viewBox="0 0 30 30" className="w-5 h-5 -mt-1">
+          <div className="size-4 md:size-5 rounded-full bg-amber-400 ring-2 ring-amber-200/80 shadow-md" />
+          <svg viewBox="0 0 30 30" className="w-5 h-5 md:w-6 md:h-6 -mt-1">
             <path d="M15 29 L4.5 8 Q15 12.5 25.5 8 Z" fill="#F59E0B" stroke="#78350F" strokeWidth="1" strokeLinejoin="round" />
           </svg>
         </motion.div>
@@ -988,102 +988,102 @@ export function LuckyDrawModal({ open, onOpenChange }) {
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.94, opacity: 0, y: 12 }}
           transition={{ type: "spring", damping: 26, stiffness: 320 }}
-          className="relative w-full max-w-[425px] max-h-[92vh] flex flex-col rounded-3xl bg-card border border-amber-500/30 shadow-[0_20px_60px_rgba(234,88,12,0.25)] text-card-foreground z-10 overflow-hidden my-auto"
+          className="relative w-full max-w-[410px] sm:max-w-[480px] md:max-w-[560px] lg:max-w-[620px] max-h-[92vh] flex flex-col rounded-3xl bg-card border border-amber-500/30 shadow-[0_20px_60px_rgba(234,88,12,0.25)] text-card-foreground z-10 overflow-hidden my-auto"
         >
           {/* Pinned Sticky Header with Account and Controls */}
-          <div className="sticky top-0 z-30 bg-card/95 backdrop-blur-xl px-3.5 sm:px-5 pt-3.5 pb-2.5 border-b border-border/60 shrink-0">
+          <div className="sticky top-0 z-30 bg-card/95 backdrop-blur-xl px-3.5 sm:px-5 md:px-6 pt-3.5 pb-2.5 md:pt-4.5 md:pb-3 border-b border-border/60 shrink-0">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 sm:gap-2.5">
-                <div className="size-9 sm:size-10 rounded-2xl bg-gradient-to-br from-orange-500 via-amber-500 to-red-500 flex items-center justify-center text-white shadow-md shadow-orange-500/30 shrink-0">
-                  <Sparkles className="size-4.5 sm:size-5" />
+              <div className="flex items-center gap-2 sm:gap-2.5 md:gap-3">
+                <div className="size-9 sm:size-10 md:size-11 rounded-2xl bg-gradient-to-br from-orange-500 via-amber-500 to-red-500 flex items-center justify-center text-white shadow-md shadow-orange-500/30 shrink-0">
+                  <Sparkles className="size-4.5 sm:size-5 md:size-6" />
                 </div>
                 <div>
-                  <h3 className="font-serif text-base sm:text-lg font-black text-foreground flex items-center gap-1.5">
+                  <h3 className="font-serif text-base sm:text-lg md:text-xl font-black text-foreground flex items-center gap-1.5">
                     Flame Lucky Draw
-                    <Badge className="border border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10 text-[8px] sm:text-[9px] font-black uppercase px-1.5 py-0 rounded-full">
+                    <Badge className="border border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10 text-[8px] sm:text-[9px] md:text-[10px] font-black uppercase px-1.5 py-0 md:px-2 md:py-0.5 rounded-full">
                       +1 Spin/Order 🍕
                     </Badge>
                   </h3>
-                  <div className="flex items-center gap-1.5 mt-0.5 text-[10px] sm:text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1.5 mt-0.5 text-[10px] sm:text-xs md:text-sm text-muted-foreground">
                     <span
                       className={cn(
-                        "inline-flex items-center gap-1 px-2 py-0.2 rounded-full font-bold text-[9px] sm:text-[10px]",
+                        "inline-flex items-center gap-1 px-2 py-0.2 md:px-2.5 md:py-0.5 rounded-full font-bold text-[9px] sm:text-[10px] md:text-xs",
                         account.isLoggedIn
                           ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25"
                           : "bg-secondary text-muted-foreground border border-border/60"
                       )}
                     >
-                      <span className={cn("size-1.5 rounded-full", account.isLoggedIn ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground")} />
+                      <span className={cn("size-1.5 md:size-2 rounded-full", account.isLoggedIn ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground")} />
                       {account.isLoggedIn ? account.name : "Guest"}
                     </span>
                     <span>•</span>
-                    <span className="font-extrabold text-amber-600 dark:text-amber-400 text-[10px] sm:text-[11px]">
+                    <span className="font-extrabold text-amber-600 dark:text-amber-400 text-[10px] sm:text-[11px] md:text-xs">
                       {spinsRemaining > 0 ? `${spinsRemaining} spins left` : "0 spins left"}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 md:gap-1.5">
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => setSoundEnabled(!soundEnabled)}
-                  className="size-8 sm:size-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  className="size-8 sm:size-9 md:size-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary"
                   title={soundEnabled ? "Mute audio" : "Enable audio"}
                 >
-                  {soundEnabled ? <Volume2 className="size-3.5 sm:size-4" /> : <VolumeX className="size-3.5 sm:size-4 text-muted-foreground/50" />}
+                  {soundEnabled ? <Volume2 className="size-3.5 sm:size-4 md:size-5" /> : <VolumeX className="size-3.5 sm:size-4 md:size-5 text-muted-foreground/50" />}
                 </Button>
                 <Button
                   variant="ghost"
                   size="icon"
                   disabled={isSpinning}
                   onClick={() => onOpenChange(false)}
-                  className="size-8 sm:size-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  className="size-8 sm:size-9 md:size-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary"
                 >
-                  <X className="size-4" />
+                  <X className="size-4 md:size-5" />
                 </Button>
               </div>
             </div>
           </div>
 
-          {/* Modal Content Arena with Stable Fixed Height */}
-          <div className="p-3 sm:p-4.5 pt-1.5 pb-3.5 h-[480px] sm:h-[500px] flex flex-col justify-between overflow-hidden">
+          {/* Modal Content Arena with Stable Responsive Height */}
+          <div className="p-3 sm:p-4.5 md:p-6 pt-1.5 pb-3.5 md:pt-3 md:pb-5 h-[480px] sm:h-[510px] md:h-[590px] lg:h-[630px] flex flex-col justify-between overflow-hidden">
             {/* Top ambient lighting glows */}
-            <div className="absolute top-0 right-1/4 w-36 h-36 bg-gradient-to-br from-orange-500/15 to-transparent rounded-full blur-2xl pointer-events-none" />
-            <div className="absolute bottom-0 left-1/4 w-36 h-36 bg-gradient-to-tr from-amber-500/15 to-transparent rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute top-0 right-1/4 w-36 md:w-52 h-36 md:h-52 bg-gradient-to-br from-orange-500/15 to-transparent rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute bottom-0 left-1/4 w-36 md:w-52 h-36 md:h-52 bg-gradient-to-tr from-amber-500/15 to-transparent rounded-full blur-2xl pointer-events-none" />
 
             <div className="relative flex-1 flex flex-col justify-between min-h-0">
               {/* Navigation Tabs (Lucky Draw vs My Vouchers) */}
-              <div className="flex items-center justify-between mb-1.5 sm:mb-2 gap-2 shrink-0">
-              <div className="inline-flex items-center gap-1 p-0.5 rounded-full bg-secondary/70 border border-border/60">
+              <div className="flex items-center justify-between mb-1.5 sm:mb-2 md:mb-3 gap-2 shrink-0">
+              <div className="inline-flex items-center gap-1 p-0.5 md:p-1 rounded-full bg-secondary/70 border border-border/60">
                 <button
                   type="button"
                   onClick={() => setViewHistory(false)}
                   className={cn(
-                    "px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                    "px-3 sm:px-3.5 md:px-4 py-1 sm:py-1.5 md:py-2 rounded-full text-[11px] sm:text-xs md:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer",
                     !viewHistory
                       ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/25"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <Sparkles className="size-3" /> Lucky Draw
+                  <Sparkles className="size-3 md:size-3.5" /> Lucky Draw
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewHistory(true)}
                   className={cn(
-                    "px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                    "px-3 sm:px-3.5 md:px-4 py-1 sm:py-1.5 md:py-2 rounded-full text-[11px] sm:text-xs md:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer",
                     viewHistory
                       ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/25"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <History className="size-3" /> My Vouchers
+                  <History className="size-3 md:size-3.5" /> My Vouchers
                   {wonCoupons.length > 0 && (
                     <span
                       className={cn(
-                        "min-w-4 h-4 px-1 rounded-full text-[8px] sm:text-[9px] font-black flex items-center justify-center",
+                        "min-w-4 h-4 px-1 rounded-full text-[8px] sm:text-[9px] md:text-[10px] font-black flex items-center justify-center",
                         viewHistory ? "bg-white/25 text-white" : "bg-primary/15 text-primary"
                       )}
                     >
@@ -1095,34 +1095,34 @@ export function LuckyDrawModal({ open, onOpenChange }) {
 
               {/* Mode Switcher: Fortune Grid vs Cyber Wheel */}
               {!viewHistory && (
-                <div className="inline-flex items-center gap-1 p-0.5 rounded-full bg-secondary/50 border border-border/60">
+                <div className="inline-flex items-center gap-1 p-0.5 md:p-1 rounded-full bg-secondary/50 border border-border/60">
                   <button
                     type="button"
                     onClick={() => setDrawMode("grid")}
                     disabled={isSpinning}
                     className={cn(
-                      "px-2 sm:px-2.5 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer",
+                      "px-2 sm:px-2.5 md:px-3 py-1 md:py-1.5 rounded-full text-[10px] md:text-xs font-bold transition-all flex items-center gap-1 cursor-pointer",
                       drawMode === "grid"
                         ? "bg-primary text-primary-foreground shadow-xs"
                         : "text-muted-foreground hover:text-foreground"
                     )}
                     title="3x3 Fortune Grid"
                   >
-                    <Grid className="size-3" /> Grid
+                    <Grid className="size-3 md:size-3.5" /> Grid
                   </button>
                   <button
                     type="button"
                     onClick={() => setDrawMode("wheel")}
                     disabled={isSpinning}
                     className={cn(
-                      "px-2 sm:px-2.5 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer",
+                      "px-2 sm:px-2.5 md:px-3 py-1 md:py-1.5 rounded-full text-[10px] md:text-xs font-bold transition-all flex items-center gap-1 cursor-pointer",
                       drawMode === "wheel"
                         ? "bg-primary text-primary-foreground shadow-xs"
                         : "text-muted-foreground hover:text-foreground"
                     )}
                     title="Cyber Wheel"
                   >
-                    <Disc3 className="size-3" /> Wheel
+                    <Disc3 className="size-3 md:size-3.5" /> Wheel
                   </button>
                 </div>
               )}
@@ -1130,18 +1130,18 @@ export function LuckyDrawModal({ open, onOpenChange }) {
 
             {/* Order to earn bonus spins banner */}
             {!viewHistory && (
-              <div className="w-full mb-1.5 px-2.5 py-1 rounded-xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent border border-amber-500/25 flex items-center justify-between gap-1 text-[10px] sm:text-xs shrink-0">
+              <div className="w-full mb-1.5 md:mb-2.5 px-2.5 py-1 md:px-3.5 md:py-2 rounded-xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent border border-amber-500/25 flex items-center justify-between gap-1 text-[10px] sm:text-xs shrink-0">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-sm shrink-0">🍕</span>
-                  <span className="text-[10px] sm:text-[11px] font-medium text-amber-900 dark:text-amber-200 truncate">
+                  <span className="text-sm md:text-base shrink-0">🍕</span>
+                  <span className="text-[10px] sm:text-[11px] md:text-xs font-medium text-amber-900 dark:text-amber-200 truncate">
                     Order to earn spins! <strong className="text-amber-600 dark:text-amber-400">+1 Spin/order</strong>
                   </span>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <span className="text-[9px] sm:text-[10px] bg-secondary px-1.5 py-0.5 rounded-full border border-border/60 text-muted-foreground">
+                  <span className="text-[9px] sm:text-[10px] md:text-xs bg-secondary px-1.5 py-0.5 md:px-2 md:py-1 rounded-full border border-border/60 text-muted-foreground">
                     {spinsData.dailyRemaining} Free
                   </span>
-                  <span className="text-[9px] sm:text-[10px] bg-amber-500/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-full border border-amber-500/30 font-bold">
+                  <span className="text-[9px] sm:text-[10px] md:text-xs bg-amber-500/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 md:px-2 md:py-1 rounded-full border border-amber-500/30 font-bold">
                     +{spinsData.bonusRemaining} Orders
                   </span>
                 </div>
@@ -1172,16 +1172,16 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                 </div>
 
                 {/* Bottom CTA state: Cooldown or Draw button */}
-                <div className="mt-1.5 shrink-0">
+                <div className="mt-1.5 md:mt-3 shrink-0">
                   {spinsRemaining <= 0 ? (
-                    <div className="w-full p-2 sm:p-2.5 rounded-xl bg-secondary/80 border border-border/80 flex items-center justify-between gap-2">
+                    <div className="w-full p-2 sm:p-2.5 md:p-3 rounded-xl md:rounded-2xl bg-secondary/80 border border-border/80 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-base shrink-0">🍕</span>
+                        <span className="text-base md:text-lg shrink-0">🍕</span>
                         <div className="min-w-0">
-                          <p className="font-bold text-[11px] text-foreground truncate">
+                          <p className="font-bold text-[11px] md:text-xs text-foreground truncate">
                             Order pizzas to get +1 Bonus Draw!
                           </p>
-                          <p className="text-[9px] text-muted-foreground truncate">
+                          <p className="text-[9px] md:text-[11px] text-muted-foreground truncate">
                             Free daily resets in: <span className="font-mono font-bold text-amber-500">{formatCooldown(cooldownRemaining)}</span>
                           </p>
                         </div>
@@ -1193,7 +1193,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                           onOpenChange(false);
                           navigate("/menu");
                         }}
-                        className="h-7 px-2.5 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-[11px] shrink-0 cursor-pointer shadow-xs"
+                        className="h-7 md:h-8 px-2.5 md:px-3.5 rounded-lg md:rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-[11px] md:text-xs shrink-0 cursor-pointer shadow-xs"
                       >
                         Order Now
                       </Button>
@@ -1202,10 +1202,10 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                     <Button
                       onClick={handleDraw}
                       disabled={isSpinning}
-                      className="group relative w-full h-9 sm:h-10 rounded-xl bg-gradient-to-r from-orange-500 via-amber-500 to-red-500 hover:from-orange-600 hover:via-amber-600 hover:to-red-600 text-white font-black text-xs sm:text-sm shadow-md shadow-orange-500/25 active:scale-[0.98] transition-all gap-1.5 overflow-hidden cursor-pointer"
+                      className="group relative w-full h-9 sm:h-10 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-r from-orange-500 via-amber-500 to-red-500 hover:from-orange-600 hover:via-amber-600 hover:to-red-600 text-white font-black text-xs sm:text-sm md:text-base shadow-md shadow-orange-500/25 active:scale-[0.98] transition-all gap-1.5 overflow-hidden cursor-pointer"
                     >
                       <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 pointer-events-none" />
-                      <Sparkles className="size-3.5 sm:size-4" />
+                      <Sparkles className="size-3.5 sm:size-4 md:size-5" />
                       {drawMode === "grid" ? `DRAW NOW (${spinsRemaining} SPINS)` : `SPIN WHEEL (${spinsRemaining} SPINS)`}
                     </Button>
                   )}
@@ -1219,14 +1219,14 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="absolute inset-0 z-40 bg-zinc-950/85 backdrop-blur-md rounded-2xl flex items-center justify-center p-2.5 sm:p-4"
+                      className="absolute inset-0 z-40 bg-zinc-950/85 backdrop-blur-md rounded-2xl md:rounded-3xl flex items-center justify-center p-2.5 sm:p-4 md:p-6"
                     >
                       <motion.div
                         initial={{ scale: 0.85, opacity: 0, y: 16 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
                         exit={{ scale: 0.88, opacity: 0, y: 12 }}
                         transition={{ type: "spring", damping: 22, stiffness: 320 }}
-                        className="relative w-full max-w-sm rounded-2xl border-2 border-amber-500/50 bg-gradient-to-br from-zinc-900 via-amber-950/30 to-zinc-900 p-3.5 sm:p-4 shadow-2xl shadow-orange-500/30 text-center overflow-hidden"
+                        className="relative w-full max-w-sm md:max-w-md rounded-2xl md:rounded-3xl border-2 border-amber-500/50 bg-gradient-to-br from-zinc-900 via-amber-950/30 to-zinc-900 p-3.5 sm:p-4 md:p-6 shadow-2xl shadow-orange-500/30 text-center overflow-hidden"
                       >
                         {/* Notch cutouts */}
                         <div className="absolute -left-3 top-1/2 -translate-y-1/2 size-5 rounded-full bg-card border border-amber-500/40" />
@@ -1236,35 +1236,35 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                         <button
                           type="button"
                           onClick={() => setWinningPrize(null)}
-                          className="absolute top-2.5 right-2.5 size-7 rounded-full bg-secondary/80 hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer z-10"
+                          className="absolute top-2.5 right-2.5 size-7 md:size-8 rounded-full bg-secondary/80 hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer z-10"
                           title="Close"
                         >
-                          <X className="size-3.5" />
+                          <X className="size-3.5 md:size-4" />
                         </button>
 
                         <div className="flex flex-col items-center text-center">
-                          <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-500/15 px-2.5 py-0.5 rounded-full border border-amber-500/30 mb-2">
-                            <PartyPopper className="size-3 text-amber-400" />
+                          <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] md:text-xs font-black uppercase tracking-wider text-amber-400 bg-amber-500/15 px-2.5 py-0.5 md:px-3 md:py-1 rounded-full border border-amber-500/30 mb-2">
+                            <PartyPopper className="size-3 md:size-3.5 text-amber-400" />
                             Congratulations!
                           </div>
 
-                          <div className={cn("size-11 sm:size-12 rounded-2xl bg-gradient-to-br flex items-center justify-center shadow-lg mb-2", winningPrize.bgGradient)}>
-                            <WinIcon className="size-5 sm:size-6 text-white" />
+                          <div className={cn("size-11 sm:size-12 md:size-16 rounded-2xl bg-gradient-to-br flex items-center justify-center shadow-lg mb-2", winningPrize.bgGradient)}>
+                            <WinIcon className="size-5 sm:size-6 md:size-8 text-white" />
                           </div>
 
                           <TierBadge tier={winningPrize.tier} className="mb-1" />
-                          <h4 className="font-serif text-lg sm:text-xl font-black text-foreground tracking-tight mb-1">
+                          <h4 className="font-serif text-lg sm:text-xl md:text-2xl font-black text-foreground tracking-tight mb-1">
                             {winningPrize.label}
                           </h4>
 
-                          <div className="my-1.5 px-3 py-1.5 rounded-xl bg-background/90 border border-border/80 flex items-center justify-center gap-2">
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase">Promo Code:</span>
-                            <span className="font-mono font-black text-sm sm:text-base text-primary tracking-wider select-all">
+                          <div className="my-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-xl bg-background/90 border border-border/80 flex items-center justify-center gap-2">
+                            <span className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase">Promo Code:</span>
+                            <span className="font-mono font-black text-sm sm:text-base md:text-lg text-primary tracking-wider select-all">
                               {winningPrize.code}
                             </span>
                           </div>
 
-                          <p className="text-[10px] sm:text-[11px] text-muted-foreground mb-2.5">
+                          <p className="text-[10px] sm:text-[11px] md:text-xs text-muted-foreground mb-2.5">
                             Valid for 7 days on orders over ${winningPrize.minOrder}.
                           </p>
 
@@ -1272,18 +1272,18 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                             <Button
                               size="sm"
                               onClick={() => handleApplyToCart(winningPrize)}
-                              className="w-full h-9 sm:h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs sm:text-sm font-black gap-1.5 shadow-md shadow-orange-500/25 cursor-pointer"
+                              className="w-full h-9 sm:h-10 md:h-11 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs sm:text-sm md:text-base font-black gap-1.5 shadow-md shadow-orange-500/25 cursor-pointer"
                             >
-                              <ShoppingBag className="size-4" /> Apply Coupon to Cart Now
+                              <ShoppingBag className="size-4 md:size-5" /> Apply Coupon to Cart Now
                             </Button>
                             <div className="grid grid-cols-2 gap-2 w-full">
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleCopyCode(winningPrize.code)}
-                                className="h-8 sm:h-9 rounded-xl border-border/80 text-xs font-bold gap-1.5 hover:bg-secondary cursor-pointer"
+                                className="h-8 sm:h-9 md:h-10 rounded-xl border-border/80 text-xs md:text-sm font-bold gap-1.5 hover:bg-secondary cursor-pointer"
                               >
-                                {hasCopied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+                                {hasCopied ? <Check className="size-3.5 md:size-4 text-emerald-500" /> : <Copy className="size-3.5 md:size-4" />}
                                 {hasCopied ? "Copied" : "Copy Code"}
                               </Button>
                               {spinsRemaining > 0 ? (
@@ -1291,9 +1291,9 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                                   size="sm"
                                   variant="secondary"
                                   onClick={() => setWinningPrize(null)}
-                                  className="h-8 sm:h-9 rounded-xl border border-amber-500/30 text-xs font-bold gap-1.5 hover:bg-amber-500/15 cursor-pointer"
+                                  className="h-8 sm:h-9 md:h-10 rounded-xl border border-amber-500/30 text-xs md:text-sm font-bold gap-1.5 hover:bg-amber-500/15 cursor-pointer"
                                 >
-                                  <RotateCw className="size-3.5 text-amber-500" />
+                                  <RotateCw className="size-3.5 md:size-4 text-amber-500" />
                                   Draw Again ({spinsRemaining})
                                 </Button>
                               ) : (
@@ -1301,7 +1301,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                                   size="sm"
                                   variant="ghost"
                                   onClick={() => onOpenChange(false)}
-                                  className="h-8 sm:h-9 rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-secondary cursor-pointer"
+                                  className="h-8 sm:h-9 md:h-10 rounded-xl text-xs md:text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-secondary cursor-pointer"
                                 >
                                   Close
                                 </Button>
@@ -1317,27 +1317,27 @@ export function LuckyDrawModal({ open, onOpenChange }) {
             ) : (
               /* My Vouchers List Tab */
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col min-h-0 h-full py-1">
-                <h4 className="text-xs font-black text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center justify-between shrink-0">
+                <h4 className="text-xs md:text-sm font-black text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center justify-between shrink-0">
                   <span className="flex items-center gap-1.5">
                     <Ticket className="size-3.5" />
                     Your Won Vouchers
                   </span>
-                  <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                  <span className="text-[10px] md:text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 md:px-2.5 md:py-1 rounded-full border border-amber-500/20">
                     {wonCoupons.length} total • {account.name}
                   </span>
                 </h4>
                 {wonCoupons.length === 0 ? (
                   <div className="p-8 text-center rounded-2xl border-2 border-dashed border-border/60 bg-secondary/20 flex-1 flex flex-col items-center justify-center">
                     <div className="relative inline-block mb-3">
-                      <Gift className="size-10 mx-auto text-muted-foreground/40" />
-                      <Sparkles className="size-4 absolute -top-1 -right-2 text-amber-500/40" />
+                      <Gift className="size-10 md:size-12 mx-auto text-muted-foreground/40" />
+                      <Sparkles className="size-4 md:size-5 absolute -top-1 -right-2 text-amber-500/40" />
                     </div>
-                    <p className="text-xs font-semibold text-muted-foreground">
+                    <p className="text-xs md:text-sm font-semibold text-muted-foreground">
                       No vouchers yet for {account.name}. Tap Draw to win your first pizza discount!
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-2.5 flex-1 overflow-y-auto pr-1 custom-scrollbar min-h-0">
+                  <div className="space-y-2.5 md:space-y-3 flex-1 overflow-y-auto pr-1 md:pr-1.5 custom-scrollbar min-h-0">
                     {wonCoupons.map((voucher, i) => {
                       const Icon = getPrizeIcon(voucher);
                       const wonDate = voucher?.wonAt ? new Date(voucher.wonAt) : null;
@@ -1357,17 +1357,17 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                           <div className="absolute -left-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-card border border-border/60" />
                           <div className="absolute -right-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-card border border-border/60" />
 
-                          <div className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-2.5">
-                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <div className={cn("size-10 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-sm shrink-0", voucher?.bgGradient || "from-orange-500 to-amber-500")}>
-                                <Icon className="size-5 text-white" />
+                          <div className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-2.5 md:px-5 md:pt-4 md:pb-3">
+                            <div className="flex items-center gap-3 md:gap-3.5 min-w-0 flex-1">
+                              <div className={cn("size-10 md:size-11 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-sm shrink-0", voucher?.bgGradient || "from-orange-500 to-amber-500")}>
+                                <Icon className="size-5 md:size-5.5 text-white" />
                               </div>
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 mb-0.5">
-                                  <span className="font-serif text-sm font-bold text-foreground truncate">{voucher?.label || "Prize Voucher"}</span>
+                                  <span className="font-serif text-sm md:text-base font-bold text-foreground truncate">{voucher?.label || "Prize Voucher"}</span>
                                   <TierBadge tier={voucher?.tier} />
                                 </div>
-                                <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                                <div className="flex items-center gap-2 text-[11px] md:text-xs text-muted-foreground">
                                   <span className="font-mono font-bold text-primary">{voucher?.code}</span>
                                   {voucher?.minOrder && (
                                     <>
@@ -1379,22 +1379,22 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-1.5 shrink-0">
+                            <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
                               <Button
                                 size="icon"
                                 variant="ghost"
                                 onClick={() => handleCopyCode(voucher?.code)}
-                                className="size-8 rounded-lg hover:bg-secondary cursor-pointer"
+                                className="size-8 md:size-9 rounded-lg hover:bg-secondary cursor-pointer"
                                 title="Copy Code"
                               >
-                                <Copy className="size-3.5 text-muted-foreground" />
+                                <Copy className="size-3.5 md:size-4 text-muted-foreground" />
                               </Button>
                               <Button
                                 size="sm"
                                 disabled={Boolean(voucher?.used)}
                                 onClick={() => handleApplyToCart(voucher)}
                                 className={cn(
-                                  "h-8 px-3 rounded-lg text-xs font-bold shadow-sm cursor-pointer",
+                                  "h-8 md:h-9 px-3 md:px-4 rounded-lg text-xs md:text-sm font-bold shadow-sm cursor-pointer",
                                   voucher?.used
                                     ? "bg-muted text-muted-foreground cursor-not-allowed"
                                     : "bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600"
@@ -1405,10 +1405,10 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                             </div>
                           </div>
 
-                          <div className="mx-4 border-t border-dashed border-border/60" />
-                          <div className="px-4 py-2 text-[10px] text-muted-foreground flex items-center justify-between">
+                          <div className="mx-4 md:mx-5 border-t border-dashed border-border/60" />
+                          <div className="px-4 py-2 md:px-5 md:py-2.5 text-[10px] md:text-xs text-muted-foreground flex items-center justify-between">
                             <span className="flex items-center gap-1">
-                              <Clock className="size-3" />
+                              <Clock className="size-3 md:size-3.5" />
                               {wonStr ? `Won ${wonStr}` : "Won Recently"}
                             </span>
                             <span className="font-semibold">Expires {expStr}</span>
