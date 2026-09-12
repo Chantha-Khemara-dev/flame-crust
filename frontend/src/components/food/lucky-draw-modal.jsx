@@ -471,11 +471,11 @@ function TierBadge({ tier, className }) {
 // 1. Modern 9-Grid Fortune Matrix Component
 function FortuneGrid({ activeIndex, isSpinning, onDraw, disabled, spinsRemaining = 0 }) {
   return (
-    <div className="relative w-full max-w-[330px] sm:max-w-[360px] mx-auto p-2 sm:p-2.5 rounded-2xl bg-zinc-950/80 border border-amber-500/25 shadow-[0_12px_40px_rgba(0,0,0,0.6),inset_0_1px_3px_rgba(255,255,255,0.1)] backdrop-blur-md">
+    <div className="relative w-full max-w-[275px] sm:max-w-[305px] mx-auto p-1.5 sm:p-2 rounded-2xl bg-zinc-950/90 border border-amber-500/30 shadow-[0_12px_40px_rgba(0,0,0,0.6),inset_0_1px_3px_rgba(255,255,255,0.1)] backdrop-blur-md">
       {/* Ambient background glow */}
       <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 via-transparent to-orange-500/10 rounded-2xl pointer-events-none" />
 
-      <div className="grid grid-cols-3 grid-rows-3 gap-2 sm:gap-2.5 relative z-10 aspect-square">
+      <div className="grid grid-cols-3 grid-rows-3 gap-1.5 sm:gap-2 relative z-10 aspect-square">
         {/* Render 8 Perimeter Prize Cards */}
         {GRID_CELL_MAPPING.map(({ index, row, col }) => {
           const prize = PRIZES[index];
@@ -494,14 +494,14 @@ function FortuneGrid({ activeIndex, isSpinning, onDraw, disabled, spinsRemaining
               animate={isActive ? { scale: 1.05 } : { scale: 1 }}
               transition={{ duration: 0.12 }}
               className={cn(
-                "relative rounded-xl p-1.5 sm:p-2 flex flex-col items-center justify-center text-center transition-all duration-150 overflow-hidden select-none border",
+                "relative rounded-xl p-1 sm:p-1.5 flex flex-col items-center justify-center text-center transition-all duration-150 overflow-hidden select-none border",
                 isActive
-                  ? "bg-gradient-to-b from-amber-500/30 to-orange-600/30 border-amber-300 ring-2 ring-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.85)] z-20"
+                  ? "bg-gradient-to-b from-amber-500/40 to-orange-600/40 border-amber-300 ring-2 ring-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.85)] z-20"
                   : isLegendary
-                  ? "bg-zinc-900/90 border-purple-500/30 hover:border-purple-500/60"
+                  ? "bg-zinc-900/95 border-purple-500/30 hover:border-purple-500/60"
                   : isRare
-                  ? "bg-zinc-900/90 border-sky-500/25 hover:border-sky-500/50"
-                  : "bg-zinc-900/80 border-border/50 hover:border-amber-500/30"
+                  ? "bg-zinc-900/95 border-sky-500/25 hover:border-sky-500/50"
+                  : "bg-zinc-900/90 border-border/40 hover:border-amber-500/30"
               )}
             >
               {/* Active kinetic glow tracer beam */}
@@ -519,18 +519,18 @@ function FortuneGrid({ activeIndex, isSpinning, onDraw, disabled, spinsRemaining
 
               <div
                 className={cn(
-                  "size-7 sm:size-8 rounded-lg flex items-center justify-center mb-1 shadow-sm shrink-0",
+                  "size-6 sm:size-7 rounded-lg flex items-center justify-center mb-0.5 shadow-xs shrink-0",
                   prize.bgGradient ? `bg-gradient-to-br ${prize.bgGradient}` : "bg-orange-500"
                 )}
               >
-                <Icon className="size-3.5 sm:size-4 text-white" />
+                <Icon className="size-3 sm:size-3.5 text-white" />
               </div>
 
-              <span className="font-serif font-black text-xs sm:text-sm text-foreground tracking-tight leading-tight">
+              <span className="font-serif font-black text-[11px] sm:text-xs text-white tracking-tight leading-tight">
                 {prize.label}
               </span>
 
-              <span className="text-[9px] font-semibold text-muted-foreground mt-0.5 leading-none">
+              <span className="text-[8px] sm:text-[9px] font-semibold text-zinc-400 mt-0.5 leading-none line-clamp-1">
                 {prize.subtext}
               </span>
             </motion.div>
@@ -559,16 +559,16 @@ function FortuneGrid({ activeIndex, isSpinning, onDraw, disabled, spinsRemaining
 
             <Flame
               className={cn(
-                "size-5 sm:size-6 transition-transform",
+                "size-4 sm:size-5 transition-transform",
                 isSpinning ? "animate-bounce text-yellow-200" : disabled ? "text-zinc-600" : "text-white group-hover:scale-110"
               )}
             />
 
-            <span className="font-black text-[10px] sm:text-xs tracking-wider uppercase mt-0.5">
+            <span className="font-black text-[9px] sm:text-[10px] tracking-wider uppercase mt-0.5">
               {isSpinning ? "ROLLING" : disabled ? "NO SPINS" : "DRAW"}
             </span>
 
-            <span className={cn("text-[8px] font-extrabold uppercase", disabled ? "text-zinc-500" : "text-amber-100/80")}>
+            <span className={cn("text-[7px] sm:text-[8px] font-extrabold uppercase", disabled ? "text-zinc-500" : "text-amber-100/80")}>
               {isSpinning ? "..." : disabled ? "0 Left" : `${spinsRemaining} Left`}
             </span>
           </motion.button>
@@ -1048,14 +1048,14 @@ export function LuckyDrawModal({ open, onOpenChange }) {
           </div>
 
           {/* Modal Content Arena with Stable Fixed Height */}
-          <div className="p-3.5 sm:p-5 pt-2 pb-4 h-[475px] sm:h-[495px] flex flex-col overflow-hidden">
+          <div className="p-3 sm:p-4.5 pt-1.5 pb-3.5 h-[480px] sm:h-[500px] flex flex-col justify-between overflow-hidden">
             {/* Top ambient lighting glows */}
             <div className="absolute top-0 right-1/4 w-36 h-36 bg-gradient-to-br from-orange-500/15 to-transparent rounded-full blur-2xl pointer-events-none" />
             <div className="absolute bottom-0 left-1/4 w-36 h-36 bg-gradient-to-tr from-amber-500/15 to-transparent rounded-full blur-2xl pointer-events-none" />
 
-            <div className="relative flex-1 flex flex-col min-h-0">
+            <div className="relative flex-1 flex flex-col justify-between min-h-0">
               {/* Navigation Tabs (Lucky Draw vs My Vouchers) */}
-              <div className="flex items-center justify-between my-2.5 sm:my-3 gap-2">
+              <div className="flex items-center justify-between mb-1.5 sm:mb-2 gap-2 shrink-0">
               <div className="inline-flex items-center gap-1 p-0.5 rounded-full bg-secondary/70 border border-border/60">
                 <button
                   type="button"
@@ -1130,7 +1130,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
 
             {/* Order to earn bonus spins banner */}
             {!viewHistory && (
-              <div className="w-full mb-2 sm:mb-2.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent border border-amber-500/25 flex items-center justify-between gap-1.5 text-[10px] sm:text-xs">
+              <div className="w-full mb-1.5 px-2.5 py-1 rounded-xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent border border-amber-500/25 flex items-center justify-between gap-1 text-[10px] sm:text-xs shrink-0">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="text-sm shrink-0">🍕</span>
                   <span className="text-[10px] sm:text-[11px] font-medium text-amber-900 dark:text-amber-200 truncate">
@@ -1151,7 +1151,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
             {!viewHistory ? (
               <>
                 {/* Main Interactive Draw Arena */}
-                <div className="flex flex-col items-center justify-center py-1 sm:py-2">
+                <div className="flex flex-col items-center justify-center my-auto py-0.5">
                   {drawMode === "grid" ? (
                     <FortuneGrid
                       activeIndex={activeGridIndex}
@@ -1172,11 +1172,11 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                 </div>
 
                 {/* Bottom CTA state: Cooldown or Draw button */}
-                <div className="mt-2 shrink-0">
+                <div className="mt-1.5 shrink-0">
                   {spinsRemaining <= 0 ? (
-                    <div className="w-full p-2.5 sm:p-3 rounded-2xl bg-secondary/60 border border-border/80 flex items-center justify-between gap-2">
+                    <div className="w-full p-2 sm:p-2.5 rounded-xl bg-secondary/80 border border-border/80 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xl shrink-0">🍕</span>
+                        <span className="text-base shrink-0">🍕</span>
                         <div className="min-w-0">
                           <p className="font-bold text-[11px] text-foreground truncate">
                             Order pizzas to get +1 Bonus Draw!
@@ -1193,7 +1193,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                           onOpenChange(false);
                           navigate("/menu");
                         }}
-                        className="h-8 px-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-xs shrink-0 cursor-pointer shadow-sm"
+                        className="h-7 px-2.5 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-[11px] shrink-0 cursor-pointer shadow-xs"
                       >
                         Order Now
                       </Button>
@@ -1202,10 +1202,10 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                     <Button
                       onClick={handleDraw}
                       disabled={isSpinning}
-                      className="group relative w-full h-10 sm:h-11 rounded-2xl bg-gradient-to-r from-orange-500 via-amber-500 to-red-500 hover:from-orange-600 hover:via-amber-600 hover:to-red-600 text-white font-black text-xs sm:text-sm shadow-lg shadow-orange-500/30 active:scale-[0.98] transition-all gap-2 overflow-hidden cursor-pointer"
+                      className="group relative w-full h-9 sm:h-10 rounded-xl bg-gradient-to-r from-orange-500 via-amber-500 to-red-500 hover:from-orange-600 hover:via-amber-600 hover:to-red-600 text-white font-black text-xs sm:text-sm shadow-md shadow-orange-500/25 active:scale-[0.98] transition-all gap-1.5 overflow-hidden cursor-pointer"
                     >
                       <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 pointer-events-none" />
-                      <Sparkles className="size-4" />
+                      <Sparkles className="size-3.5 sm:size-4" />
                       {drawMode === "grid" ? `DRAW NOW (${spinsRemaining} SPINS)` : `SPIN WHEEL (${spinsRemaining} SPINS)`}
                     </Button>
                   )}
