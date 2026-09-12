@@ -1047,13 +1047,13 @@ export function LuckyDrawModal({ open, onOpenChange }) {
             </div>
           </div>
 
-          {/* Scrollable Modal Content */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-3.5 sm:p-5 pt-3 pb-8">
+          {/* Modal Content Arena with Stable Fixed Height */}
+          <div className="p-3.5 sm:p-5 pt-2 pb-4 h-[475px] sm:h-[495px] flex flex-col overflow-hidden">
             {/* Top ambient lighting glows */}
             <div className="absolute top-0 right-1/4 w-36 h-36 bg-gradient-to-br from-orange-500/15 to-transparent rounded-full blur-2xl pointer-events-none" />
             <div className="absolute bottom-0 left-1/4 w-36 h-36 bg-gradient-to-tr from-amber-500/15 to-transparent rounded-full blur-2xl pointer-events-none" />
 
-            <div className="relative">
+            <div className="relative flex-1 flex flex-col min-h-0">
               {/* Navigation Tabs (Lucky Draw vs My Vouchers) */}
               <div className="flex items-center justify-between my-2.5 sm:my-3 gap-2">
               <div className="inline-flex items-center gap-1 p-0.5 rounded-full bg-secondary/70 border border-border/60">
@@ -1171,46 +1171,100 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                   )}
                 </div>
 
-                {/* Bottom Celebration or CTA state */}
-                <AnimatePresence mode="wait">
-                  {winningPrize ? (
-                    <motion.div
-                      key="win"
-                      initial={{ scale: 0.9, opacity: 0, y: 12 }}
-                      animate={{ scale: 1, opacity: 1, y: 0 }}
-                      exit={{ scale: 0.9, opacity: 0 }}
-                      transition={{ type: "spring", damping: 20, stiffness: 280 }}
-                      className="mt-3"
+                {/* Bottom CTA state: Cooldown or Draw button */}
+                <div className="mt-2 shrink-0">
+                  {spinsRemaining <= 0 ? (
+                    <div className="w-full p-2.5 sm:p-3 rounded-2xl bg-secondary/60 border border-border/80 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-xl shrink-0">🍕</span>
+                        <div className="min-w-0">
+                          <p className="font-bold text-[11px] text-foreground truncate">
+                            Order pizzas to get +1 Bonus Draw!
+                          </p>
+                          <p className="text-[9px] text-muted-foreground truncate">
+                            Free daily resets in: <span className="font-mono font-bold text-amber-500">{formatCooldown(cooldownRemaining)}</span>
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => {
+                          onOpenChange(false);
+                          navigate("/menu");
+                        }}
+                        className="h-8 px-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-xs shrink-0 cursor-pointer shadow-sm"
+                      >
+                        Order Now
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={handleDraw}
+                      disabled={isSpinning}
+                      className="group relative w-full h-10 sm:h-11 rounded-2xl bg-gradient-to-r from-orange-500 via-amber-500 to-red-500 hover:from-orange-600 hover:via-amber-600 hover:to-red-600 text-white font-black text-xs sm:text-sm shadow-lg shadow-orange-500/30 active:scale-[0.98] transition-all gap-2 overflow-hidden cursor-pointer"
                     >
-                      {/* Luxury VIP Perforated Ticket Card */}
-                      <div className="relative p-3.5 sm:p-4 rounded-2xl border-2 border-amber-500/50 bg-gradient-to-br from-amber-500/20 via-orange-500/10 to-transparent shadow-xl shadow-orange-500/15 overflow-hidden">
+                      <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 pointer-events-none" />
+                      <Sparkles className="size-4" />
+                      {drawMode === "grid" ? `DRAW NOW (${spinsRemaining} SPINS)` : `SPIN WHEEL (${spinsRemaining} SPINS)`}
+                    </Button>
+                  )}
+                </div>
+
+                {/* Win Celebration Full Overlay Page ("ពេល win វាចេញមួយ page ជាន់ពីលើទៀត កុំឲវាចុះក្រោម") */}
+                <AnimatePresence>
+                  {winningPrize && (
+                    <motion.div
+                      key="win-overlay"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 z-40 bg-zinc-950/85 backdrop-blur-md rounded-2xl flex items-center justify-center p-2.5 sm:p-4"
+                    >
+                      <motion.div
+                        initial={{ scale: 0.85, opacity: 0, y: 16 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.88, opacity: 0, y: 12 }}
+                        transition={{ type: "spring", damping: 22, stiffness: 320 }}
+                        className="relative w-full max-w-sm rounded-2xl border-2 border-amber-500/50 bg-gradient-to-br from-zinc-900 via-amber-950/30 to-zinc-900 p-3.5 sm:p-4 shadow-2xl shadow-orange-500/30 text-center overflow-hidden"
+                      >
                         {/* Notch cutouts */}
                         <div className="absolute -left-3 top-1/2 -translate-y-1/2 size-5 rounded-full bg-card border border-amber-500/40" />
                         <div className="absolute -right-3 top-1/2 -translate-y-1/2 size-5 rounded-full bg-card border border-amber-500/40" />
 
+                        {/* Close button on top-right of Win Card */}
+                        <button
+                          type="button"
+                          onClick={() => setWinningPrize(null)}
+                          className="absolute top-2.5 right-2.5 size-7 rounded-full bg-secondary/80 hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer z-10"
+                          title="Close"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+
                         <div className="flex flex-col items-center text-center">
-                          <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-amber-500 bg-amber-500/15 px-2.5 py-0.5 rounded-full border border-amber-500/30 mb-2">
-                            <PartyPopper className="size-3" />
+                          <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-500/15 px-2.5 py-0.5 rounded-full border border-amber-500/30 mb-2">
+                            <PartyPopper className="size-3 text-amber-400" />
                             Congratulations!
                           </div>
 
-                          <div className={cn("size-12 rounded-2xl bg-gradient-to-br flex items-center justify-center shadow-md mb-2", winningPrize.bgGradient)}>
-                            <WinIcon className="size-6 text-white" />
+                          <div className={cn("size-11 sm:size-12 rounded-2xl bg-gradient-to-br flex items-center justify-center shadow-lg mb-2", winningPrize.bgGradient)}>
+                            <WinIcon className="size-5 sm:size-6 text-white" />
                           </div>
 
                           <TierBadge tier={winningPrize.tier} className="mb-1" />
-                          <h4 className="font-serif text-xl sm:text-2xl font-black text-foreground mb-1">
+                          <h4 className="font-serif text-lg sm:text-xl font-black text-foreground tracking-tight mb-1">
                             {winningPrize.label}
                           </h4>
 
-                          <div className="my-2 px-3 py-1.5 rounded-xl bg-background/90 border border-border/70 flex items-center gap-2">
+                          <div className="my-1.5 px-3 py-1.5 rounded-xl bg-background/90 border border-border/80 flex items-center justify-center gap-2">
                             <span className="text-[10px] font-bold text-muted-foreground uppercase">Promo Code:</span>
-                            <span className="font-mono font-black text-base text-primary tracking-wider">
+                            <span className="font-mono font-black text-sm sm:text-base text-primary tracking-wider select-all">
                               {winningPrize.code}
                             </span>
                           </div>
 
-                          <p className="text-[10px] sm:text-[11px] text-muted-foreground mb-3 text-center">
+                          <p className="text-[10px] sm:text-[11px] text-muted-foreground mb-2.5">
                             Valid for 7 days on orders over ${winningPrize.minOrder}.
                           </p>
 
@@ -1218,7 +1272,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                             <Button
                               size="sm"
                               onClick={() => handleApplyToCart(winningPrize)}
-                              className="w-full h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs sm:text-sm font-black gap-1.5 shadow-md shadow-orange-500/25 cursor-pointer"
+                              className="w-full h-9 sm:h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs sm:text-sm font-black gap-1.5 shadow-md shadow-orange-500/25 cursor-pointer"
                             >
                               <ShoppingBag className="size-4" /> Apply Coupon to Cart Now
                             </Button>
@@ -1227,7 +1281,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleCopyCode(winningPrize.code)}
-                                className="h-9 rounded-xl border-border/80 text-xs font-bold gap-1.5 hover:bg-secondary cursor-pointer"
+                                className="h-8 sm:h-9 rounded-xl border-border/80 text-xs font-bold gap-1.5 hover:bg-secondary cursor-pointer"
                               >
                                 {hasCopied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
                                 {hasCopied ? "Copied" : "Copy Code"}
@@ -1237,7 +1291,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                                   size="sm"
                                   variant="secondary"
                                   onClick={() => setWinningPrize(null)}
-                                  className="h-9 rounded-xl border border-amber-500/30 text-xs font-bold gap-1.5 hover:bg-amber-500/15 cursor-pointer"
+                                  className="h-8 sm:h-9 rounded-xl border border-amber-500/30 text-xs font-bold gap-1.5 hover:bg-amber-500/15 cursor-pointer"
                                 >
                                   <RotateCw className="size-3.5 text-amber-500" />
                                   Draw Again ({spinsRemaining})
@@ -1247,7 +1301,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                                   size="sm"
                                   variant="ghost"
                                   onClick={() => onOpenChange(false)}
-                                  className="h-9 rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-secondary cursor-pointer"
+                                  className="h-8 sm:h-9 rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-secondary cursor-pointer"
                                 >
                                   Close
                                 </Button>
@@ -1255,72 +1309,25 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </motion.div>
-                  ) : spinsRemaining <= 0 ? (
-                    <motion.div
-                      key="cooldown"
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      className="mt-3 w-full p-3.5 rounded-2xl bg-secondary/60 border border-border/80 flex flex-col items-center justify-center gap-2 text-center"
-                    >
-                      <div className="size-10 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-2xl">
-                        🍕
-                      </div>
-                      <div>
-                        <h5 className="font-serif font-bold text-xs sm:text-sm text-foreground">
-                          Want More Lucky Draws?
-                        </h5>
-                        <p className="text-[11px] text-muted-foreground mt-0.5 max-w-xs">
-                          Place any pizza order in the app to unlock <span className="font-bold text-amber-600 dark:text-amber-400">+1 Bonus Draw</span> right away!
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        onClick={() => {
-                          onOpenChange(false);
-                          navigate("/menu");
-                        }}
-                        className="w-full h-9 sm:h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs shadow-md shadow-orange-500/25 gap-1.5 cursor-pointer"
-                      >
-                        <ShoppingBag className="size-3.5" /> Order Now to Earn Spins
-                      </Button>
-                      <div className="flex items-center justify-center gap-1.5 text-[10px] sm:text-[11px] text-muted-foreground mt-0.5">
-                        <Clock className="size-3 sm:size-3.5 text-amber-500 shrink-0" />
-                        <span>Daily free spin resets in:</span>
-                        <span className="font-mono font-bold text-foreground tabular-nums">{formatCooldown(cooldownRemaining)}</span>
-                      </div>
-                    </motion.div>
-                  ) : (
-                    <motion.div key="cta" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-3 w-full">
-                      <Button
-                        onClick={handleDraw}
-                        disabled={isSpinning}
-                        className="group relative w-full h-11 rounded-2xl bg-gradient-to-r from-orange-500 via-amber-500 to-red-500 hover:from-orange-600 hover:via-amber-600 hover:to-red-600 text-white font-black text-xs sm:text-sm shadow-lg shadow-orange-500/30 active:scale-[0.98] transition-all gap-2 overflow-hidden cursor-pointer"
-                      >
-                        <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 pointer-events-none" />
-                        <Sparkles className="size-4" />
-                        {drawMode === "grid" ? `DRAW NOW (${spinsRemaining} SPINS)` : `SPIN WHEEL (${spinsRemaining} SPINS)`}
-                      </Button>
+                      </motion.div>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </>
             ) : (
               /* My Vouchers List Tab */
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="py-2">
-                <h4 className="text-xs font-black text-muted-foreground uppercase tracking-wider mb-3 flex items-center justify-between">
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col min-h-0 h-full py-1">
+                <h4 className="text-xs font-black text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center justify-between shrink-0">
                   <span className="flex items-center gap-1.5">
                     <Ticket className="size-3.5" />
                     Your Won Vouchers
                   </span>
                   <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-                    {account.name}
+                    {wonCoupons.length} total • {account.name}
                   </span>
                 </h4>
                 {wonCoupons.length === 0 ? (
-                  <div className="p-8 text-center rounded-2xl border-2 border-dashed border-border/60 bg-secondary/20">
+                  <div className="p-8 text-center rounded-2xl border-2 border-dashed border-border/60 bg-secondary/20 flex-1 flex flex-col items-center justify-center">
                     <div className="relative inline-block mb-3">
                       <Gift className="size-10 mx-auto text-muted-foreground/40" />
                       <Sparkles className="size-4 absolute -top-1 -right-2 text-amber-500/40" />
@@ -1330,7 +1337,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
+                  <div className="space-y-2.5 flex-1 overflow-y-auto pr-1 custom-scrollbar min-h-0">
                     {wonCoupons.map((voucher, i) => {
                       const Icon = getPrizeIcon(voucher);
                       const wonDate = voucher?.wonAt ? new Date(voucher.wonAt) : null;
