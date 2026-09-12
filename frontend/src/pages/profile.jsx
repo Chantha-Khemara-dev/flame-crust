@@ -33,7 +33,8 @@ import {
   Crown,
   Loader2,
   Pencil,
-  Building2
+  Building2,
+  Copy
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +48,7 @@ import { getImageUrl } from "@/lib/food-api";
 import { useCart } from "@/lib/cart-store";
 import { useTheme } from "@/components/theme-provider.jsx";
 import { PushNotificationButton } from "@/components/common/PushNotificationButton";
+import { syncLocalVouchersToDatabase, getWonCoupons, formatWonVouchersAsCoupons } from "@/components/food/lucky-draw-modal";
 import { toast } from "sonner";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -72,7 +74,7 @@ try {
 export default function ProfilePage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { addItem, toggleCart } = useCart();
+  const { addItem, toggleCart, applyCoupon, openCart } = useCart();
   const { theme, setTheme } = useTheme();
 
   const [customer, setCustomer] = useState(() => {
@@ -214,6 +216,9 @@ export default function ProfilePage() {
       if (c.phone) params.set("phone", String(c.phone));
       if (c.email) params.set("email", String(c.email));
 
+      // Auto-sync any unsynced local vouchers to real database
+      syncLocalVouchersToDatabase(c.id || c.phone || "guest");
+
       const res = await fetch(`${API_URL}/auth/customer-profile-data?${params.toString()}`).catch(() => null);
       if (res && res.ok) {
         const data = await res.json();
@@ -267,6 +272,19 @@ export default function ProfilePage() {
             .filter(cp => cp.active == 1 || cp.active === true);
         }
       }
+
+      // Merge local won vouchers so customer always sees them immediately
+      try {
+        const localWon = getWonCoupons(c.id || c.phone || "guest");
+        const formattedWon = formatWonVouchersAsCoupons(localWon);
+        const existingCodes = new Set(activeCoupons.map((cp) => (cp.code || "").toUpperCase()));
+        for (const fw of formattedWon) {
+          if (fw.code && !existingCodes.has(fw.code.toUpperCase())) {
+            activeCoupons.unshift(fw);
+            existingCodes.add(fw.code.toUpperCase());
+          }
+        }
+      } catch (e) {}
 
       setOrders(userOrders);
       setAddresses(userAddresses);
@@ -322,8 +340,23 @@ export default function ProfilePage() {
     loadFavorites();
 
     const handleFavChange = () => loadFavorites();
+    const handleCouponsChange = () => {
+      const freshAuth = localStorage.getItem("customerAuth");
+      if (freshAuth) {
+        try {
+          fetchProfileData(JSON.parse(freshAuth));
+        } catch (e) {}
+      }
+    };
+
     window.addEventListener("favoritesChanged", handleFavChange);
-    return () => window.removeEventListener("favoritesChanged", handleFavChange);
+    window.addEventListener("flame_coupons_updated", handleCouponsChange);
+    window.addEventListener("couponsChanged", handleCouponsChange);
+    return () => {
+      window.removeEventListener("favoritesChanged", handleFavChange);
+      window.removeEventListener("flame_coupons_updated", handleCouponsChange);
+      window.removeEventListener("couponsChanged", handleCouponsChange);
+    };
   }, [navigate]);
 
   useEffect(() => {
@@ -1776,26 +1809,56 @@ export default function ProfilePage() {
                           </h4>
                           <div className="grid sm:grid-cols-2 gap-3">
                             {coupons.filter(c => c.active && (!c.expires_at || new Date(c.expires_at) > new Date())).map(coupon => (
-                              <div key={coupon.id} className="bg-card border border-emerald-500/30 rounded-2xl p-4 relative overflow-hidden shadow-warm">
+                              <div key={coupon.id || coupon.code} className="bg-card border border-emerald-500/30 rounded-2xl p-4 relative overflow-hidden shadow-warm flex flex-col justify-between group hover:border-emerald-500/50 transition-all">
                                 <div className="absolute -right-6 -top-6 size-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
-                                <div className="flex items-start justify-between">
-                                  <div>
-                                    <div className="inline-block px-2.5 py-0.5 bg-emerald-600 text-white text-[10px] font-bold rounded-full mb-1.5 uppercase tracking-wide">
+                                <div>
+                                  <div className="flex items-center justify-between gap-2 mb-2">
+                                    <div className="inline-block px-2.5 py-0.5 bg-emerald-600 text-white text-[10px] font-bold rounded-full uppercase tracking-wide">
                                       {coupon.code}
                                     </div>
-                                    <h5 className="font-bold text-base text-foreground">
-                                      {coupon.discount_type === 'PERCENTAGE' ? `${coupon.discount_value}% OFF` : 
-                                       coupon.discount_type === 'FREE_DELIVERY' ? 'FREE DELIVERY' : 
-                                       `$${coupon.discount_value} OFF`}
-                                    </h5>
-                                    <p className="text-xs text-muted-foreground mt-0.5">Min. spend: ${coupon.min_order_amount}</p>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                                          navigator.clipboard.writeText(coupon.code);
+                                        }
+                                        toast.success(`Copied promo code "${coupon.code}"!`);
+                                      }}
+                                      className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1 cursor-pointer"
+                                      title="Copy Code"
+                                    >
+                                      <Copy className="size-3" /> Copy
+                                    </Button>
                                   </div>
+                                  <h5 className="font-bold text-base text-foreground">
+                                    {coupon.discount_type === 'PERCENTAGE' ? `${coupon.discount_value}% OFF` : 
+                                     coupon.discount_type === 'FREE_DELIVERY' ? 'FREE DELIVERY' : 
+                                     `$${coupon.discount_value} OFF`}
+                                  </h5>
+                                  <p className="text-xs text-muted-foreground mt-0.5">Min. spend: ${coupon.min_order_amount || 0}</p>
+                                  {coupon.description && (
+                                    <p className="text-[11px] text-muted-foreground mt-1 line-clamp-1">{coupon.description}</p>
+                                  )}
                                 </div>
-                                {coupon.expires_at && (
-                                  <div className="mt-3 pt-2.5 border-t border-border/60 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                                    <Clock className="size-3" /> Valid until {new Date(coupon.expires_at).toLocaleDateString()}
+
+                                <div className="mt-3 pt-2.5 border-t border-border/60 flex items-center justify-between gap-2">
+                                  <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                                    <Clock className="size-3" />
+                                    {coupon.expires_at ? `Valid until ${new Date(coupon.expires_at).toLocaleDateString()}` : "No expiry"}
                                   </div>
-                                )}
+                                  <Button
+                                    size="sm"
+                                    onClick={() => {
+                                      applyCoupon(coupon);
+                                      toast.success(`Coupon "${coupon.code}" applied to cart!`);
+                                      openCart();
+                                    }}
+                                    className="h-7 px-3 text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-lg cursor-pointer shadow-xs"
+                                  >
+                                    Apply to Cart
+                                  </Button>
+                                </div>
                               </div>
                             ))}
                             {coupons.filter(c => c.active && (!c.expires_at || new Date(c.expires_at) > new Date())).length === 0 && (

@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useCart } from "@/lib/cart-store";
+import { create, list } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 export const PRIZES = [
@@ -400,6 +401,49 @@ export function formatWonVouchersAsCoupons(wonVouchers) {
     });
 }
 
+export async function syncLocalVouchersToDatabase(storageKey) {
+  try {
+    const vouchers = getWonCoupons(storageKey);
+    if (!Array.isArray(vouchers) || vouchers.length === 0) return;
+
+    let hasUpdates = false;
+    for (const v of vouchers) {
+      if (!v.syncedToDb && v.code) {
+        if (!v.code.includes("-")) {
+          v.code = `${v.code}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        }
+        try {
+          await create("coupons", {
+            code: v.code,
+            discount_type: v.type || "FIXED",
+            discount_value: Number(v.value || 0),
+            min_order_amount: Number(v.minOrder || 0),
+            expires_at: v.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            active: !v.used,
+            used_count: v.used ? 1 : 0
+          });
+          v.syncedToDb = true;
+          hasUpdates = true;
+        } catch (e) {
+          // If already exists in database or error, mark as synced to prevent repeated fails
+          v.syncedToDb = true;
+          hasUpdates = true;
+        }
+      }
+    }
+
+    if (hasUpdates) {
+      localStorage.setItem(`flame_lucky_draw_vouchers_${storageKey}`, JSON.stringify(vouchers));
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("flame_coupons_updated"));
+        window.dispatchEvent(new CustomEvent("couponsChanged"));
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to sync vouchers to database:", err);
+  }
+}
+
 // Synthesize high-tech step tick sound
 function playTickSound(audioCtxRef) {
   try {
@@ -763,9 +807,13 @@ export function LuckyDrawModal({ open, onOpenChange }) {
     if (!open) return;
     reloadAccountData();
 
+    // Auto-sync any unsynced local vouchers to real database
+    const acc = getCurrentAccount();
+    syncLocalVouchersToDatabase(acc.storageKey);
+
     const interval = setInterval(() => {
-      const acc = getCurrentAccount();
-      const spins = getSpinsData(acc.storageKey);
+      const currentAcc = getCurrentAccount();
+      const spins = getSpinsData(currentAcc.storageKey);
       if (spins.totalRemaining <= 0) {
         setCooldownRemaining(getSecondsUntilMidnight());
       } else {
@@ -801,7 +849,6 @@ export function LuckyDrawModal({ open, onOpenChange }) {
 
   const finalizeWin = (targetPrize) => {
     setIsSpinning(false);
-    setWinningPrize(targetPrize);
 
     const currentAcc = getCurrentAccount();
     recordSpinUsed(currentAcc.storageKey);
@@ -813,17 +860,49 @@ export function LuckyDrawModal({ open, onOpenChange }) {
     }
 
     const { icon: _omittedIcon, ...safePrize } = targetPrize;
+    // Generate unique code so every won voucher becomes a real row in MySQL database
+    const personalCode = `${targetPrize.code}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const newVoucher = {
       ...safePrize,
+      code: personalCode,
+      baseCode: targetPrize.code,
       account: currentAcc.name,
       wonAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      syncedToDb: false,
     };
+
+    setWinningPrize(newVoucher);
+
     setWonCoupons((prev) => {
       const updated = [newVoucher, ...prev.slice(0, 29)];
       localStorage.setItem(`flame_lucky_draw_vouchers_${currentAcc.storageKey}`, JSON.stringify(updated));
       return updated;
     });
+
+    // Save directly to real database coupons table
+    create("coupons", {
+      code: personalCode,
+      discount_type: targetPrize.type || "FIXED",
+      discount_value: Number(targetPrize.value || 0),
+      min_order_amount: Number(targetPrize.minOrder || 0),
+      expires_at: newVoucher.expiresAt,
+      active: true,
+      used_count: 0,
+    })
+      .then(() => {
+        newVoucher.syncedToDb = true;
+        const currentList = getWonCoupons(currentAcc.storageKey);
+        const updatedList = currentList.map((v) => (v.code === personalCode ? { ...v, syncedToDb: true } : v));
+        localStorage.setItem(`flame_lucky_draw_vouchers_${currentAcc.storageKey}`, JSON.stringify(updatedList));
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("flame_coupons_updated"));
+          window.dispatchEvent(new CustomEvent("couponsChanged"));
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not immediately create coupon in database:", err);
+      });
 
     if (soundEnabled) {
       playWinSound(audioCtxRef);
@@ -988,36 +1067,38 @@ export function LuckyDrawModal({ open, onOpenChange }) {
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.94, opacity: 0, y: 12 }}
           transition={{ type: "spring", damping: 26, stiffness: 320 }}
-          className="relative w-full max-w-[410px] sm:max-w-[480px] md:max-w-[560px] lg:max-w-[620px] max-h-[92vh] flex flex-col rounded-3xl bg-card border border-amber-500/30 shadow-[0_20px_60px_rgba(234,88,12,0.25)] text-card-foreground z-10 overflow-hidden my-auto"
+          className="relative w-full max-w-[410px] sm:max-w-[480px] md:max-w-[560px] lg:max-w-[620px] max-h-[92vh] flex flex-col rounded-3xl bg-gradient-to-b from-[#181512] via-[#0F0D0B] to-[#181512] border border-amber-500/40 shadow-[0_25px_80px_rgba(234,88,12,0.35)] text-zinc-100 z-10 overflow-hidden my-auto"
         >
           {/* Pinned Sticky Header with Account and Controls */}
-          <div className="sticky top-0 z-30 bg-card/95 backdrop-blur-xl px-3.5 sm:px-5 md:px-6 pt-3.5 pb-2.5 md:pt-4.5 md:pb-3 border-b border-border/60 shrink-0">
+          <div className="sticky top-0 z-30 bg-[#161311]/95 backdrop-blur-xl px-3.5 sm:px-5 md:px-6 pt-3.5 pb-2.5 md:pt-4.5 md:pb-3 border-b border-amber-500/20 text-white shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 sm:gap-2.5 md:gap-3">
                 <div className="size-9 sm:size-10 md:size-11 rounded-2xl bg-gradient-to-br from-orange-500 via-amber-500 to-red-500 flex items-center justify-center text-white shadow-md shadow-orange-500/30 shrink-0">
                   <Sparkles className="size-4.5 sm:size-5 md:size-6" />
                 </div>
                 <div>
-                  <h3 className="font-serif text-base sm:text-lg md:text-xl font-black text-foreground flex items-center gap-1.5">
-                    Flame Lucky Draw
-                    <Badge className="border border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10 text-[8px] sm:text-[9px] md:text-[10px] font-black uppercase px-1.5 py-0 md:px-2 md:py-0.5 rounded-full">
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
+                    <h3 className="font-serif text-base sm:text-lg md:text-xl font-black text-white whitespace-nowrap">
+                      Flame Lucky Draw
+                    </h3>
+                    <Badge className="border border-amber-500/40 text-amber-300 bg-amber-500/15 text-[8px] sm:text-[9px] md:text-[10px] font-black uppercase px-1.5 py-0 md:px-2 md:py-0.5 rounded-full whitespace-nowrap">
                       +1 Spin/Order 🍕
                     </Badge>
-                  </h3>
-                  <div className="flex items-center gap-1.5 mt-0.5 text-[10px] sm:text-xs md:text-sm text-muted-foreground">
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-0.5 text-[10px] sm:text-xs md:text-sm text-zinc-400">
                     <span
                       className={cn(
                         "inline-flex items-center gap-1 px-2 py-0.2 md:px-2.5 md:py-0.5 rounded-full font-bold text-[9px] sm:text-[10px] md:text-xs",
                         account.isLoggedIn
-                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25"
-                          : "bg-secondary text-muted-foreground border border-border/60"
+                          ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                          : "bg-zinc-800/80 text-zinc-400 border border-zinc-700/50"
                       )}
                     >
-                      <span className={cn("size-1.5 md:size-2 rounded-full", account.isLoggedIn ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground")} />
+                      <span className={cn("size-1.5 md:size-2 rounded-full", account.isLoggedIn ? "bg-emerald-400 animate-pulse" : "bg-zinc-500")} />
                       {account.isLoggedIn ? account.name : "Guest"}
                     </span>
                     <span>•</span>
-                    <span className="font-extrabold text-amber-600 dark:text-amber-400 text-[10px] sm:text-[11px] md:text-xs">
+                    <span className="font-extrabold text-amber-400 text-[10px] sm:text-[11px] md:text-xs">
                       {spinsRemaining > 0 ? `${spinsRemaining} spins left` : "0 spins left"}
                     </span>
                   </div>
@@ -1029,17 +1110,17 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                   variant="ghost"
                   size="icon"
                   onClick={() => setSoundEnabled(!soundEnabled)}
-                  className="size-8 sm:size-9 md:size-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  className="size-8 sm:size-9 md:size-10 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800/60"
                   title={soundEnabled ? "Mute audio" : "Enable audio"}
                 >
-                  {soundEnabled ? <Volume2 className="size-3.5 sm:size-4 md:size-5" /> : <VolumeX className="size-3.5 sm:size-4 md:size-5 text-muted-foreground/50" />}
+                  {soundEnabled ? <Volume2 className="size-3.5 sm:size-4 md:size-5" /> : <VolumeX className="size-3.5 sm:size-4 md:size-5 text-zinc-600" />}
                 </Button>
                 <Button
                   variant="ghost"
                   size="icon"
                   disabled={isSpinning}
                   onClick={() => onOpenChange(false)}
-                  className="size-8 sm:size-9 md:size-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  className="size-8 sm:size-9 md:size-10 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800/60"
                 >
                   <X className="size-4 md:size-5" />
                 </Button>
@@ -1056,7 +1137,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
             <div className="relative flex-1 flex flex-col justify-between min-h-0">
               {/* Navigation Tabs (Lucky Draw vs My Vouchers) */}
               <div className="flex items-center justify-between mb-1.5 sm:mb-2 md:mb-3 gap-2 shrink-0">
-              <div className="inline-flex items-center gap-1 p-0.5 md:p-1 rounded-full bg-secondary/70 border border-border/60">
+              <div className="inline-flex items-center gap-1 p-0.5 md:p-1 rounded-full bg-zinc-900/90 border border-amber-500/30">
                 <button
                   type="button"
                   onClick={() => setViewHistory(false)}
@@ -1064,7 +1145,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                     "px-3 sm:px-3.5 md:px-4 py-1 sm:py-1.5 md:py-2 rounded-full text-[11px] sm:text-xs md:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer",
                     !viewHistory
                       ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/25"
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-zinc-400 hover:text-zinc-200"
                   )}
                 >
                   <Sparkles className="size-3 md:size-3.5" /> Lucky Draw
@@ -1076,7 +1157,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                     "px-3 sm:px-3.5 md:px-4 py-1 sm:py-1.5 md:py-2 rounded-full text-[11px] sm:text-xs md:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer",
                     viewHistory
                       ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/25"
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-zinc-400 hover:text-zinc-200"
                   )}
                 >
                   <History className="size-3 md:size-3.5" /> My Vouchers
@@ -1084,7 +1165,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                     <span
                       className={cn(
                         "min-w-4 h-4 px-1 rounded-full text-[8px] sm:text-[9px] md:text-[10px] font-black flex items-center justify-center",
-                        viewHistory ? "bg-white/25 text-white" : "bg-primary/15 text-primary"
+                        viewHistory ? "bg-white/25 text-white" : "bg-amber-500/25 text-amber-300 border border-amber-500/30"
                       )}
                     >
                       {wonCoupons.length}
@@ -1095,7 +1176,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
 
               {/* Mode Switcher: Fortune Grid vs Cyber Wheel */}
               {!viewHistory && (
-                <div className="inline-flex items-center gap-1 p-0.5 md:p-1 rounded-full bg-secondary/50 border border-border/60">
+                <div className="inline-flex items-center gap-1 p-0.5 md:p-1 rounded-full bg-zinc-900/90 border border-amber-500/30">
                   <button
                     type="button"
                     onClick={() => setDrawMode("grid")}
@@ -1103,8 +1184,8 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                     className={cn(
                       "px-2 sm:px-2.5 md:px-3 py-1 md:py-1.5 rounded-full text-[10px] md:text-xs font-bold transition-all flex items-center gap-1 cursor-pointer",
                       drawMode === "grid"
-                        ? "bg-primary text-primary-foreground shadow-xs"
-                        : "text-muted-foreground hover:text-foreground"
+                        ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-xs"
+                        : "text-zinc-400 hover:text-zinc-200"
                     )}
                     title="3x3 Fortune Grid"
                   >
@@ -1117,8 +1198,8 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                     className={cn(
                       "px-2 sm:px-2.5 md:px-3 py-1 md:py-1.5 rounded-full text-[10px] md:text-xs font-bold transition-all flex items-center gap-1 cursor-pointer",
                       drawMode === "wheel"
-                        ? "bg-primary text-primary-foreground shadow-xs"
-                        : "text-muted-foreground hover:text-foreground"
+                        ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-xs"
+                        : "text-zinc-400 hover:text-zinc-200"
                     )}
                     title="Cyber Wheel"
                   >
@@ -1130,18 +1211,18 @@ export function LuckyDrawModal({ open, onOpenChange }) {
 
             {/* Order to earn bonus spins banner */}
             {!viewHistory && (
-              <div className="w-full mb-1.5 md:mb-2.5 px-2.5 py-1 md:px-3.5 md:py-2 rounded-xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent border border-amber-500/25 flex items-center justify-between gap-1 text-[10px] sm:text-xs shrink-0">
+              <div className="w-full mb-1.5 md:mb-2.5 px-2.5 py-1 md:px-3.5 md:py-2 rounded-xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/5 border border-amber-500/30 flex items-center justify-between gap-1 text-[10px] sm:text-xs shrink-0">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="text-sm md:text-base shrink-0">🍕</span>
-                  <span className="text-[10px] sm:text-[11px] md:text-xs font-medium text-amber-900 dark:text-amber-200 truncate">
-                    Order to earn spins! <strong className="text-amber-600 dark:text-amber-400">+1 Spin/order</strong>
+                  <span className="text-[10px] sm:text-[11px] md:text-xs font-medium text-amber-200 truncate">
+                    Order to earn spins! <strong className="text-amber-400">+1 Spin/order</strong>
                   </span>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <span className="text-[9px] sm:text-[10px] md:text-xs bg-secondary px-1.5 py-0.5 md:px-2 md:py-1 rounded-full border border-border/60 text-muted-foreground">
+                  <span className="text-[9px] sm:text-[10px] md:text-xs bg-zinc-900/80 px-1.5 py-0.5 md:px-2 md:py-1 rounded-full border border-zinc-700/60 text-zinc-300">
                     {spinsData.dailyRemaining} Free
                   </span>
-                  <span className="text-[9px] sm:text-[10px] md:text-xs bg-amber-500/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 md:px-2 md:py-1 rounded-full border border-amber-500/30 font-bold">
+                  <span className="text-[9px] sm:text-[10px] md:text-xs bg-amber-500/20 text-amber-300 px-1.5 py-0.5 md:px-2 md:py-1 rounded-full border border-amber-500/40 font-bold">
                     +{spinsData.bonusRemaining} Orders
                   </span>
                 </div>
@@ -1174,15 +1255,15 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                 {/* Bottom CTA state: Cooldown or Draw button */}
                 <div className="mt-1.5 md:mt-3 shrink-0">
                   {spinsRemaining <= 0 ? (
-                    <div className="w-full p-2 sm:p-2.5 md:p-3 rounded-xl md:rounded-2xl bg-secondary/80 border border-border/80 flex items-center justify-between gap-2">
+                    <div className="w-full p-2 sm:p-2.5 md:p-3 rounded-xl md:rounded-2xl bg-zinc-900/90 border border-amber-500/25 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-base md:text-lg shrink-0">🍕</span>
                         <div className="min-w-0">
-                          <p className="font-bold text-[11px] md:text-xs text-foreground truncate">
+                          <p className="font-bold text-[11px] md:text-xs text-zinc-200 truncate">
                             Order pizzas to get +1 Bonus Draw!
                           </p>
-                          <p className="text-[9px] md:text-[11px] text-muted-foreground truncate">
-                            Free daily resets in: <span className="font-mono font-bold text-amber-500">{formatCooldown(cooldownRemaining)}</span>
+                          <p className="text-[9px] md:text-[11px] text-zinc-400 truncate">
+                            Free daily resets in: <span className="font-mono font-bold text-amber-400">{formatCooldown(cooldownRemaining)}</span>
                           </p>
                         </div>
                       </div>
@@ -1229,21 +1310,21 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                         className="relative w-full max-w-sm md:max-w-md rounded-2xl md:rounded-3xl border-2 border-amber-500/50 bg-gradient-to-br from-zinc-900 via-amber-950/30 to-zinc-900 p-3.5 sm:p-4 md:p-6 shadow-2xl shadow-orange-500/30 text-center overflow-hidden"
                       >
                         {/* Notch cutouts */}
-                        <div className="absolute -left-3 top-1/2 -translate-y-1/2 size-5 rounded-full bg-card border border-amber-500/40" />
-                        <div className="absolute -right-3 top-1/2 -translate-y-1/2 size-5 rounded-full bg-card border border-amber-500/40" />
+                        <div className="absolute -left-3 top-1/2 -translate-y-1/2 size-5 rounded-full bg-[#181512] border border-amber-500/40" />
+                        <div className="absolute -right-3 top-1/2 -translate-y-1/2 size-5 rounded-full bg-[#181512] border border-amber-500/40" />
 
                         {/* Close button on top-right of Win Card */}
                         <button
                           type="button"
                           onClick={() => setWinningPrize(null)}
-                          className="absolute top-2.5 right-2.5 size-7 md:size-8 rounded-full bg-secondary/80 hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer z-10"
+                          className="absolute top-2.5 right-2.5 size-7 md:size-8 rounded-full bg-zinc-800/80 hover:bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white transition-colors cursor-pointer z-10"
                           title="Close"
                         >
                           <X className="size-3.5 md:size-4" />
                         </button>
 
                         <div className="flex flex-col items-center text-center">
-                          <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] md:text-xs font-black uppercase tracking-wider text-amber-400 bg-amber-500/15 px-2.5 py-0.5 md:px-3 md:py-1 rounded-full border border-amber-500/30 mb-2">
+                          <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] md:text-xs font-black uppercase tracking-wider text-amber-300 bg-amber-500/15 px-2.5 py-0.5 md:px-3 md:py-1 rounded-full border border-amber-500/30 mb-2">
                             <PartyPopper className="size-3 md:size-3.5 text-amber-400" />
                             Congratulations!
                           </div>
@@ -1253,18 +1334,18 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                           </div>
 
                           <TierBadge tier={winningPrize.tier} className="mb-1" />
-                          <h4 className="font-serif text-lg sm:text-xl md:text-2xl font-black text-foreground tracking-tight mb-1">
+                          <h4 className="font-serif text-lg sm:text-xl md:text-2xl font-black text-white tracking-tight mb-1">
                             {winningPrize.label}
                           </h4>
 
-                          <div className="my-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-xl bg-background/90 border border-border/80 flex items-center justify-center gap-2">
-                            <span className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase">Promo Code:</span>
-                            <span className="font-mono font-black text-sm sm:text-base md:text-lg text-primary tracking-wider select-all">
+                          <div className="my-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-xl bg-zinc-950/90 border border-amber-500/30 flex items-center justify-center gap-2">
+                            <span className="text-[10px] md:text-xs font-bold text-zinc-400 uppercase">Promo Code:</span>
+                            <span className="font-mono font-black text-sm sm:text-base md:text-lg text-amber-400 tracking-wider select-all">
                               {winningPrize.code}
                             </span>
                           </div>
 
-                          <p className="text-[10px] sm:text-[11px] md:text-xs text-muted-foreground mb-2.5">
+                          <p className="text-[10px] sm:text-[11px] md:text-xs text-zinc-400 mb-2.5">
                             Valid for 7 days on orders over ${winningPrize.minOrder}.
                           </p>
 
@@ -1281,9 +1362,9 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleCopyCode(winningPrize.code)}
-                                className="h-8 sm:h-9 md:h-10 rounded-xl border-border/80 text-xs md:text-sm font-bold gap-1.5 hover:bg-secondary cursor-pointer"
+                                className="h-8 sm:h-9 md:h-10 rounded-xl border-zinc-700 bg-zinc-900/80 text-zinc-200 text-xs md:text-sm font-bold gap-1.5 hover:bg-zinc-800 cursor-pointer"
                               >
-                                {hasCopied ? <Check className="size-3.5 md:size-4 text-emerald-500" /> : <Copy className="size-3.5 md:size-4" />}
+                                {hasCopied ? <Check className="size-3.5 md:size-4 text-emerald-400" /> : <Copy className="size-3.5 md:size-4" />}
                                 {hasCopied ? "Copied" : "Copy Code"}
                               </Button>
                               {spinsRemaining > 0 ? (
@@ -1291,9 +1372,9 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                                   size="sm"
                                   variant="secondary"
                                   onClick={() => setWinningPrize(null)}
-                                  className="h-8 sm:h-9 md:h-10 rounded-xl border border-amber-500/30 text-xs md:text-sm font-bold gap-1.5 hover:bg-amber-500/15 cursor-pointer"
+                                  className="h-8 sm:h-9 md:h-10 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300 text-xs md:text-sm font-bold gap-1.5 hover:bg-amber-500/20 cursor-pointer"
                                 >
-                                  <RotateCw className="size-3.5 md:size-4 text-amber-500" />
+                                  <RotateCw className="size-3.5 md:size-4 text-amber-400" />
                                   Draw Again ({spinsRemaining})
                                 </Button>
                               ) : (
@@ -1301,7 +1382,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                                   size="sm"
                                   variant="ghost"
                                   onClick={() => onOpenChange(false)}
-                                  className="h-8 sm:h-9 md:h-10 rounded-xl text-xs md:text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-secondary cursor-pointer"
+                                  className="h-8 sm:h-9 md:h-10 rounded-xl text-xs md:text-sm font-bold text-zinc-400 hover:text-white hover:bg-zinc-800 cursor-pointer"
                                 >
                                   Close
                                 </Button>
@@ -1317,22 +1398,22 @@ export function LuckyDrawModal({ open, onOpenChange }) {
             ) : (
               /* My Vouchers List Tab */
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col min-h-0 h-full py-1">
-                <h4 className="text-xs md:text-sm font-black text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center justify-between shrink-0">
+                <h4 className="text-xs md:text-sm font-black text-zinc-400 uppercase tracking-wider mb-2.5 flex items-center justify-between shrink-0">
                   <span className="flex items-center gap-1.5">
                     <Ticket className="size-3.5" />
                     Your Won Vouchers
                   </span>
-                  <span className="text-[10px] md:text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 md:px-2.5 md:py-1 rounded-full border border-amber-500/20">
+                  <span className="text-[10px] md:text-xs font-semibold text-amber-300 bg-amber-500/15 px-2 py-0.5 md:px-2.5 md:py-1 rounded-full border border-amber-500/30">
                     {wonCoupons.length} total • {account.name}
                   </span>
                 </h4>
                 {wonCoupons.length === 0 ? (
-                  <div className="p-8 text-center rounded-2xl border-2 border-dashed border-border/60 bg-secondary/20 flex-1 flex flex-col items-center justify-center">
+                  <div className="p-8 text-center rounded-2xl border-2 border-dashed border-zinc-800 bg-zinc-900/40 flex-1 flex flex-col items-center justify-center">
                     <div className="relative inline-block mb-3">
-                      <Gift className="size-10 md:size-12 mx-auto text-muted-foreground/40" />
+                      <Gift className="size-10 md:size-12 mx-auto text-zinc-600" />
                       <Sparkles className="size-4 md:size-5 absolute -top-1 -right-2 text-amber-500/40" />
                     </div>
-                    <p className="text-xs md:text-sm font-semibold text-muted-foreground">
+                    <p className="text-xs md:text-sm font-semibold text-zinc-400">
                       No vouchers yet for {account.name}. Tap Draw to win your first pizza discount!
                     </p>
                   </div>
@@ -1351,11 +1432,11 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: Math.min(i * 0.05, 0.3) }}
-                          className="relative rounded-2xl border border-border/60 bg-gradient-to-br from-secondary/50 to-secondary/20 hover:border-amber-500/40 hover:shadow-md hover:shadow-orange-500/5 transition-all group overflow-hidden"
+                          className="relative rounded-2xl border border-amber-500/20 bg-zinc-900/80 hover:border-amber-500/40 hover:shadow-md hover:shadow-orange-500/10 transition-all group overflow-hidden"
                         >
                           <div className={cn("absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b", voucher?.bgGradient || "from-orange-500 to-amber-500")} />
-                          <div className="absolute -left-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-card border border-border/60" />
-                          <div className="absolute -right-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-card border border-border/60" />
+                          <div className="absolute -left-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-[#181512] border border-amber-500/25" />
+                          <div className="absolute -right-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-[#181512] border border-amber-500/25" />
 
                           <div className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-2.5 md:px-5 md:pt-4 md:pb-3">
                             <div className="flex items-center gap-3 md:gap-3.5 min-w-0 flex-1">
@@ -1364,11 +1445,11 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                               </div>
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 mb-0.5">
-                                  <span className="font-serif text-sm md:text-base font-bold text-foreground truncate">{voucher?.label || "Prize Voucher"}</span>
+                                  <span className="font-serif text-sm md:text-base font-bold text-white truncate">{voucher?.label || "Prize Voucher"}</span>
                                   <TierBadge tier={voucher?.tier} />
                                 </div>
-                                <div className="flex items-center gap-2 text-[11px] md:text-xs text-muted-foreground">
-                                  <span className="font-mono font-bold text-primary">{voucher?.code}</span>
+                                <div className="flex items-center gap-2 text-[11px] md:text-xs text-zinc-400">
+                                  <span className="font-mono font-bold text-amber-400">{voucher?.code}</span>
                                   {voucher?.minOrder && (
                                     <>
                                       <span>•</span>
@@ -1384,10 +1465,10 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                                 size="icon"
                                 variant="ghost"
                                 onClick={() => handleCopyCode(voucher?.code)}
-                                className="size-8 md:size-9 rounded-lg hover:bg-secondary cursor-pointer"
+                                className="size-8 md:size-9 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white cursor-pointer"
                                 title="Copy Code"
                               >
-                                <Copy className="size-3.5 md:size-4 text-muted-foreground" />
+                                <Copy className="size-3.5 md:size-4" />
                               </Button>
                               <Button
                                 size="sm"
@@ -1396,7 +1477,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                                 className={cn(
                                   "h-8 md:h-9 px-3 md:px-4 rounded-lg text-xs md:text-sm font-bold shadow-sm cursor-pointer",
                                   voucher?.used
-                                    ? "bg-muted text-muted-foreground cursor-not-allowed"
+                                    ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
                                     : "bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600"
                                 )}
                               >
@@ -1405,13 +1486,13 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                             </div>
                           </div>
 
-                          <div className="mx-4 md:mx-5 border-t border-dashed border-border/60" />
-                          <div className="px-4 py-2 md:px-5 md:py-2.5 text-[10px] md:text-xs text-muted-foreground flex items-center justify-between">
+                          <div className="mx-4 md:mx-5 border-t border-dashed border-amber-500/20" />
+                          <div className="px-4 py-2 md:px-5 md:py-2.5 text-[10px] md:text-xs text-zinc-400 flex items-center justify-between">
                             <span className="flex items-center gap-1">
-                              <Clock className="size-3 md:size-3.5" />
+                              <Clock className="size-3 md:size-3.5 text-amber-400" />
                               {wonStr ? `Won ${wonStr}` : "Won Recently"}
                             </span>
-                            <span className="font-semibold">Expires {expStr}</span>
+                            <span className="font-semibold text-zinc-300">Expires {expStr}</span>
                           </div>
                         </motion.div>
                       );
