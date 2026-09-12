@@ -8,6 +8,13 @@ export default defineConfig({
   plugins: [
     // nodePolyfills(),
     react(),
+    {
+      name: 'fix-ios-pwa-css-crossorigin',
+      transformIndexHtml(html) {
+        // Strip crossorigin from stylesheet links so iOS WebKit standalone PWA doesn't block local CSS
+        return html.replace(/<link rel="stylesheet" crossorigin/g, '<link rel="stylesheet"');
+      }
+    },
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
@@ -15,9 +22,19 @@ export default defineConfig({
         skipWaiting: true,
         cleanupOutdatedCaches: true,
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api/],
+        navigateFallbackDenylist: [/^\/api/, /^\/assets\//, /\.[a-zA-Z0-9]+$/],
         importScripts: ['/sw-push.js'],
         runtimeCaching: [
+          {
+            urlPattern: /\.(?:css|js)$/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'static-assets',
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
           {
             urlPattern: /^\/api\/.*/i,
             handler: 'NetworkOnly',

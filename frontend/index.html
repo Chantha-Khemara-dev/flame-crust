@@ -12,6 +12,20 @@
     <link rel="apple-touch-icon" href="/logo-192.png" />
     <link rel="manifest" href="/manifest.json" />
     <title>Flame &amp; Crust — Artisan Pizza, Bagels &amp; Burgers</title>
+    <script>
+      // iOS PWA Stylesheet Safeguard: Automatically recover if cached CSS is dropped or fails
+      window.addEventListener('error', function(e) {
+        if (e.target && e.target.tagName === 'LINK' && e.target.rel === 'stylesheet') {
+          if (!e.target.dataset.retried) {
+            e.target.dataset.retried = 'true';
+            var retryLink = document.createElement('link');
+            retryLink.rel = 'stylesheet';
+            retryLink.href = e.target.href.split('?')[0] + '?t=' + Date.now();
+            document.head.appendChild(retryLink);
+          }
+        }
+      }, true);
+    </script>
   </head>
   <body>
     <div id="root"></div>
