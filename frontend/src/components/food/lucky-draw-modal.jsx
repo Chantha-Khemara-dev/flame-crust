@@ -471,7 +471,7 @@ function TierBadge({ tier, className }) {
 // 1. Modern 9-Grid Fortune Matrix Component
 function FortuneGrid({ activeIndex, isSpinning, onDraw, disabled, spinsRemaining = 0 }) {
   return (
-    <div className="relative w-full max-w-[360px] mx-auto p-2 sm:p-2.5 rounded-2xl bg-zinc-950/80 border border-amber-500/25 shadow-[0_12px_40px_rgba(0,0,0,0.6),inset_0_1px_3px_rgba(255,255,255,0.1)] backdrop-blur-md">
+    <div className="relative w-full max-w-[330px] sm:max-w-[360px] mx-auto p-2 sm:p-2.5 rounded-2xl bg-zinc-950/80 border border-amber-500/25 shadow-[0_12px_40px_rgba(0,0,0,0.6),inset_0_1px_3px_rgba(255,255,255,0.1)] backdrop-blur-md">
       {/* Ambient background glow */}
       <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 via-transparent to-orange-500/10 rounded-2xl pointer-events-none" />
 
@@ -974,13 +974,13 @@ export function LuckyDrawModal({ open, onOpenChange }) {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto no-scrollbar">
+      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-start sm:justify-center p-2.5 sm:p-4 overflow-y-auto custom-scrollbar pt-[max(0.75rem,env(safe-area-inset-top,0.75rem))] pb-[max(1.75rem,env(safe-area-inset-bottom,1.75rem))]">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={() => !isSpinning && onOpenChange(false)}
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm touch-none"
+          className="fixed inset-0 bg-black/85 backdrop-blur-md touch-none"
         />
 
         <motion.div
@@ -988,15 +988,11 @@ export function LuckyDrawModal({ open, onOpenChange }) {
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.94, opacity: 0, y: 12 }}
           transition={{ type: "spring", damping: 26, stiffness: 320 }}
-          className="relative w-full max-w-[430px] max-h-[90vh] overflow-y-auto custom-scrollbar rounded-3xl bg-card border border-amber-500/30 shadow-[0_20px_60px_rgba(234,88,12,0.25)] p-3.5 sm:p-5 text-card-foreground z-10"
+          className="relative w-full max-w-[425px] max-h-[92vh] flex flex-col rounded-3xl bg-card border border-amber-500/30 shadow-[0_20px_60px_rgba(234,88,12,0.25)] text-card-foreground z-10 overflow-hidden my-auto"
         >
-          {/* Top ambient lighting glows */}
-          <div className="absolute top-0 right-1/4 w-36 h-36 bg-gradient-to-br from-orange-500/15 to-transparent rounded-full blur-2xl pointer-events-none" />
-          <div className="absolute bottom-0 left-1/4 w-36 h-36 bg-gradient-to-tr from-amber-500/15 to-transparent rounded-full blur-2xl pointer-events-none" />
-
-          <div className="relative">
-            {/* Header with Account and Controls */}
-            <div className="flex items-center justify-between pb-3 border-b border-border/60">
+          {/* Pinned Sticky Header with Account and Controls */}
+          <div className="sticky top-0 z-30 bg-card/95 backdrop-blur-xl px-3.5 sm:px-5 pt-3.5 pb-2.5 border-b border-border/60 shrink-0">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 sm:gap-2.5">
                 <div className="size-9 sm:size-10 rounded-2xl bg-gradient-to-br from-orange-500 via-amber-500 to-red-500 flex items-center justify-center text-white shadow-md shadow-orange-500/30 shrink-0">
                   <Sparkles className="size-4.5 sm:size-5" />
@@ -1049,9 +1045,17 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                 </Button>
               </div>
             </div>
+          </div>
 
-            {/* Navigation Tabs (Lucky Draw vs My Vouchers) */}
-            <div className="flex items-center justify-between my-2.5 sm:my-3 gap-2">
+          {/* Scrollable Modal Content */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-3.5 sm:p-5 pt-3 pb-8">
+            {/* Top ambient lighting glows */}
+            <div className="absolute top-0 right-1/4 w-36 h-36 bg-gradient-to-br from-orange-500/15 to-transparent rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute bottom-0 left-1/4 w-36 h-36 bg-gradient-to-tr from-amber-500/15 to-transparent rounded-full blur-2xl pointer-events-none" />
+
+            <div className="relative">
+              {/* Navigation Tabs (Lucky Draw vs My Vouchers) */}
+              <div className="flex items-center justify-between my-2.5 sm:my-3 gap-2">
               <div className="inline-flex items-center gap-1 p-0.5 rounded-full bg-secondary/70 border border-border/60">
                 <button
                   type="button"
@@ -1210,34 +1214,45 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                             Valid for 7 days on orders over ${winningPrize.minOrder}.
                           </p>
 
-                          <div className="flex items-center gap-2 justify-center flex-wrap w-full">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleCopyCode(winningPrize.code)}
-                              className="h-9 rounded-xl border-border/80 text-xs font-bold gap-1.5 hover:bg-secondary flex-1 cursor-pointer"
-                            >
-                              {hasCopied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
-                              {hasCopied ? "Copied" : "Copy Code"}
-                            </Button>
+                          <div className="w-full space-y-2 mt-1">
                             <Button
                               size="sm"
                               onClick={() => handleApplyToCart(winningPrize)}
-                              className="h-9 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600 text-xs font-bold gap-1.5 shadow-md shadow-orange-500/25 flex-1 cursor-pointer"
+                              className="w-full h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs sm:text-sm font-black gap-1.5 shadow-md shadow-orange-500/25 cursor-pointer"
                             >
-                              <ShoppingBag className="size-3.5" /> Apply Now
+                              <ShoppingBag className="size-4" /> Apply Coupon to Cart Now
                             </Button>
-                            {spinsRemaining > 0 && (
+                            <div className="grid grid-cols-2 gap-2 w-full">
                               <Button
                                 size="sm"
-                                variant="secondary"
-                                onClick={() => setWinningPrize(null)}
-                                className="h-9 px-3 rounded-xl border border-amber-500/30 text-xs font-bold gap-1.5 hover:bg-amber-500/15 cursor-pointer"
+                                variant="outline"
+                                onClick={() => handleCopyCode(winningPrize.code)}
+                                className="h-9 rounded-xl border-border/80 text-xs font-bold gap-1.5 hover:bg-secondary cursor-pointer"
                               >
-                                <RotateCw className="size-3.5 text-amber-500" />
-                                Draw Again
+                                {hasCopied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+                                {hasCopied ? "Copied" : "Copy Code"}
                               </Button>
-                            )}
+                              {spinsRemaining > 0 ? (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => setWinningPrize(null)}
+                                  className="h-9 rounded-xl border border-amber-500/30 text-xs font-bold gap-1.5 hover:bg-amber-500/15 cursor-pointer"
+                                >
+                                  <RotateCw className="size-3.5 text-amber-500" />
+                                  Draw Again ({spinsRemaining})
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => onOpenChange(false)}
+                                  className="h-9 rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-secondary cursor-pointer"
+                                >
+                                  Close
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1399,9 +1414,10 @@ export function LuckyDrawModal({ open, onOpenChange }) {
               </motion.div>
             )}
           </div>
-        </motion.div>
-      </div>
-    </AnimatePresence>
+        </div>
+      </motion.div>
+    </div>
+  </AnimatePresence>
   );
 }
 
