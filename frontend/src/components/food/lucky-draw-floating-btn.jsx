@@ -3,20 +3,25 @@ import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Flame } from "lucide-react";
 import { LuckyDrawModal, getCurrentAccount, getSpinsData } from "./lucky-draw-modal.jsx";
+import { useCart } from "@/lib/cart-store";
 
 const HIDE_ROUTES = [
   "/admin",
   "/driver",
   "/kitchen",
-  "/checkout",
-  "/payment",
-  "/order-confirmation",
   "/track",
+  "/payment",
+  "/checkout",
+  "/order-confirmation",
   "/login",
-  "/register"
+  "/register",
+  "/product",
+  "/cart",
+  "/review"
 ];
 
 export function LuckyDrawFloatingButton() {
+  const { isOpen: isCartOpen } = useCart();
   const [modalOpen, setModalOpen] = useState(false);
   const [spinsRemaining, setSpinsRemaining] = useState(1);
   const [isMobile, setIsMobile] = useState(() => {
@@ -70,8 +75,8 @@ export function LuckyDrawFloatingButton() {
     };
   }, [updateSpins]);
 
-  // Hide on admin/driver/checkout screens
-  const isHidden = HIDE_ROUTES.some((route) => location.pathname.startsWith(route));
+  // Hide on admin/driver/checkout/cart screens or when Cart drawer is open, exactly like Time Order widget
+  const isHidden = isCartOpen || HIDE_ROUTES.some((route) => location.pathname.startsWith(route));
 
   // Only hide the spin button on mobile phone screens when time driver is expanded.
   // On tablet and laptop (screens >= 768px), time driver is on bottom-right and spin is on bottom-left, so both stay visible.
