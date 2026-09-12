@@ -235,7 +235,7 @@ export function ActiveOrderWidget() {
             >
               <div
                 onClick={handleWidgetClick}
-                className="relative overflow-hidden bg-card/95 backdrop-blur-xl border border-primary/30 rounded-2xl p-3 sm:p-3.5 shadow-2xl shadow-primary/10 hover:border-primary/60 transition-all cursor-pointer group flex items-center justify-between gap-3"
+                className="relative overflow-hidden bg-card/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-primary/35 rounded-2xl p-2.5 sm:p-3 shadow-2xl shadow-primary/10 hover:border-primary/60 transition-all cursor-pointer group flex items-center justify-between gap-2.5"
               >
                 {/* Ambient Glow */}
                 <div className="absolute -right-8 -top-8 size-24 rounded-full bg-primary/10 blur-xl pointer-events-none" />
@@ -243,47 +243,54 @@ export function ActiveOrderWidget() {
                 {/* Left Icon with Live Pulse */}
                 <div className="relative shrink-0 flex items-center justify-center">
                   {isMultiple ? (
-                    <div className="size-10 sm:size-11 rounded-xl bg-gradient-to-tr from-primary to-amber-500 flex items-center justify-center text-white shadow-md">
-                      <Layers className="size-5 sm:size-5.5 animate-pulse" />
+                    <div className="size-9 sm:size-10 rounded-xl bg-gradient-to-tr from-primary to-amber-500 flex items-center justify-center text-white shadow-md">
+                      <Layers className="size-4.5 sm:size-5 animate-pulse" />
                     </div>
                   ) : (
-                    <div className={cn("size-10 sm:size-11 rounded-xl flex items-center justify-center shadow-md", statusInfo.badgeColor)}>
-                      <StatusIcon className="size-5 sm:size-5.5 animate-pulse" />
+                    <div className={cn("size-9 sm:size-10 rounded-xl flex items-center justify-center shadow-md text-white", statusInfo.badgeColor)}>
+                      <StatusIcon className="size-4.5 sm:size-5 animate-pulse" />
                     </div>
                   )}
-                  <span className={cn("absolute -top-1 -right-1 size-3 rounded-full border-2 border-background animate-ping", statusInfo.dotColor)} />
-                  <span className={cn("absolute -top-1 -right-1 size-3 rounded-full border-2 border-background", statusInfo.dotColor)} />
+                  <span className={cn("absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-background animate-ping", statusInfo.dotColor)} />
+                  <span className={cn("absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-background", statusInfo.dotColor)} />
                 </div>
 
                 {/* Middle Details */}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 flex flex-col justify-center">
                   {isMultiple ? (
                     <>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-serif font-bold text-xs sm:text-sm text-foreground tracking-tight truncate">
+                      <div className="flex items-center gap-1.5 flex-nowrap min-w-0">
+                        <span className="font-serif font-bold text-xs sm:text-sm text-foreground tracking-tight whitespace-nowrap">
                           {activeOrders.length} Active Orders
                         </span>
-                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-primary/15 text-primary border border-primary/25">
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-primary/15 text-primary border border-primary/25 shrink-0">
                           Live
                         </span>
                       </div>
-                      <p className="text-[11px] sm:text-xs text-muted-foreground font-medium truncate mt-0.5">
+                      <p className="text-[10px] sm:text-[11px] text-muted-foreground font-medium truncate mt-0.5 leading-tight">
                         Tap to track all ongoing deliveries
                       </p>
                     </>
                   ) : (
                     <>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-serif font-bold text-xs sm:text-sm text-foreground tracking-tight truncate">
+                      {/* Top Row: Full Title without cut-off */}
+                      <div className="flex items-center gap-1.5 flex-nowrap min-w-0">
+                        <span className="font-serif font-bold text-xs sm:text-sm text-foreground tracking-tight whitespace-nowrap">
                           {statusInfo.title}
                         </span>
-                        <span className="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded-md bg-secondary text-foreground/80 border border-border/50">
-                          #{currentOrder.order_number || currentOrder.id}
+                        <span className={cn("size-1.5 rounded-full shrink-0", statusInfo.dotColor)} />
+                      </div>
+                      {/* Bottom Row: Code (never wraps) + Subtext */}
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-nowrap min-w-0">
+                        <span className="text-[9px] sm:text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-md bg-secondary text-foreground/90 border border-border/70 whitespace-nowrap shrink-0 leading-tight">
+                          {String(currentOrder.order_number || currentOrder.id).startsWith("#")
+                            ? currentOrder.order_number || currentOrder.id
+                            : `#${currentOrder.order_number || currentOrder.id}`}
+                        </span>
+                        <span className="text-[10px] sm:text-[11px] text-muted-foreground font-medium truncate leading-tight">
+                          • {statusInfo.sub}
                         </span>
                       </div>
-                      <p className="text-[11px] sm:text-xs text-muted-foreground font-medium truncate mt-0.5">
-                        {statusInfo.sub}
-                      </p>
                     </>
                   )}
                 </div>
@@ -296,7 +303,7 @@ export function ActiveOrderWidget() {
                       e.stopPropagation();
                       handleWidgetClick();
                     }}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs group-hover:bg-primary/90 transition-all cursor-pointer active:scale-95"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs group-hover:bg-primary/90 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
                   >
                     <span>{isMultiple ? `View (${activeOrders.length})` : "Track"}</span>
                     <ChevronRight className="size-3.5 group-hover:translate-x-0.5 transition-transform" />
