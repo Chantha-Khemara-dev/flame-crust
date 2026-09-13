@@ -332,7 +332,7 @@ export function ActiveOrderWidget() {
 
       {/* Multi-Order Live Tracking Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent showCloseButton={false} className="w-[calc(100%-2rem)] max-w-lg p-0 overflow-hidden rounded-[28px] bg-card border border-border/80 shadow-2xl z-50 max-h-[85vh] flex flex-col mx-auto">
+        <DialogContent showCloseButton={false} className="w-[calc(100%-2rem)] max-w-lg p-0 overflow-hidden rounded-[28px] bg-card border border-border/80 shadow-2xl z-[70] max-h-[85vh] flex flex-col mx-auto">
           <DialogHeader className="p-5 pb-3.5 border-b border-border/60 bg-secondary/30 shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
