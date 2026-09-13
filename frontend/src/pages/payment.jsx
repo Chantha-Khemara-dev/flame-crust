@@ -567,39 +567,43 @@ export default function PaymentGatewayPage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-3 sm:p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         className="max-w-md w-full bg-card rounded-3xl overflow-hidden shadow-2xl border border-border/60"
       >
-        <div className="bg-primary p-6 text-center text-primary-foreground relative">
-          <button 
-            onClick={handleCancelAndExit} 
-            className="absolute top-5 left-5 opacity-80 hover:opacity-100 transition-all bg-primary-foreground/15 hover:bg-primary-foreground/25 rounded-full p-1.5 px-2.5 cursor-pointer flex items-center gap-1 text-xs text-primary-foreground font-medium shadow-sm active:scale-95"
-            title="ថយក្រោយទៅរើសវិធីទូទាត់"
-          >
-            <ChevronLeft className="size-4" />
-            <span>ថយក្រោយ</span>
-          </button>
+        {/* Modern Flex Header - No absolute overlap */}
+        <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 px-4 py-3.5 text-white">
+          <div className="flex items-center justify-between gap-2">
+            <button 
+              onClick={handleCancelAndExit} 
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-black/20 hover:bg-black/30 backdrop-blur-md active:scale-95 transition-all text-xs font-bold text-white border border-white/20 cursor-pointer shrink-0 shadow-sm"
+              title="ថយក្រោយទៅ Checkout"
+            >
+              <ChevronLeft className="size-4" />
+              <span>ថយក្រោយ</span>
+            </button>
 
-          <button 
-            onClick={handleCancelAndExit} 
-            className="absolute top-5 right-5 opacity-70 hover:opacity-100 transition-opacity bg-primary-foreground/10 hover:bg-primary-foreground/20 rounded-full p-1.5 cursor-pointer active:scale-95 text-primary-foreground"
-            title="ចាកចេញទៅ Checkout"
-          >
-            <X className="size-5" />
-          </button>
+            <div className="flex flex-col items-center text-center min-w-0">
+              <div className="flex items-center gap-1 text-[11px] font-bold tracking-wider uppercase text-red-100">
+                <ShieldCheck className="size-3.5 text-emerald-300" />
+                <span>FLAME &amp; CRUST</span>
+              </div>
+              <span className="text-xs font-bold text-white/90 truncate">Secure Checkout</span>
+            </div>
 
-          <div className="flex items-center justify-center gap-1.5 opacity-90 mb-1 pt-1">
-            <ShieldCheck className="size-4 text-emerald-300" />
-            <span className="text-[11px] font-semibold tracking-wider uppercase">Flame &amp; Crust Gateway</span>
+            <button 
+              onClick={handleCancelAndExit} 
+              className="size-8 rounded-full bg-black/20 hover:bg-black/30 backdrop-blur-md flex items-center justify-center active:scale-95 transition-all text-white border border-white/20 cursor-pointer shrink-0 shadow-sm"
+              title="ចាកចេញ"
+            >
+              <X className="size-4" />
+            </button>
           </div>
-          <h1 className="font-serif text-2xl font-bold">Secure Checkout</h1>
-          <p className="text-primary-foreground/80 text-xs mt-0.5">{paymentMethod.replace("_", " ")}</p>
         </div>
 
-        <div className="p-6 sm:p-8 flex flex-col items-center">
+        <div className="p-5 sm:p-7 flex flex-col items-center">
           {isPaid ? (
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
@@ -614,14 +618,21 @@ export default function PaymentGatewayPage() {
             </motion.div>
           ) : (
             <>
-              <div className="text-center mb-6">
-                <p className="text-muted-foreground text-sm sm:text-base font-medium">សូមស្កេន QR ខាងក្រោមដើម្បីទូទាត់ប្រាក់</p>
-                <p className="text-4xl sm:text-5xl font-bold text-foreground mt-2">${Number(totalAmount).toFixed(2)}</p>
+              {/* Payment Amount Display */}
+              <div className="text-center mb-4">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] sm:text-[11px] font-bold uppercase tracking-wider mb-1">
+                  {paymentMethod === "KHQR" ? "🇰🇭 Bakong KHQR" : paymentMethod.replace("_", " ")}
+                </span>
+                <p className="text-xs sm:text-sm text-muted-foreground font-medium">សូមស្កេន QR ខាងក្រោមដើម្បីទូទាត់ប្រាក់</p>
+                <div className="text-4xl sm:text-5xl font-black text-foreground tracking-tight mt-1">
+                  ${Number(totalAmount).toFixed(2)}
+                </div>
               </div>
 
-              <div className="bg-white p-4 rounded-2xl shadow-sm mb-6 relative group overflow-hidden">
+              {/* QR Code Container */}
+              <div className="bg-white p-4 sm:p-5 rounded-3xl shadow-xl border-2 border-primary/15 mb-3 relative group overflow-hidden">
                 {paymentMethod === "CARD" ? (
-                  <div className="size-48 flex items-center justify-center bg-blue-50/50 rounded-xl border-2 border-blue-100">
+                  <div className="size-48 flex items-center justify-center bg-blue-50/50 rounded-2xl border-2 border-blue-100">
                     <motion.div
                       animate={{
                         scale: [1, 1.1, 1],
@@ -633,16 +644,16 @@ export default function PaymentGatewayPage() {
                     </motion.div>
                   </div>
                 ) : qrCodeString ? (
-                  <div className="p-4 bg-white rounded-2xl shadow-md">
+                  <div className="p-2 bg-white rounded-2xl">
                     <QRCodeCanvas
                       value={qrCodeString}
-                      size={192}
+                      size={200}
                       level="H"
                       includeMargin={true}
                     />
                   </div>
                 ) : (
-                  <div className="size-48 flex flex-col items-center justify-center border-2 border-dashed border-border/60 rounded-xl bg-muted/30">
+                  <div className="size-48 flex flex-col items-center justify-center border-2 border-dashed border-border/60 rounded-2xl bg-muted/30">
                     <QrCode className="size-12 text-muted-foreground mb-3 opacity-50" />
                     <Button type="button" size="sm" onClick={generateQR} className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90">
                       Generate KHQR
@@ -650,120 +661,109 @@ export default function PaymentGatewayPage() {
                   </div>
                 )}
 
-                {/* Final 30 seconds: scanning closed, only waiting for the final Bakong token verify */}
+                {/* Final 30 seconds: scanning closed */}
                 {paymentMethod !== "CARD" && qrCodeString && timeLeft > 0 && timeLeft <= (300 - SCAN_CUTOFF_SECONDS) && (
-                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm rounded-2xl gap-2">
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm rounded-3xl gap-2">
                     <Loader2 className="size-8 animate-spin text-primary" />
-                    <p className="text-sm font-semibold text-zinc-800">បានបិទការស្កេន</p>
+                    <p className="text-sm font-bold text-zinc-900">បានបិទការស្កេន</p>
                     <p className="text-xs text-zinc-500">កំពុងផ្ទៀងផ្ទាត់ចុងក្រោយជាមួយ Bakong...</p>
                   </div>
                 )}
 
-                {/* Scanning animation overlay for QR codes */}
+                {/* Scanning laser animation overlay for QR codes */}
                 {paymentMethod !== "CARD" && qrCodeString && timeLeft > (300 - SCAN_CUTOFF_SECONDS) && (
                   <motion.div
-                    className="absolute top-4 left-4 h-1 bg-primary shadow-[0_0_8px_rgba(239,68,68,0.8)] rounded-full z-10"
-                    style={{ width: "192px" }}
-                    animate={{ y: [0, 192, 0] }}
-                    transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                    className="absolute top-5 left-5 h-1 bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.9)] rounded-full z-10"
+                    style={{ width: "200px" }}
+                    animate={{ y: [0, 200, 0] }}
+                    transition={{ repeat: Infinity, duration: 2.2, ease: "linear" }}
                   />
                 )}
               </div>
 
-              <div className="flex items-center gap-2 text-muted-foreground mb-4">
-                {timeLeft > 0 ? (
-                  timeLeft <= (300 - SCAN_CUTOFF_SECONDS) ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin text-amber-500" />
-                      <span className="text-sm font-medium text-amber-600">
-                        បានបិទការស្កេន — កំពុងផ្ទៀងផ្ទាត់ចុងក្រោយ ({formatTime(timeLeft)})
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <Loader2 className="size-4 animate-spin mt-0.5 self-start" />
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">
-                          {paymentMethod === "CARD" ? "Processing card payment..." : "កំពុងរង់ចាំការទូទាត់..."} ({formatTime(timeLeft)})
-                        </span>
-                        {paymentMethod !== "CARD" && (
-                          <span className="text-xs text-muted-foreground mt-0.5">
-                            បន្ទាប់ពីស្កេនរួច អ្នកអាចចុចប៊ូតុងខាងក្រោមដើម្បីផ្ទៀងផ្ទាត់ ឬរង់ចាំប្រព័ន្ធស្វ័យប្រវត្តិ។
-                          </span>
-                        )}
-                      </div>
-                    </>
-                  )
-                ) : (
-                  <span className="text-sm font-medium text-destructive text-center">
-                    QR Code expired. Please refresh to get a new one.
+              {/* Status & Countdown Pill */}
+              <div className="w-full max-w-[340px] mb-4 flex items-center justify-between gap-2 py-2 px-3.5 rounded-2xl bg-secondary/70 border border-border/70">
+                <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+                  <span className="relative flex size-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full size-2.5 bg-emerald-500"></span>
                   </span>
-                )}
+                  <span>កំពុងរង់ចាំការស្កេន...</span>
+                </div>
+                <div className="font-mono font-bold text-xs bg-primary/10 text-primary px-2.5 py-0.5 rounded-full border border-primary/20">
+                  {formatTime(timeLeft)}
+                </div>
               </div>
 
               {/* Action buttons */}
-              <div className="w-full space-y-2.5">
+              <div className="w-full space-y-3">
                 {paymentMethod !== "CARD" && (
                   <Button
                     type="button"
                     onClick={handleManualCheck}
                     disabled={isVerifying || manualChecksCount >= MAX_MANUAL_CHECKS || timeLeft <= 0}
                     className={cn(
-                      "w-full h-12 rounded-2xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2",
+                      "w-full h-13 rounded-2xl font-bold text-sm sm:text-base shadow-lg transition-all flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer",
                       manualChecksCount >= MAX_MANUAL_CHECKS
-                        ? "bg-secondary text-muted-foreground border border-border/60 cursor-not-allowed opacity-80"
-                        : "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white cursor-pointer active:scale-[0.98] shadow-emerald-500/20"
+                        ? "bg-muted text-muted-foreground border border-border/60 cursor-not-allowed opacity-80"
+                        : "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-600/25"
                     )}
                   >
                     {isVerifying ? (
                       <>
-                        <Loader2 className="size-4 animate-spin" />
+                        <Loader2 className="size-5 animate-spin" />
                         <span>កំពុងទាក់ទង Bakong ផ្ទៀងផ្ទាត់...</span>
                       </>
                     ) : manualChecksCount >= MAX_MANUAL_CHECKS ? (
                       <>
-                        <CheckCircle2 className="size-4 text-muted-foreground" />
-                        <span>បានចុចគ្រប់កំណត់ (២/២ ដង) — សូមរង់ចាំ</span>
+                        <CheckCircle2 className="size-5 text-muted-foreground" />
+                        <span>បានចុចគ្រប់កំណត់ (២/២ ដង)</span>
                       </>
                     ) : (
                       <>
-                        <ShieldCheck className="size-4.5 text-emerald-300" />
-                        <span>ខ្ញុំបានផ្ទេររួចរាល់ / ពិនិត្យឥឡូវ (សល់ {MAX_MANUAL_CHECKS - manualChecksCount} ដង)</span>
+                        <CheckCircle2 className="size-5 text-emerald-200" />
+                        <span>ខ្ញុំបានបាញ់លុយរួចរាល់ / ពិនិត្យឥឡូវ</span>
+                        <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold">
+                          សល់ {MAX_MANUAL_CHECKS - manualChecksCount} ដង
+                        </span>
                       </>
                     )}
                   </Button>
                 )}
 
                 {paymentMethod !== "CARD" && (
-                  <p className="text-[11px] text-center text-muted-foreground">
+                  <p className="text-[11px] text-center text-muted-foreground px-2 leading-relaxed">
                     {manualChecksCount >= MAX_MANUAL_CHECKS ? (
                       <span className="text-amber-500 font-medium">
                         ⚠️ អ្នកបានចុចគ្រប់ ២ ដងហើយ។ ប្រព័ន្ធកំពុងពិនិត្យស្វ័យប្រវត្តិតាមវដ្ត។
                       </span>
                     ) : (
                       <span>
-                        💡 អ្នកអាចចុចផ្ទៀងផ្ទាត់ដោយផ្ទាល់បាន <strong className="text-foreground">{MAX_MANUAL_CHECKS - manualChecksCount} ដងទៀត</strong> បន្ទាប់ពីផ្ទេរប្រាក់ក្នុង App ធនាគារ។
+                        💡 បន្ទាប់ពីបាញ់លុយក្នុង App ធនាគាររួច អ្នកអាចចុចប៊ូតុងខាងលើដើម្បីផ្ទៀងផ្ទាត់ភ្លាមៗ
                       </span>
                     )}
                   </p>
                 )}
 
-                <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/40 w-full">
+                {/* Bottom Navigation Buttons */}
+                <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-border/60">
                   <button
                     onClick={handleCancelAndExit}
                     type="button"
-                    className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer py-1.5 px-3 rounded-xl hover:bg-secondary border border-border/40"
+                    className="h-11 rounded-xl border border-border/80 bg-secondary/50 hover:bg-secondary active:scale-95 text-foreground font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
                   >
-                    <ArrowLeft className="size-3.5" /> <span>ថយក្រោយរើសវិធីទូទាត់</span>
+                    <ArrowLeft className="size-4 text-muted-foreground" />
+                    <span>ថយក្រោយ (ដូរវិធីទូទាត់)</span>
                   </button>
 
                   {qrCodeString && (
                     <button
                       onClick={generateQR}
                       type="button"
-                      className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer py-1.5 px-3 rounded-xl hover:bg-secondary"
+                      className="h-11 rounded-xl border border-border/80 bg-secondary/50 hover:bg-secondary active:scale-95 text-foreground font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
                     >
-                      <RefreshCw className="size-3.5" /> <span>បង្កើត QR ថ្មី</span>
+                      <RefreshCw className="size-4 text-muted-foreground" />
+                      <span>បង្កើត QR ថ្មី</span>
                     </button>
                   )}
                 </div>
