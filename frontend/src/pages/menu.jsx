@@ -190,7 +190,7 @@ function MenuPage() {
   }, [allItems, active, search, dietaryFilter]);
 
   const topProducts = useMemo(() => {
-    return getTopTrendingDishes(allItems, 4);
+    return getTopTrendingDishes(allItems, 5);
   }, [allItems]);
 
   const orderedFilteredItems = useMemo(() => {

@@ -128,25 +128,17 @@ async function fetchCategories() {
   return inFlightCategoriesPromise;
 }
 
-export function getTopTrendingDishes(items, count = 4) {
+export function getTopTrendingDishes(items, count = 5) {
   if (!Array.isArray(items) || items.length === 0) return [];
 
-  // Filter for active food dishes (exclude drinks and inactive items)
+  // Filter for active food and menu items (include all categories so customer rankings match admin top selling)
   const dishes = items.filter(
-    (item) =>
-      item.active !== false &&
-      item.active !== 0 &&
-      String(item.category || "").toLowerCase() !== "drink" &&
-      String(item.category || "").toLowerCase() !== "drinks"
+    (item) => item.active !== false && item.active !== 0
   );
 
-  // Filter popular dishes first if available
-  const popularOnly = dishes.filter((item) => Boolean(item.popular));
-  const pool = popularOnly.length >= count ? popularOnly : dishes;
-
-  return [...pool]
+  return [...dishes]
     .sort((a, b) => {
-      // 1. Real order sales count (highest orders first)
+      // 1. Real order sales count (highest orders first) - matches Admin Dashboard
       const salesA = Number(a.sales_count ?? a.salesCount ?? 0);
       const salesB = Number(b.sales_count ?? b.salesCount ?? 0);
       if (salesB !== salesA) return salesB - salesA;

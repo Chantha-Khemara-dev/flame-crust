@@ -59,9 +59,10 @@ public class DashboardController {
 
             // 4. Top Selling Products (using line_total or unit_price * quantity)
             List<Map<String, Object>> topProducts = jdbc.queryForList(
-                    "SELECT p.name, COUNT(oi.id) as sales, COALESCE(SUM(COALESCE(oi.line_total, oi.unit_price * oi.quantity)), 0) as revenue " +
+                    "SELECT p.id, p.name, p.image, COUNT(oi.id) as sales, COALESCE(SUM(COALESCE(oi.line_total, oi.unit_price * oi.quantity)), 0) as revenue " +
                     "FROM order_items oi INNER JOIN products p ON oi.product_id = p.id " +
-                    "GROUP BY p.id, p.name ORDER BY sales DESC LIMIT 5");
+                    "WHERE p.active = 1 " +
+                    "GROUP BY p.id, p.name, p.image ORDER BY sales DESC LIMIT 5");
             result.put("topProducts", topProducts);
 
             // 5. Sales by Category
