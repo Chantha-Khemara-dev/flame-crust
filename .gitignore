@@ -69,3 +69,6 @@ backup.sql
 
 #file automation
 start.sh
+docs/
+*erd*
+*ERD*
