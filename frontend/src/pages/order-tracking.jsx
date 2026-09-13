@@ -538,23 +538,23 @@ export default function OrderTrackingPage() {
                 </Button>
 
                 <div className="flex items-center gap-2">
-                  <span className={cn("text-[11px] sm:text-xs font-bold px-3 py-1 rounded-full", statusInfo.badge)}>
+                  <span className={cn("text-[11px] sm:text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap", statusInfo.badge)}>
                     {statusInfo.title}
                   </span>
                 </div>
               </div>
 
               {/* Order Header Row */}
-              <div className="flex justify-between items-start mb-6 border-b border-border/60 pb-5 gap-3">
-                <div>
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-6 border-b border-border/60 pb-5 gap-3.5 sm:gap-4">
+                <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-primary">
+                    <h1 className="font-serif text-lg sm:text-2xl lg:text-3xl font-bold text-primary whitespace-nowrap tracking-tight">
                       Order #{order.orderNumber || order.order_number || order.id}
                     </h1>
                     <button 
                       onClick={handleCopyOrderNumber}
                       title="Copy Order ID"
-                      className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors shrink-0"
                     >
                       {copied ? <Check className="size-4 text-green-600" /> : <Copy className="size-4" />}
                     </button>
@@ -564,12 +564,15 @@ export default function OrderTrackingPage() {
                   </p>
                 </div>
                 
-                <div className="text-right">
-                  <span className="font-serif text-xl sm:text-2xl lg:text-3xl font-black text-primary">
-                    ${order.total.toFixed(2)}
-                  </span>
+                <div className="flex items-center justify-between sm:flex-col sm:items-end pt-2 sm:pt-0 border-t border-border/40 sm:border-t-0">
+                  <div className="flex items-baseline gap-1.5 sm:block sm:text-right">
+                    <span className="text-xs text-muted-foreground font-medium sm:hidden">Total:</span>
+                    <span className="font-serif text-xl sm:text-2xl lg:text-3xl font-black text-primary">
+                      ${order.total.toFixed(2)}
+                    </span>
+                  </div>
                   {!isDelivered && !isCancelled && (
-                    <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                    <p className="text-xs text-muted-foreground font-medium sm:mt-0.5">
                       ETA: <span className="font-bold text-foreground">{statusInfo.eta}</span>
                     </p>
                   )}

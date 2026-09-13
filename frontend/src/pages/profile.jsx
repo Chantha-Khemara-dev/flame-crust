@@ -1506,7 +1506,7 @@ export default function ProfilePage() {
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                               <div>
                                 <div className="flex items-center gap-2.5 mb-1">
-                                  <span className="font-mono text-sm text-muted-foreground font-bold">#{order.order_number}</span>
+                                  <span className="font-mono text-sm text-muted-foreground font-bold whitespace-nowrap">#{order.order_number}</span>
                                   <span className={cn(
                                     "text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider",
                                     order.status === "DELIVERED" ? "bg-green-600/20 text-green-600 dark:text-green-400" :
@@ -2131,7 +2131,7 @@ export default function ProfilePage() {
             <Dialog open={!!selectedOrderDetails} onOpenChange={(open) => !open && setSelectedOrderDetails(null)}>
               <DialogContent className="sm:max-w-md bg-background border-border/60 rounded-3xl">
                 <DialogHeader>
-                  <DialogTitle className="font-serif text-xl">Order #{selectedOrderDetails?.order_number}</DialogTitle>
+                  <DialogTitle className="font-serif text-lg sm:text-xl whitespace-nowrap truncate pr-6">Order #{selectedOrderDetails?.order_number}</DialogTitle>
                   <DialogDescription className="text-xs text-muted-foreground">
                     Items and price breakdown for this order.
                   </DialogDescription>
