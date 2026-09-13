@@ -180,26 +180,26 @@ function Sparkline({ data, tone = "revenue", className }) {
 }
 
 function GoalRing({ progress, className }) {
-  const radius = 16;
+  const radius = 13;
   const circumference = 2 * Math.PI * radius;
   const clamped = Math.max(0, Math.min(1, progress));
   return (
-    <span className={cn("relative flex size-11 items-center justify-center", className)}>
-      <svg className="absolute inset-0 size-full -rotate-90" viewBox="0 0 40 40">
-        <circle cx="20" cy="20" r={radius} fill="none" strokeWidth="3.5" className="stroke-white/25" />
+    <span className={cn("relative flex size-8 shrink-0 items-center justify-center", className)}>
+      <svg className="absolute inset-0 size-full -rotate-90" viewBox="0 0 32 32">
+        <circle cx="16" cy="16" r={radius} fill="none" strokeWidth="2.8" className="stroke-amber-500/20" />
         <circle
-          cx="20"
-          cy="20"
+          cx="16"
+          cy="16"
           r={radius}
           fill="none"
-          strokeWidth="3.5"
+          strokeWidth="2.8"
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={circumference * (1 - clamped)}
-          className="stroke-white transition-[stroke-dashoffset] duration-1000"
+          className="stroke-amber-500 transition-[stroke-dashoffset] duration-1000"
         />
       </svg>
-      <Target className="size-4 text-white/90" />
+      <Target className="size-3 text-amber-500" />
     </span>
   );
 }
@@ -446,11 +446,11 @@ export default function AdminDashboard() {
 
   if (loading && !data) return <AdminDashboardSkeleton />;
 
-  const todayStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  const todayStr = new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
   const goalProgress = weekTotals.revenue / WEEKLY_GOAL;
 
   return (
-    <div className="w-full space-y-5 pb-12 sm:space-y-6">
+    <div className="w-full space-y-4 pb-12 sm:space-y-5">
       {error && (
         <div className="flex items-center gap-2.5 rounded-2xl border border-destructive/30 bg-destructive/8 px-4 py-3 text-xs font-semibold text-destructive">
           <AlertTriangle className="size-4 shrink-0" />
@@ -458,102 +458,110 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      <section className="relative overflow-hidden rounded-[28px] border border-primary/20 bg-gradient-to-br from-primary via-orange-600 to-amber-500 p-6 text-white shadow-warm-lg sm:p-8">
-        <div className="pointer-events-none absolute -right-20 -top-24 size-80 rounded-full bg-white/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-28 left-1/4 size-72 rounded-full bg-amber-300/20 blur-3xl" />
-        <Flame className="pointer-events-none absolute -right-6 -bottom-10 size-56 text-white/10" />
+      {/* Sleek, Compact Executive Banner */}
+      <section className="relative overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-card via-card/95 to-amber-950/15 p-4 sm:p-5 shadow-warm backdrop-blur-xl">
+        <div className="pointer-events-none absolute -right-16 -top-20 size-60 rounded-full bg-primary/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 left-1/3 size-56 rounded-full bg-amber-500/10 blur-3xl" />
+        <Flame className="pointer-events-none absolute -right-4 -bottom-6 size-36 text-primary/5 select-none" />
 
-        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0 space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/15 px-3 py-1 text-[11px] font-bold backdrop-blur-md">
-                <CalendarDays className="size-3" />
-                {todayStr}
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/40 bg-emerald-400/20 px-3 py-1 text-[11px] font-bold text-emerald-50 backdrop-blur-md">
-                <span className="size-1.5 rounded-full bg-emerald-300 animate-pulse" />
-                Store & kitchen live
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/15 px-3 py-1 text-[11px] font-bold backdrop-blur-md">
-                <ShieldCheck className="size-3" />
-                Bakong KHQR ready
-              </span>
-            </div>
+        <div className="relative z-10 flex flex-col gap-3.5">
+          {/* Top Row: Greeting & Badges + Quick Actions */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="space-y-1">
+              {/* Badges Bar */}
+              <div className="flex flex-wrap items-center gap-1.5 text-[10px] sm:text-xs font-semibold">
+                <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-secondary/80 px-2.5 py-0.5 text-muted-foreground backdrop-blur-md">
+                  <CalendarDays className="size-3 text-primary" />
+                  {todayStr}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-emerald-500 font-bold backdrop-blur-md">
+                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Store
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-secondary/80 px-2.5 py-0.5 text-muted-foreground backdrop-blur-md">
+                  <ShieldCheck className="size-3 text-amber-500" />
+                  KHQR Ready
+                </span>
+              </div>
 
-            <div className="space-y-1.5">
-              <h1 className="font-serif text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
-                {greeting()}, {adminAuth?.name || "Admin"}
+              {/* Greeting */}
+              <h1 className="font-serif text-xl sm:text-2xl font-bold tracking-tight text-foreground flex items-center gap-1.5">
+                {greeting()}, <span className="text-primary">{adminAuth?.name || "Admin"}</span>
               </h1>
-              <p className="max-w-xl text-xs leading-relaxed text-white/80 sm:text-sm">
-                Live oversight of sales, settlements, kitchen preparation and driver dispatch — all in
-                one command center.
-              </p>
+            </div>
+
+            {/* Quick Action Buttons */}
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                asChild
+                size="sm"
+                className="h-9 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground px-3.5 font-semibold text-xs shadow-sm active:scale-95 transition-all cursor-pointer"
+              >
+                <Link to="/admin/products">
+                  <Plus className="size-3.5 mr-1" />
+                  Product
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="h-9 rounded-xl border-border/80 bg-secondary/60 hover:bg-secondary text-foreground px-3 font-semibold text-xs active:scale-95 transition-all cursor-pointer"
+              >
+                <Link to="/admin/kitchen">
+                  <ChefHat className="size-3.5 mr-1 text-primary" />
+                  Kitchen KDS
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="h-9 rounded-xl px-2.5 text-xs text-muted-foreground hover:text-foreground active:scale-95 transition-all cursor-pointer"
+                title="View Storefront"
+              >
+                <Link to="/">
+                  <Store className="size-3.5 mr-1" />
+                  Store
+                  <ArrowUpRight className="size-3 ml-0.5 opacity-60" />
+                </Link>
+              </Button>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            <Button
-              asChild
-              className="h-11 rounded-2xl border border-white/25 bg-white px-5 font-serif text-xs font-bold text-primary shadow-lg transition-all hover:bg-white/90 active:scale-95 sm:text-sm"
-            >
-              <Link to="/admin/products">
-                <Plus className="size-4" />
-                New Product
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              className="h-11 rounded-2xl border-white/30 bg-white/10 px-5 font-serif text-xs font-bold text-white backdrop-blur-md transition-all hover:bg-white/20 active:scale-95 sm:text-sm"
-            >
-              <Link to="/admin/kitchen">
-                <ChefHat className="size-4" />
-                Kitchen KDS
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="ghost"
-              className="h-11 rounded-2xl px-4 text-xs font-bold text-white/85 transition-all hover:bg-white/15 hover:text-white active:scale-95 sm:text-sm"
-            >
-              <Link to="/">
-                <Store className="size-4" />
-                Storefront
-                <ArrowUpRight className="size-3.5" />
-              </Link>
-            </Button>
-          </div>
-        </div>
+          {/* Quick Metrics Strip: Horizontal 3-column chip bar */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 rounded-2xl border border-border/60 bg-secondary/35 p-2 sm:p-2.5 backdrop-blur-md">
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-emerald-500/25 bg-emerald-500/10 text-emerald-500">
+                <CircleDollarSign className="size-4" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate">Today</p>
+                <p className="truncate font-serif text-sm sm:text-base font-black text-foreground tabular-nums">{money(animatedToday)}</p>
+              </div>
+            </div>
 
-        <div className="relative z-10 mt-6 grid grid-cols-1 gap-3 border-t border-white/15 pt-5 sm:grid-cols-3">
-          <div className="flex items-center gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-white/25 bg-white/15 backdrop-blur-md">
-              <CircleDollarSign className="size-4.5" />
-            </span>
-            <div className="min-w-0">
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-white/70">Today so far</p>
-              <p className="truncate font-serif text-lg font-bold tabular-nums">{money(animatedToday)}</p>
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 border-l border-border/50 pl-2 sm:pl-4">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-sky-500/25 bg-sky-500/10 text-sky-500">
+                <ReceiptText className="size-4" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate">Tickets</p>
+                <p className="truncate font-serif text-sm sm:text-base font-black text-foreground tabular-nums">
+                  {weekTotals.today?.orders ?? 0}
+                </p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-white/25 bg-white/15 backdrop-blur-md">
-              <ReceiptText className="size-4.5" />
-            </span>
-            <div className="min-w-0">
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-white/70">Tickets today</p>
-              <p className="truncate font-serif text-lg font-bold tabular-nums">
-                {weekTotals.today?.orders ?? 0}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <GoalRing progress={goalProgress} />
-            <div className="min-w-0">
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-white/70">Weekly goal</p>
-              <p className="truncate font-serif text-lg font-bold tabular-nums">
-                {Math.round(Math.min(1, goalProgress) * 100)}%
-                <span className="ml-1.5 text-[11px] font-semibold text-white/70">of {money(WEEKLY_GOAL)}</span>
-              </p>
+
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 border-l border-border/50 pl-2 sm:pl-4">
+              <GoalRing progress={goalProgress} />
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate">Goal</p>
+                <p className="truncate font-serif text-sm sm:text-base font-black text-foreground tabular-nums">
+                  {Math.round(Math.min(1, goalProgress) * 100)}%
+                  <span className="hidden sm:inline ml-1 text-[10px] font-normal text-muted-foreground">of {money(WEEKLY_GOAL)}</span>
+                </p>
+              </div>
             </div>
           </div>
         </div>
