@@ -17,7 +17,8 @@ const HIDE_ROUTES = [
   "/register",
   "/product",
   "/cart",
-  "/review"
+  "/review",
+  "/profile"
 ];
 
 export function LuckyDrawFloatingButton() {

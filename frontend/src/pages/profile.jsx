@@ -806,7 +806,7 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen flex flex-col bg-background selection:bg-primary/20">
       <Navbar />
-      <main className="flex-1 pt-[calc(4.75rem+env(safe-area-inset-top,0px))] sm:pt-20 lg:pt-22 pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))] sm:pb-20">
+      <main className="flex-1 pt-[calc(4.75rem+env(safe-area-inset-top,0px))] sm:pt-20 lg:pt-22 pb-[calc(8.5rem+env(safe-area-inset-bottom,0px))] sm:pb-20">
         <PageTransition>
           <div className={cn(
             "mx-auto px-3 sm:px-6 lg:px-8 space-y-3.5 sm:space-y-5 transition-all",

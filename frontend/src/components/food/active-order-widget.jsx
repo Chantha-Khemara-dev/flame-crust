@@ -30,6 +30,7 @@ const HIDDEN_ROUTES = [
   "/product",
   "/cart",
   "/review",
+  "/profile"
 ];
 
 export function ActiveOrderWidget() {
@@ -116,7 +117,7 @@ export function ActiveOrderWidget() {
   }, [location.pathname]);
 
   useEffect(() => {
-    const isHiddenRoute = HIDDEN_ROUTES.some((route) => location.pathname.startsWith(route));
+    const isHiddenRoute = ["/checkout", "/payment", "/login", "/profile"].some(path => location.pathname.startsWith(path));
     const isBig = !isHiddenRoute && !isCartOpen && activeOrders.length > 0 && !isDismissed && !modalOpen;
     try {
       sessionStorage.setItem("flame_time_driver_expanded", isBig ? "true" : "false");
