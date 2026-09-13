@@ -13,6 +13,111 @@ if (typeof window !== 'undefined' && 'caches' in window) {
   caches.delete('static-assets').catch(() => {});
 }
 
+// -------------------------------------------------------------
+// Real-time Version Poller & Instant PWA Update Engine
+// -------------------------------------------------------------
+const CURRENT_VERSION = typeof __APP_BUILD_TIME__ !== 'undefined' ? __APP_BUILD_TIME__ : 'dev';
+let isUpdating = false;
+
+function showUpdateNotification() {
+  if (typeof document === 'undefined') return;
+  const existing = document.getElementById('pwa-update-banner');
+  if (existing) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'pwa-update-banner';
+  banner.style.cssText = `
+    position: fixed;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #EF4444, #DC2626);
+    color: #ffffff;
+    padding: 10px 22px;
+    border-radius: 9999px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 10px 30px -5px rgba(239, 68, 68, 0.6);
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    pointer-events: none;
+    font-family: system-ui, -apple-system, sans-serif;
+  `;
+  banner.innerHTML = `
+    <span style="display:inline-block;width:12px;height:12px;border:2px solid #ffffff;border-top-color:transparent;border-radius:50%;animation:fc-spin 0.8s linear infinite;"></span>
+    <span>🚀 កំណែថ្មីកំពុង Update Real-time...</span>
+    <style>@keyframes fc-spin { to { transform: rotate(360deg); } }</style>
+  `;
+  document.body.appendChild(banner);
+}
+
+async function triggerInstantUpdate(newVersion) {
+  if (isUpdating) return;
+  isUpdating = true;
+  console.log(`[PWA Update] Applying update: ${CURRENT_VERSION} -> ${newVersion}`);
+  showUpdateNotification();
+
+  try {
+    // 1. Purge all cache storages
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    // 2. Prompt service workers to activate
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const reg of regs) {
+        if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        await reg.update().catch(() => {});
+      }
+    }
+  } catch (err) {
+    console.error('[PWA Update Error]', err);
+  }
+
+  // 3. Instant hard reload with cache-buster
+  setTimeout(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('_v', Date.now());
+    window.location.replace(url.toString());
+  }, 600);
+}
+
+async function checkVersion() {
+  if (isUpdating || CURRENT_VERSION === 'dev') return;
+  try {
+    const res = await fetch(`/version.json?_t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      }
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.version && data.version !== CURRENT_VERSION) {
+      triggerInstantUpdate(data.version);
+    }
+  } catch (err) {
+    // Silent on offline/network errors
+  }
+}
+
+// Check every 5 seconds for real-time deployment updates
+setInterval(checkVersion, 5000);
+
+// Check on mobile app switch / focus / network reconnect
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') checkVersion();
+  });
+  window.addEventListener('focus', checkVersion);
+  window.addEventListener('online', checkVersion);
+}
+setTimeout(checkVersion, 1000);
+
 let isRefreshing = false;
 
 const updateSW = registerSW({
@@ -22,15 +127,12 @@ const updateSW = registerSW({
   },
   onRegisteredSW(swUrl, registration) {
     if (registration) {
-      // If a worker is already waiting, activate it immediately
       if (registration.waiting) {
         registration.waiting.postMessage({ type: 'SKIP_WAITING' });
       }
 
-      // Check for updates on startup
       registration.update().catch(() => {});
 
-      // Watch for new updates arriving in background
       registration.addEventListener('updatefound', () => {
         const installingWorker = registration.installing;
         if (installingWorker) {
@@ -42,20 +144,9 @@ const updateSW = registerSW({
         }
       });
 
-      // Check for SW updates every 15 seconds
       setInterval(() => {
         registration.update().catch(() => {});
-      }, 15 * 1000);
-
-      // Check for updates when user switches back to the app or window gains focus
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") {
-          registration.update().catch(() => {});
-        }
-      });
-      window.addEventListener("focus", () => {
-        registration.update().catch(() => {});
-      });
+      }, 10 * 1000);
     }
   }
 });
@@ -63,9 +154,9 @@ const updateSW = registerSW({
 // Immediately reload when new Service Worker takes control so phone PWA updates instantly
 if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!isRefreshing) {
+    if (!isRefreshing && !isUpdating) {
       isRefreshing = true;
-      window.location.reload();
+      triggerInstantUpdate('sw-controller');
     }
   });
 }
