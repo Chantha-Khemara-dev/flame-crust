@@ -1155,7 +1155,7 @@ export default function ProfilePage() {
                         </div>
                         <button
                           type="button"
-                          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                          onClick={(e) => setTheme(theme === "dark" ? "light" : "dark", e)}
                           className="h-7 sm:h-8 px-2.5 sm:px-3.5 rounded-full bg-secondary hover:bg-secondary/80 border border-border/60 text-[10px] sm:text-xs font-semibold text-foreground flex items-center gap-1 sm:gap-1.5 transition-all active:scale-95 cursor-pointer shadow-2xs"
                         >
                           {theme === "dark" ? <Moon className="size-3 sm:size-3.5" /> : <Sun className="size-3 sm:size-3.5" />}

@@ -535,7 +535,7 @@ function Navbar() {
               variant="ghost"
               size="icon"
               className="hidden sm:inline-flex size-10 sm:size-11 shrink-0 rounded-full text-foreground/70 hover:text-primary"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              onClick={(e) => setTheme(theme === "dark" ? "light" : "dark", e)}
               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             >
               {theme === "dark" ? <Sun className="size-4 sm:size-5" /> : <Moon className="size-4 sm:size-5" />}
@@ -810,7 +810,7 @@ function Navbar() {
                 {/* Theme Switcher in Mobile Drawer */}
                 <button
                   type="button"
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  onClick={(e) => setTheme(theme === "dark" ? "light" : "dark", e)}
                   className="px-4 py-2.5 text-sm font-medium rounded-xl transition-colors text-foreground/80 hover:text-primary hover:bg-secondary/60 flex items-center justify-between cursor-pointer"
                 >
                   <span className="flex items-center gap-2">

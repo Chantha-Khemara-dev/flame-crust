@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 
 const ThemeContext = createContext({ theme: "light", setTheme: () => {} });
 
@@ -16,6 +16,7 @@ if (typeof window !== "undefined") {
 }
 
 export function ThemeProvider({ children, defaultTheme = "light" }) {
+  const isTransitioningRef = useRef(false);
   const [theme, setThemeState] = useState(() => {
     if (typeof window !== "undefined") {
       return (
@@ -28,7 +29,8 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
   });
 
   const setTheme = (newTheme, event) => {
-    if (newTheme === theme) return;
+    if (newTheme === theme || isTransitioningRef.current) return;
+    isTransitioningRef.current = true;
 
     // Determine the origin point of the ripple (from event or last known click coordinate)
     const x = event?.clientX ?? lastPointerPos.x;
@@ -53,52 +55,23 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
       }
     };
 
-    // Guaranteed Telegram circular reveal overlay for Firefox on Linux, WebViews, etc.
-    const runFallbackCircleReveal = () => {
+    // Silky smooth CSS cross-fade fallback for browsers without View Transitions (prevents layout thrashing/freezing)
+    const runFallbackSmooth = () => {
       if (typeof document === "undefined" || isReducedMotion) {
         applyThemeState();
+        isTransitioningRef.current = false;
         return;
       }
-
       try {
-        const overlay = document.createElement("div");
-        overlay.style.cssText = `
-          position: fixed;
-          inset: 0;
-          z-index: 9999999;
-          pointer-events: none;
-          overflow: hidden;
-          background-color: ${newTheme === "dark" ? "oklch(0.16 0.015 30)" : "oklch(0.985 0.012 75)"};
-          clip-path: circle(0px at ${x}px ${y}px);
-          -webkit-clip-path: circle(0px at ${x}px ${y}px);
-          transition: clip-path 550ms cubic-bezier(0.2, 0, 0, 1), -webkit-clip-path 550ms cubic-bezier(0.2, 0, 0, 1);
-          will-change: clip-path;
-        `;
-        document.body.appendChild(overlay);
-
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            const targetRadius = `${Math.ceil(endRadius * 1.15)}px`;
-            overlay.style.clipPath = `circle(${targetRadius} at ${x}px ${y}px)`;
-            overlay.style.webkitClipPath = `circle(${targetRadius} at ${x}px ${y}px)`;
-          });
-        });
-
-        // Switch underlying theme when the circle is expanding across the screen
+        document.documentElement.classList.add("theme-transitioning");
+        applyThemeState();
         setTimeout(() => {
-          applyThemeState();
-        }, 260);
-
-        // Smoothly dismiss overlay after full expansion
-        setTimeout(() => {
-          overlay.style.transition = "opacity 160ms ease-out";
-          overlay.style.opacity = "0";
-          setTimeout(() => {
-            overlay.remove();
-          }, 180);
-        }, 560);
+          document.documentElement.classList.remove("theme-transitioning");
+          isTransitioningRef.current = false;
+        }, 750);
       } catch {
         applyThemeState();
+        isTransitioningRef.current = false;
       }
     };
 
@@ -115,34 +88,43 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
 
         transition.ready
           .then(() => {
-            // Expand the new theme outward in a silky circular ripple like Telegram
+            // Expand the new theme outward in a silky circular ripple (750ms, graceful deceleration, zero lag)
             const anim = document.documentElement.animate(
               {
                 clipPath: [
                   `circle(0px at ${x}px ${y}px)`,
-                  `circle(${endRadius}px at ${x}px ${y}px)`,
+                  `circle(${Math.ceil(endRadius * 1.05)}px at ${x}px ${y}px)`,
                 ],
               },
               {
-                duration: 620,
-                easing: "cubic-bezier(0.2, 0, 0, 1)",
+                duration: 750,
+                easing: "cubic-bezier(0.25, 1, 0.5, 1)",
                 pseudoElement: "::view-transition-new(root)",
+                fill: "forwards",
               }
             );
 
-            anim.addEventListener("error", () => {
-              runFallbackCircleReveal();
-            });
+            anim.finished
+              .then(() => {
+                isTransitioningRef.current = false;
+              })
+              .catch(() => {
+                isTransitioningRef.current = false;
+              });
           })
           .catch(() => {
-            runFallbackCircleReveal();
+            runFallbackSmooth();
+          });
+
+        transition.finished
+          .finally(() => {
+            isTransitioningRef.current = false;
           });
       } catch {
-        runFallbackCircleReveal();
+        runFallbackSmooth();
       }
     } else {
-      // Guaranteed Telegram Circular Reveal for Firefox on Linux, WebViews, etc.
-      runFallbackCircleReveal();
+      runFallbackSmooth();
     }
   };
 
