@@ -17,6 +17,7 @@ import { useCart } from "@/lib/cart-store";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PaymentForm } from "./payment-form.jsx";
+import { AvailableCoupons } from "./available-coupons.jsx";
 import { useNavigate, useLocation } from "react-router-dom";
 import { triggerFoodRefresh } from "@/lib/food-api";
 
@@ -440,14 +441,159 @@ export function CartDrawer() {
                       </motion.div>
                     ))}
                   </AnimatePresence>
+
+                  {/* Coupon & Promo Section */}
+                  {coupon ? (
+                    <div className={cn(
+                      "mt-3.5 p-3 rounded-2xl border transition-all flex items-center justify-between gap-2.5 shadow-2xs",
+                      isCouponValid 
+                        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-950 dark:text-emerald-100" 
+                        : "bg-amber-500/10 border-amber-500/30 text-amber-950 dark:text-amber-100"
+                    )}>
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className={cn(
+                          "size-8 rounded-xl flex items-center justify-center shrink-0",
+                          isCouponValid ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                        )}>
+                          <Ticket className="size-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-mono font-bold text-xs sm:text-sm tracking-wider uppercase">{coupon.code}</span>
+                            {coupon.isLuckyDraw && (
+                              <span className="text-[9px] bg-amber-500/20 text-amber-700 dark:text-amber-300 px-1.5 py-0.2 rounded-full font-bold">
+                                ✨ Lucky
+                              </span>
+                            )}
+                            {isCouponValid && (
+                              <span className="text-[9px] bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.2 rounded-full font-bold">
+                                Applied
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] opacity-80 mt-0.5 truncate font-medium">
+                            {coupon.discount_type === "FREE_DELIVERY"
+                              ? "Free Delivery on your order"
+                              : coupon.discount_type === "PERCENTAGE"
+                                ? `${coupon.discount_value}% OFF (-$${discount.toFixed(2)})`
+                                : `$${coupon.discount_value} OFF (-$${discount.toFixed(2)})`}
+                          </p>
+                          {!isCouponValid && coupon.min_order_amount && (
+                            <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold mt-0.5">
+                              Need ${(Number(coupon.min_order_amount) - grossSubtotal).toFixed(2)} more for min. order (${coupon.min_order_amount})
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <AvailableCoupons
+                          onSelectCoupon={(c) => applyCoupon(c)}
+                          currentCoupon={coupon}
+                          subtotal={grossSubtotal}
+                          trigger={
+                            <button
+                              type="button"
+                              className="text-[11px] font-semibold text-primary hover:underline px-2 py-1 rounded-md hover:bg-primary/5 transition-colors cursor-pointer"
+                            >
+                              Change
+                            </button>
+                          }
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (typeof clearCoupon === "function") clearCoupon();
+                            toast.info("Coupon removed");
+                          }}
+                          className="p-1 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                          title="Remove Coupon"
+                        >
+                          <X className="size-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-3.5 p-3 rounded-2xl bg-secondary/40 border border-border/60 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                          <Ticket className="size-3.5 text-primary" /> Coupons &amp; Promo Codes
+                        </span>
+                        <AvailableCoupons
+                          onSelectCoupon={(c) => applyCoupon(c)}
+                          currentCoupon={coupon}
+                          subtotal={grossSubtotal}
+                          trigger={
+                            <button
+                              type="button"
+                              className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                            >
+                              <span>Browse Coupons</span>
+                              <ArrowRight className="size-3" />
+                            </button>
+                          }
+                        />
+                      </div>
+
+                      {/* Quick manual promo code input */}
+                      <form onSubmit={handleApplyCoupon} className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <input
+                            type="text"
+                            value={couponCode}
+                            onChange={(e) => {
+                              setCouponCode(e.target.value.toUpperCase());
+                              if (couponError) setCouponError("");
+                            }}
+                            placeholder="Enter promo code"
+                            className="w-full h-8 px-3 rounded-xl bg-background border border-border/80 text-xs font-mono font-bold uppercase placeholder:font-normal placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
+                          />
+                        </div>
+                        <Button
+                          type="submit"
+                          size="sm"
+                          disabled={!couponCode.trim() || isApplying}
+                          className="h-8 px-3.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shrink-0 cursor-pointer shadow-2xs"
+                        >
+                          {isApplying ? <Loader2 className="size-3.5 animate-spin" /> : "Apply"}
+                        </Button>
+                      </form>
+                      {couponError && (
+                        <p className="text-[11px] text-destructive font-medium">{couponError}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Footer Section in Drawer */}
-                <div className="border-t border-border/60 px-5 sm:px-6 pt-4 pb-6 bg-card space-y-3">
-                  {/* Subtotal & Total */}
-                  <div className="flex justify-between items-baseline font-bold text-sm pt-1">
-                    <span className="text-foreground">Total ({itemCount} {itemCount === 1 ? "item" : "items"})</span>
-                    <span className="font-serif text-2xl font-bold text-primary">${grossSubtotal.toFixed(2)}</span>
+                <div className="border-t border-border/60 px-5 sm:px-6 pt-3.5 pb-6 bg-card space-y-3">
+                  {/* Price Breakdown */}
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex justify-between text-muted-foreground font-medium">
+                      <span>Subtotal ({itemCount} {itemCount === 1 ? "item" : "items"})</span>
+                      <span className="font-semibold text-foreground">${grossSubtotal.toFixed(2)}</span>
+                    </div>
+
+                    {discount > 0 && (
+                      <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
+                        <span className="flex items-center gap-1">
+                          <Ticket className="size-3" /> Coupon ({coupon?.code})
+                        </span>
+                        <span>-${discount.toFixed(2)}</span>
+                      </div>
+                    )}
+
+                    {coupon?.discount_type === "FREE_DELIVERY" && (
+                      <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
+                        <span>Delivery</span>
+                        <span className="uppercase text-[10px] bg-emerald-500/15 px-1.5 py-0.5 rounded-md font-bold">FREE</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-baseline font-bold text-sm pt-2 border-t border-border/40">
+                      <span className="text-foreground">Total</span>
+                      <span className="font-serif text-2xl font-bold text-primary">${subtotal.toFixed(2)}</span>
+                    </div>
                   </div>
 
                   {/* Proceed to Payment in Drawer */}
@@ -455,7 +601,7 @@ export function CartDrawer() {
                     onClick={handleCheckout}
                     className="w-full h-12 rounded-full bg-gradient-to-r from-primary to-orange-500 hover:from-primary/90 hover:to-orange-500/90 text-white font-bold text-sm shadow-md shadow-primary/20 cursor-pointer active:scale-98 transition-all"
                   >
-                    Proceed to Payment (${grossSubtotal.toFixed(2)})
+                    Proceed to Payment (${subtotal.toFixed(2)})
                     <ArrowRight className="size-4 ml-1.5" />
                   </Button>
 

@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/theme-provider.jsx";
 import { SearchModal } from "./search-modal";
 import { fetchCategories } from "@/lib/food-api";
+import { AvailableCoupons } from "./available-coupons.jsx";
 
 
 let cachedActiveOrders = [];
@@ -775,6 +776,26 @@ function Navbar() {
                   <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">Free Daily</span>
                 </button>
 
+                {/* My Coupons in Mobile Drawer */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    if (customer) {
+                      navigate("/profile?tab=coupons");
+                    } else {
+                      window.dispatchEvent(new CustomEvent("openAvailableCouponsModal"));
+                    }
+                  }}
+                  className="px-4 py-2.5 text-sm font-medium rounded-xl transition-colors text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 flex items-center justify-between cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <Ticket className="size-4 text-emerald-600 dark:text-emerald-400" />
+                    <span className="font-bold text-foreground">My Coupons &amp; Offers</span>
+                  </span>
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">View</span>
+                </button>
+
                 {/* Theme Switcher in Mobile Drawer */}
                 <button
                   type="button"
@@ -955,6 +976,9 @@ function Navbar() {
           }}
         />
       )}
+
+      {/* Global Available Coupons Modal */}
+      <AvailableCoupons trigger={<span className="hidden" />} />
     </header>
   );
 }

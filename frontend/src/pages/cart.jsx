@@ -30,15 +30,102 @@ const DELIVERY_FEE = 3.99;
 
 function CartPage() {
   const navigate = useNavigate();
-  const { lines, increment, decrement, removeItem, clear, closeCart } = useCart();
+  const { 
+    lines, 
+    increment, 
+    decrement, 
+    removeItem, 
+    clear, 
+    closeCart,
+    coupon,
+    applyCoupon,
+    clearCoupon
+  } = useCart();
+
+  const [couponCode, setCouponCode] = useState("");
+  const [couponError, setCouponError] = useState("");
+  const [isApplying, setIsApplying] = useState(false);
 
   useEffect(() => {
     closeCart();
   }, [closeCart]);
 
-  const subtotal = lines.reduce((s, l) => s + l.price * l.qty, 0);
+  const grossSubtotal = lines.reduce((s, l) => s + l.price * l.qty, 0);
   const itemCount = lines.reduce((s, l) => s + l.qty, 0);
+  const isCouponValid = coupon && (!coupon.min_order_amount || grossSubtotal >= Number(coupon.min_order_amount));
+  const discount = isCouponValid
+    ? coupon.discount_type === "PERCENTAGE"
+      ? Math.min(grossSubtotal, (grossSubtotal * Number(coupon.discount_value)) / 100)
+      : coupon.discount_type === "FREE_DELIVERY"
+        ? 0
+        : Math.min(grossSubtotal, Number(coupon.discount_value))
+    : 0;
+  const subtotal = grossSubtotal - discount;
   const total = subtotal;
+
+  const handleApplyCoupon = async (e) => {
+    e.preventDefault();
+    if (!couponCode.trim()) return;
+    setIsApplying(true);
+    setCouponError("");
+    try {
+      const targetCode = couponCode.trim().toUpperCase();
+
+      // Check won Lucky Draw vouchers first
+      try {
+        const { getCurrentAccount, getWonCoupons, formatWonVouchersAsCoupons } = await import("@/components/food/lucky-draw-modal.jsx");
+        const acc = getCurrentAccount();
+        const rawWon = getWonCoupons(acc.storageKey);
+        const wonCouponsList = formatWonVouchersAsCoupons(rawWon);
+        const wonMatch = wonCouponsList.find((v) => v.code === targetCode);
+
+        if (wonMatch) {
+          if (wonMatch.isUsed) {
+            setCouponError("You have already used this Lucky Draw voucher.");
+            return;
+          }
+          if (wonMatch.isExpired) {
+            setCouponError("This Lucky Draw voucher has expired.");
+            return;
+          }
+          const minOrder = Number(wonMatch.min_order_amount || 0);
+          if (minOrder > 0 && grossSubtotal < minOrder) {
+            setCouponError(`Minimum order amount is $${minOrder.toFixed(2)}`);
+            return;
+          }
+
+          applyCoupon(wonMatch, acc.storageKey);
+          setCouponCode("");
+          toast.success(`🎉 Lucky Draw voucher "${wonMatch.code}" applied!`);
+          return;
+        }
+      } catch (e) {}
+
+      if (targetCode.includes("-")) {
+        setCouponError("This voucher belongs to another account or is invalid.");
+        return;
+      }
+
+      const { list } = await import("@/lib/api");
+      const coupons = await list("coupons");
+      const found = coupons.find(c => c.code.toUpperCase() === targetCode);
+      if (!found || !found.active) {
+        setCouponError("Invalid or inactive promo code.");
+      } else if (found.min_order_amount && grossSubtotal < Number(found.min_order_amount)) {
+        setCouponError(`Minimum order amount is $${Number(found.min_order_amount).toFixed(2)}`);
+      } else {
+        const { getCurrentAccount } = await import("@/components/food/lucky-draw-modal.jsx");
+        const acc = getCurrentAccount();
+        applyCoupon(found, acc?.storageKey || "guest");
+        setCouponCode("");
+        toast.success(`Promo code "${found.code}" applied!`);
+      }
+    } catch {
+      setCouponError("Failed to apply code.");
+    } finally {
+      setIsApplying(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -178,7 +265,157 @@ function CartPage() {
                   </AnimatePresence>
                 </div>
 
+                {/* 2. Coupon & Promo Section */}
+                <div className="bg-card/70 backdrop-blur-md rounded-2xl sm:rounded-3xl border border-border/70 p-3 sm:p-5 shadow-xs space-y-3">
+                  {coupon ? (
+                    <div className={cn(
+                      "p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3",
+                      isCouponValid 
+                        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-950 dark:text-emerald-100" 
+                        : "bg-amber-500/10 border-amber-500/30 text-amber-950 dark:text-amber-100"
+                    )}>
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className={cn(
+                          "size-9 rounded-xl flex items-center justify-center shrink-0",
+                          isCouponValid ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                        )}>
+                          <Ticket className="size-4.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-mono font-bold text-sm tracking-wider uppercase">{coupon.code}</span>
+                            {coupon.isLuckyDraw && (
+                              <span className="text-[10px] bg-amber-500/20 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full font-bold">
+                                ✨ Lucky Prize
+                              </span>
+                            )}
+                            {isCouponValid && (
+                              <span className="text-[10px] bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold">
+                                Applied
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs opacity-80 mt-0.5 truncate font-medium">
+                            {coupon.discount_type === "FREE_DELIVERY"
+                              ? "Free Delivery on your order"
+                              : coupon.discount_type === "PERCENTAGE"
+                                ? `${coupon.discount_value}% OFF (-$${discount.toFixed(2)})`
+                                : `$${coupon.discount_value} OFF (-$${discount.toFixed(2)})`}
+                          </p>
+                          {!isCouponValid && coupon.min_order_amount && (
+                            <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold mt-0.5">
+                              Need ${(Number(coupon.min_order_amount) - grossSubtotal).toFixed(2)} more for min. order (${coupon.min_order_amount})
+                            </p>
+                          )}
+                        </div>
+                      </div>
 
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <AvailableCoupons
+                          onSelectCoupon={(c) => applyCoupon(c)}
+                          currentCoupon={coupon}
+                          subtotal={grossSubtotal}
+                          trigger={
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="rounded-full text-xs h-7 px-3 border-primary/30 text-primary hover:bg-primary/10 font-semibold cursor-pointer"
+                            >
+                              Change
+                            </Button>
+                          }
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (typeof clearCoupon === "function") clearCoupon();
+                            toast.info("Coupon removed");
+                          }}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                          title="Remove Coupon"
+                        >
+                          <X className="size-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                          <Ticket className="size-3.5 text-primary" /> Coupons &amp; Promo Codes
+                        </span>
+                        <AvailableCoupons
+                          onSelectCoupon={(c) => applyCoupon(c)}
+                          currentCoupon={coupon}
+                          subtotal={grossSubtotal}
+                          trigger={
+                            <button
+                              type="button"
+                              className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                            >
+                              <span>Browse Coupons</span>
+                              <ArrowRight className="size-3" />
+                            </button>
+                          }
+                        />
+                      </div>
+
+                      <form onSubmit={handleApplyCoupon} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={couponCode}
+                          onChange={(e) => {
+                            setCouponCode(e.target.value.toUpperCase());
+                            if (couponError) setCouponError("");
+                          }}
+                          placeholder="Enter promo code"
+                          className="w-full h-9 px-3.5 rounded-xl bg-background border border-border/80 text-xs font-mono font-bold uppercase placeholder:font-normal placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
+                        />
+                        <Button
+                          type="submit"
+                          size="sm"
+                          disabled={!couponCode.trim() || isApplying}
+                          className="h-9 px-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shrink-0 cursor-pointer shadow-2xs"
+                        >
+                          {isApplying ? <Loader2 className="size-3.5 animate-spin" /> : "Apply"}
+                        </Button>
+                      </form>
+                      {couponError && (
+                        <p className="text-xs text-destructive font-medium">{couponError}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Order Summary Breakdown */}
+                <div className="bg-card/70 backdrop-blur-md rounded-2xl sm:rounded-3xl border border-border/70 p-4 sm:p-5 shadow-xs space-y-2.5 text-xs sm:text-sm">
+                  <div className="flex justify-between text-muted-foreground font-medium">
+                    <span>Subtotal</span>
+                    <span className="font-semibold text-foreground">${grossSubtotal.toFixed(2)}</span>
+                  </div>
+
+                  {discount > 0 && (
+                    <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
+                      <span className="flex items-center gap-1.5">
+                        <Ticket className="size-3.5" /> Coupon Discount ({coupon?.code})
+                      </span>
+                      <span>-${discount.toFixed(2)}</span>
+                    </div>
+                  )}
+
+                  {coupon?.discount_type === "FREE_DELIVERY" && (
+                    <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
+                      <span>Delivery Fee</span>
+                      <span className="uppercase text-[10px] bg-emerald-500/15 px-1.5 py-0.5 rounded-md font-bold">FREE</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-baseline font-bold text-base sm:text-lg pt-2 border-t border-border/40">
+                    <span className="text-foreground">Total</span>
+                    <span className="font-serif text-2xl sm:text-3xl font-bold text-primary">${total.toFixed(2)}</span>
+                  </div>
+                </div>
 
                 {/* Desktop Checkout Button (Hidden on Mobile) */}
                 <div className="hidden sm:block pt-2">
