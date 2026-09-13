@@ -338,12 +338,24 @@ export default function PaymentGatewayPage() {
       // Order already exists, just update it and create payment record
       try {
         const dbMethod = ["CASH", "CARD", "ABA_PAY", "WING"].includes(paymentMethod) ? paymentMethod : "KHQR";
-        await create("payments", {
-          order_id: orderId,
-          method: dbMethod,
-          status: "PAID",
-          amount: Number(Number(totalAmount).toFixed(2))
-        });
+        const paymentsRes = await list("payments", { limit: 100 }).catch(() => []);
+        const paymentList = Array.isArray(paymentsRes) ? paymentsRes : (paymentsRes.items || paymentsRes.content || []);
+        const existingPayment = paymentList.find(p => String(p.order_id || p.orderId) === String(orderId));
+
+        if (existingPayment?.id) {
+          await update("payments", existingPayment.id, {
+            method: dbMethod,
+            status: "PAID",
+            amount: Number(Number(totalAmount).toFixed(2))
+          });
+        } else {
+          await create("payments", {
+            order_id: orderId,
+            method: dbMethod,
+            status: "PAID",
+            amount: Number(Number(totalAmount).toFixed(2))
+          }).catch(() => {});
+        }
         await update("orders", orderId, { status: "CONFIRMED" });
       } catch (e) {
         console.error("Failed to update existing order:", e);
@@ -402,16 +414,45 @@ export default function PaymentGatewayPage() {
     setIsSwitchingMethod(true);
     try {
       if (orderId) {
-        await update("orders", orderId, {
-          payment_method: "CASH",
-          status: "PENDING"
-        });
-        await create("payments", {
-          order_id: orderId,
-          method: "CASH",
-          status: "PENDING",
-          amount: Number(Number(totalAmount).toFixed(2))
-        });
+        let switched = false;
+        try {
+          const res = await fetch(`${API_URL}/payments/switch-to-cash`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ orderId })
+          });
+          if (res.ok) {
+            switched = true;
+          }
+        } catch (err) {
+          console.warn("Backend switch-to-cash endpoint call failed, falling back to direct update:", err);
+        }
+
+        if (!switched) {
+          // Fallback: update existing payment record instead of creating duplicate
+          const paymentsRes = await list("payments", { limit: 100 }).catch(() => []);
+          const paymentList = Array.isArray(paymentsRes) ? paymentsRes : (paymentsRes.items || paymentsRes.content || []);
+          const existingPayment = paymentList.find(p => String(p.order_id || p.orderId) === String(orderId));
+
+          if (existingPayment?.id) {
+            await update("payments", existingPayment.id, {
+              method: "CASH",
+              status: "PENDING",
+              amount: Number(Number(totalAmount).toFixed(2))
+            });
+          } else {
+            await create("payments", {
+              order_id: orderId,
+              method: "CASH",
+              status: "PENDING",
+              amount: Number(Number(totalAmount).toFixed(2))
+            }).catch(e => console.warn("Payment insert fallback:", e));
+          }
+
+          await update("orders", orderId, {
+            status: "PENDING"
+          });
+        }
       }
       try {
         useCart.getState().clear();

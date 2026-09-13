@@ -130,4 +130,38 @@ public class PaymentVerificationController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
+
+    @PostMapping("/switch-to-cash")
+    public ResponseEntity<Map<String, Object>> switchToCash(@RequestBody Map<String, Object> body) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            Object orderIdObj = body.get("orderId");
+            if (orderIdObj == null || orderIdObj.toString().trim().isEmpty()) {
+                response.put("status", "ERROR");
+                response.put("message", "Missing orderId");
+                return ResponseEntity.badRequest().body(response);
+            }
+            Long orderId = Long.parseLong(orderIdObj.toString());
+
+            // 1. Update existing payment record to CASH, or insert if not created yet
+            int updated = jdbcTemplate.update("UPDATE payments SET method = 'CASH', status = 'PENDING' WHERE order_id = ?", orderId);
+            if (updated == 0) {
+                Double total = jdbcTemplate.queryForObject("SELECT total FROM orders WHERE id = ?", Double.class, orderId);
+                double amt = total != null ? total : 0.0;
+                jdbcTemplate.update("INSERT INTO payments (order_id, method, status, amount) VALUES (?, 'CASH', 'PENDING', ?)", orderId, amt);
+            }
+
+            // 2. Keep order status as PENDING
+            jdbcTemplate.update("UPDATE orders SET status = 'PENDING' WHERE id = ?", orderId);
+            jdbcTemplate.update("INSERT INTO order_status_history (order_id, status, notes) VALUES (?, 'PENDING', 'Switched payment method to Cash on Delivery (COD)')", orderId);
+
+            response.put("status", "SUCCESS");
+            response.put("message", "Switched payment method to Cash on Delivery");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("status", "ERROR");
+            response.put("message", "Failed to switch to cash: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
 }
