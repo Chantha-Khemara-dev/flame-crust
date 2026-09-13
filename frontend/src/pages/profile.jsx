@@ -270,18 +270,25 @@ export default function ProfilePage() {
         }
         if (activeCoupons.length === 0) {
           activeCoupons = (Array.isArray(allCoupons) ? allCoupons : (allCoupons?.items || []))
-            .filter(cp => cp.active == 1 || cp.active === true);
+            .filter(cp => (cp.active == 1 || cp.active === true) && !String(cp.code || "").includes("-"));
         }
       }
 
-      // Merge local won vouchers so customer always sees them immediately
+      // Merge ONLY this customer's won local vouchers
       try {
-        const localWon = getWonCoupons(c.id || c.phone || "guest");
+        const userKey = `user_${c.id || c.phone || c.email || "guest"}`;
+        let localWon = getWonCoupons(userKey);
+        if (!localWon || localWon.length === 0) {
+          localWon = getWonCoupons(c.id || c.phone || "guest");
+        }
         const formattedWon = formatWonVouchersAsCoupons(localWon);
         const existingCodes = new Set(activeCoupons.map((cp) => (cp.code || "").toUpperCase()));
         for (const fw of formattedWon) {
           if (fw.code && !existingCodes.has(fw.code.toUpperCase())) {
-            activeCoupons.unshift(fw);
+            activeCoupons.unshift({
+              ...fw,
+              accountKey: userKey,
+            });
             existingCodes.add(fw.code.toUpperCase());
           }
         }
@@ -719,6 +726,9 @@ export default function ProfilePage() {
     localStorage.removeItem("driverAuth");
     localStorage.removeItem("kitchenAuth");
     localStorage.removeItem("flame_customer_cover");
+    try {
+      useCart.getState().clearCoupon();
+    } catch (e) {}
     window.dispatchEvent(new Event("authChanged"));
     navigate("/");
   };
@@ -1881,7 +1891,8 @@ export default function ProfilePage() {
                                   <Button
                                     size="sm"
                                     onClick={() => {
-                                      applyCoupon(coupon);
+                                      const userKey = `user_${customer?.id || customer?.phone || "guest"}`;
+                                      applyCoupon(coupon, coupon.accountKey || userKey);
                                       toast.success(`Coupon "${coupon.code}" applied to cart!`);
                                       openCart();
                                     }}

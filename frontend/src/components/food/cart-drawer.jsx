@@ -48,6 +48,17 @@ export function CartDrawer() {
     setMounted(true);
   }, []);
 
+  // Validate coupon belongs to currently active account
+  useEffect(() => {
+    if (coupon && coupon.accountKey) {
+      import("@/lib/cart-store").then(({ getCurrentAccountKey }) => {
+        if (coupon.accountKey !== getCurrentAccountKey()) {
+          if (typeof clearCoupon === "function") clearCoupon();
+        }
+      });
+    }
+  }, [isOpen, coupon]);
+
   // Reset payment view when drawer closes
   useEffect(() => {
     if (!isOpen) {
@@ -222,12 +233,18 @@ export function CartDrawer() {
             return;
           }
 
-          applyCoupon(wonMatch);
+          applyCoupon(wonMatch, acc.storageKey);
           setCouponCode("");
           toast.success(`🎉 Lucky Draw voucher "${wonMatch.code}" applied!`);
           return;
         }
       } catch (e) {}
+
+      // Reject hyphenated personal vouchers not belonging to this account
+      if (targetCode.includes("-")) {
+        setCouponError("This voucher belongs to another account or is invalid.");
+        return;
+      }
 
       const { list } = await import("@/lib/api");
       const coupons = await list("coupons");
@@ -237,7 +254,9 @@ export function CartDrawer() {
       } else if (found.min_order_amount && grossSubtotal < Number(found.min_order_amount)) {
         setCouponError(`Minimum order amount is $${Number(found.min_order_amount).toFixed(2)}`);
       } else {
-        applyCoupon(found);
+        const { getCurrentAccount } = await import("./lucky-draw-modal.jsx");
+        const acc = getCurrentAccount();
+        applyCoupon(found, acc?.storageKey || "guest");
         setCouponCode("");
         toast.success(`Promo code "${found.code}" applied!`);
       }

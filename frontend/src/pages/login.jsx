@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import { API_URL } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useGoogleLogin } from "@react-oauth/google";
+import { useCart } from "@/lib/cart-store";
 
 function getPasswordStrength(pwd) {
   if (!pwd) return { score: 0, label: "", color: "", textColor: "" };
@@ -135,6 +136,9 @@ export default function LoginPage() {
     };
 
     localStorage.setItem("customerAuth", JSON.stringify(authObject));
+    try {
+      useCart.getState().clearCoupon();
+    } catch (e) {}
     window.dispatchEvent(new Event("authChanged"));
     toast.success(`Welcome, ${customerData.name || seedName}!`);
 

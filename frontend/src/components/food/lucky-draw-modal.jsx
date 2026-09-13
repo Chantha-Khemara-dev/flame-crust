@@ -409,26 +409,8 @@ export async function syncLocalVouchersToDatabase(storageKey) {
     let hasUpdates = false;
     for (const v of vouchers) {
       if (!v.syncedToDb && v.code) {
-        if (!v.code.includes("-")) {
-          v.code = `${v.code}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-        }
-        try {
-          await create("coupons", {
-            code: v.code,
-            discount_type: v.type || "FIXED",
-            discount_value: Number(v.value || 0),
-            min_order_amount: Number(v.minOrder || 0),
-            expires_at: v.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-            active: !v.used,
-            used_count: v.used ? 1 : 0
-          });
-          v.syncedToDb = true;
-          hasUpdates = true;
-        } catch (e) {
-          // If already exists in database or error, mark as synced to prevent repeated fails
-          v.syncedToDb = true;
-          hasUpdates = true;
-        }
+        v.syncedToDb = true;
+        hasUpdates = true;
       }
     }
 
@@ -440,7 +422,7 @@ export async function syncLocalVouchersToDatabase(storageKey) {
       }
     }
   } catch (err) {
-    console.warn("Failed to sync vouchers to database:", err);
+    console.warn("Failed to sync vouchers:", err);
   }
 }
 
@@ -880,29 +862,10 @@ export function LuckyDrawModal({ open, onOpenChange }) {
       return updated;
     });
 
-    // Save directly to real database coupons table
-    create("coupons", {
-      code: personalCode,
-      discount_type: targetPrize.type || "FIXED",
-      discount_value: Number(targetPrize.value || 0),
-      min_order_amount: Number(targetPrize.minOrder || 0),
-      expires_at: newVoucher.expiresAt,
-      active: true,
-      used_count: 0,
-    })
-      .then(() => {
-        newVoucher.syncedToDb = true;
-        const currentList = getWonCoupons(currentAcc.storageKey);
-        const updatedList = currentList.map((v) => (v.code === personalCode ? { ...v, syncedToDb: true } : v));
-        localStorage.setItem(`flame_lucky_draw_vouchers_${currentAcc.storageKey}`, JSON.stringify(updatedList));
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new CustomEvent("flame_coupons_updated"));
-          window.dispatchEvent(new CustomEvent("couponsChanged"));
-        }
-      })
-      .catch((err) => {
-        console.warn("Could not immediately create coupon in database:", err);
-      });
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("flame_coupons_updated"));
+      window.dispatchEvent(new CustomEvent("couponsChanged"));
+    }
 
     if (soundEnabled) {
       playWinSound(audioCtxRef);
@@ -1032,6 +995,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
   };
 
   const handleApplyToCart = (prize) => {
+    const currentAcc = getCurrentAccount();
     applyCoupon({
       id: `lucky_${prize.code}_${prize.wonAt || Date.now()}`,
       code: prize.code,
@@ -1041,7 +1005,8 @@ export function LuckyDrawModal({ open, onOpenChange }) {
       description: `Won from Lucky Draw (${prize.label})`,
       isLuckyDraw: true,
       active: true,
-    });
+      accountKey: currentAcc.storageKey,
+    }, currentAcc.storageKey);
     toast.success(`Voucher "${prize.code}" applied to cart!`);
     onOpenChange(false);
     openCart();

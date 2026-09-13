@@ -26,8 +26,12 @@ export function AvailableCoupons({ onSelectCoupon, currentCoupon, subtotal = 0 }
     try {
       setLoading(true);
       const data = await list("coupons");
-      // Filter out completely inactive ones, or those that reached global usage limit
-      let activeCoupons = data.filter(c => c.active && (c.usage_limit === null || c.used_count < c.usage_limit));
+      // Only show public promo codes from DB (codes without hyphens). Personal lucky draw vouchers contain '-' and are private to the winning account.
+      let activeCoupons = data.filter(c => 
+        c.active && 
+        (c.usage_limit === null || c.used_count < c.usage_limit) &&
+        !String(c.code).includes("-")
+      );
 
       // Mark already used coupons for the current user instead of removing them
       try {
@@ -52,7 +56,7 @@ export function AvailableCoupons({ onSelectCoupon, currentCoupon, subtotal = 0 }
         console.warn("Failed to check coupon usages", e);
       }
 
-      // Merge customer's won Lucky Draw vouchers
+      // Merge ONLY the CURRENT customer's won Lucky Draw vouchers
       try {
         const acc = getCurrentAccount();
         const rawWon = getWonCoupons(acc.storageKey);
@@ -80,7 +84,11 @@ export function AvailableCoupons({ onSelectCoupon, currentCoupon, subtotal = 0 }
   };
 
   const handleSelect = (coupon) => {
-    onSelectCoupon(coupon);
+    const acc = getCurrentAccount();
+    onSelectCoupon({
+      ...coupon,
+      accountKey: acc.storageKey
+    });
     setOpen(false);
   };
 

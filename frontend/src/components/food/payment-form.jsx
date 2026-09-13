@@ -95,8 +95,13 @@ export function PaymentForm({
         setCustomer(c);
         if (c?.name) setCard(prev => ({ ...prev, name: c.name }));
       }
+      // Check if current coupon belongs to another account
+      const acc = getCurrentAccount();
+      if (coupon && coupon.accountKey && coupon.accountKey !== acc.storageKey) {
+        if (typeof onRemoveCoupon === "function") onRemoveCoupon();
+      }
     } catch (e) {}
-  }, []);
+  }, [coupon]);
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -111,12 +116,13 @@ export function PaymentForm({
       let active = [];
       try {
         const data = await list("coupons");
-        active = data.filter(c => c.active);
+        // Only include public promo codes (without hyphen). Personal lucky draw codes contain '-' and belong to specific accounts.
+        active = data.filter(c => c.active && !String(c.code).includes("-"));
       } catch (e) {
         console.warn("Failed to load db coupons", e);
       }
 
-      // Load customer's won Lucky Draw vouchers
+      // Load ONLY the current customer's won Lucky Draw vouchers
       try {
         const acc = getCurrentAccount();
         const rawWon = getWonCoupons(acc.storageKey);
@@ -250,10 +256,10 @@ export function PaymentForm({
     setCouponError("");
     try {
       const targetCode = couponCodeInput.trim().toUpperCase();
+      const acc = getCurrentAccount();
 
-      // 1. Check won Lucky Draw vouchers
+      // 1. Check won Lucky Draw vouchers for current account
       try {
-        const acc = getCurrentAccount();
         const rawWon = getWonCoupons(acc.storageKey);
         const wonCouponsList = formatWonVouchersAsCoupons(rawWon);
         const wonMatch = wonCouponsList.find((v) => v.code === targetCode);
@@ -273,14 +279,23 @@ export function PaymentForm({
             return;
           }
 
-          if (typeof onApplyCoupon === "function") onApplyCoupon(wonMatch);
+          if (typeof onApplyCoupon === "function") {
+            onApplyCoupon({ ...wonMatch, accountKey: acc.storageKey });
+          }
           setCouponCodeInput("");
           toast.success(`🎉 Lucky Draw voucher "${wonMatch.code}" applied!`);
           return;
         }
       } catch (err) {}
 
-      // 2. Check DB coupons
+      // If code has a hyphen, it is a personal lucky draw voucher.
+      // Since it wasn't found in current user's won list, reject it!
+      if (targetCode.includes("-")) {
+        setCouponError("This voucher belongs to another account or is invalid.");
+        return;
+      }
+
+      // 2. Check public DB coupons
       const coupons = await list("coupons");
       const found = coupons.find(c => c.code.toUpperCase() === targetCode);
       if (!found) {
@@ -290,7 +305,9 @@ export function PaymentForm({
       } else if (found.min_order_amount && grossSubtotal < Number(found.min_order_amount)) {
         setCouponError(`Minimum order amount is $${Number(found.min_order_amount).toFixed(2)}`);
       } else {
-        if (typeof onApplyCoupon === "function") onApplyCoupon(found);
+        if (typeof onApplyCoupon === "function") {
+          onApplyCoupon({ ...found, accountKey: acc.storageKey });
+        }
         setCouponCodeInput("");
         toast.success(`Promo code "${found.code}" applied!`);
       }
@@ -858,7 +875,8 @@ export function PaymentForm({
                       size="sm"
                       disabled={isMinOrderNotMet || isSelected}
                       onClick={() => {
-                        if (typeof onApplyCoupon === "function") onApplyCoupon(c);
+                        const acc = getCurrentAccount();
+                        if (typeof onApplyCoupon === "function") onApplyCoupon({ ...c, accountKey: acc.storageKey });
                         setShowCouponModal(false);
                         toast.success(`Coupon "${c.code}" applied!`);
                       }}

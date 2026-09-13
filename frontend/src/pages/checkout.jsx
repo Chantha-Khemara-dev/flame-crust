@@ -138,7 +138,12 @@ function CheckoutPage() {
     try {
       setLoadingCoupons(true);
       const data = await list("coupons");
-      let activeCoupons = data.filter(c => c.active && (c.usage_limit === null || c.used_count < c.usage_limit));
+      // Only include public promo codes (without hyphen). Personal lucky draw vouchers have '-' and belong to specific accounts.
+      let activeCoupons = data.filter(c => 
+        c.active && 
+        (c.usage_limit === null || c.used_count < c.usage_limit) &&
+        !String(c.code).includes("-")
+      );
 
       // Mark already used coupons for the current user
       try {
@@ -169,7 +174,7 @@ function CheckoutPage() {
         console.warn("Failed to check coupon usages", e);
       }
 
-      // Load customer's won Lucky Draw vouchers
+      // Load ONLY the CURRENT customer's won Lucky Draw vouchers
       const acc = getCurrentAccount();
       const rawWon = getWonCoupons(acc.storageKey);
       const luckyCoupons = formatWonVouchersAsCoupons(rawWon);
@@ -243,11 +248,16 @@ function CheckoutPage() {
           } else {
             setValue("fullName", c.name || "");
             setValue("phone", c.phone || "");
-            setShowDeliveryDetails(true);
           }
         } catch (e) {
-          console.error(e);
+          console.error("Failed to parse customerAuth or fetch addresses:", e);
         }
+      }
+
+      // Check if current coupon belongs to another account
+      const acc = getCurrentAccount();
+      if (coupon && coupon.accountKey && coupon.accountKey !== acc.storageKey) {
+        removeCoupon();
       }
     };
     fetchProfile();
@@ -533,9 +543,16 @@ function CheckoutPage() {
           return;
         }
 
-        applyCoupon(wonMatch);
+        applyCoupon({ ...wonMatch, accountKey: acc.storageKey });
         setCouponCode("");
         toast.success(`🎉 Lucky Draw voucher "${wonMatch.code}" applied!`);
+        return;
+      }
+
+      // If code contains a hyphen, it's a personal lucky draw voucher.
+      // Since it wasn't found in current user's won list, reject it!
+      if (targetCode.includes("-")) {
+        setCouponError("This voucher belongs to another account or is invalid");
         return;
       }
 
@@ -581,7 +598,7 @@ function CheckoutPage() {
            return;
         }
 
-        applyCoupon(found);
+        applyCoupon({ ...found, accountKey: acc.storageKey });
         setCouponCode("");
         toast.success(`Promo code "${found.code}" applied!`);
       }
@@ -1815,7 +1832,8 @@ function CheckoutPage() {
                       size="sm"
                       disabled={isMinOrderNotMet || isSelected || isUsed}
                       onClick={() => {
-                        applyCoupon(c);
+                        const acc = getCurrentAccount();
+                        applyCoupon(c, acc.storageKey);
                         setShowCouponModal(false);
                         toast.success(`Coupon "${c.code}" applied!`);
                       }}
