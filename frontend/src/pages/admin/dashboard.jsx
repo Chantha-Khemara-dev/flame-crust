@@ -458,109 +458,116 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Sleek, Compact Executive Banner */}
-      <section className="relative overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-card via-card/95 to-amber-950/15 p-4 sm:p-5 shadow-warm backdrop-blur-xl">
-        <div className="pointer-events-none absolute -right-16 -top-20 size-60 rounded-full bg-primary/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-20 left-1/3 size-56 rounded-full bg-amber-500/10 blur-3xl" />
-        <Flame className="pointer-events-none absolute -right-4 -bottom-6 size-36 text-primary/5 select-none" />
+      {/* Sleek, Modern Executive Command Center */}
+      <section className="relative overflow-hidden rounded-[26px] border border-border/80 bg-gradient-to-br from-card via-card/95 to-[#1c130e]/60 p-4 sm:p-5 shadow-warm-lg backdrop-blur-xl">
+        {/* Ambient subtle glow effects */}
+        <div className="pointer-events-none absolute -right-16 -top-20 size-56 rounded-full bg-primary/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-16 left-1/3 size-48 rounded-full bg-amber-500/10 blur-3xl" />
+        <Flame className="pointer-events-none absolute -right-4 -bottom-4 size-32 text-primary/[0.04] select-none" />
 
         <div className="relative z-10 flex flex-col gap-3.5">
-          {/* Top Row: Greeting & Badges + Quick Actions */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="space-y-1">
-              {/* Badges Bar */}
-              <div className="flex flex-wrap items-center gap-1.5 text-[10px] sm:text-xs font-semibold">
-                <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-secondary/80 px-2.5 py-0.5 text-muted-foreground backdrop-blur-md">
-                  <CalendarDays className="size-3 text-primary" />
-                  {todayStr}
+          {/* Top Line: Live Status & Date Pill + Storefront link */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[11px] font-bold">
+                <span className="relative flex size-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full size-2 bg-emerald-500" />
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-emerald-500 font-bold backdrop-blur-md">
-                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Live Store
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-secondary/80 px-2.5 py-0.5 text-muted-foreground backdrop-blur-md">
-                  <ShieldCheck className="size-3 text-amber-500" />
-                  KHQR Ready
-                </span>
-              </div>
-
-              {/* Greeting */}
-              <h1 className="font-serif text-xl sm:text-2xl font-bold tracking-tight text-foreground flex items-center gap-1.5">
-                {greeting()}, <span className="text-primary">{adminAuth?.name || "Admin"}</span>
-              </h1>
+                Live Store
+              </span>
+              <span className="text-[11px] font-semibold text-muted-foreground">
+                {todayStr}
+              </span>
             </div>
 
-            {/* Quick Action Buttons */}
+            <Link
+              to="/"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-secondary/70 hover:bg-secondary border border-border/70 text-xs font-semibold text-foreground/85 hover:text-foreground transition-all active:scale-95 shadow-xs"
+              title="Visit Customer Storefront"
+            >
+              <Store className="size-3.5 text-primary" />
+              <span>Store</span>
+              <ArrowUpRight className="size-3 text-muted-foreground" />
+            </Link>
+          </div>
+
+          {/* Main Row: Greeting & Action Buttons */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-border/50">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground flex items-center gap-1.5">
+                <span>{greeting()},</span>
+                <span className="bg-gradient-to-r from-orange-400 via-amber-400 to-rose-400 bg-clip-text text-transparent font-black">
+                  {adminAuth?.name || "Admin"}
+                </span>
+              </h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Here is your real-time restaurant performance summary.
+              </p>
+            </div>
+
             <div className="flex items-center gap-2 shrink-0">
               <Button
                 asChild
                 size="sm"
-                className="h-9 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground px-3.5 font-semibold text-xs shadow-sm active:scale-95 transition-all cursor-pointer"
+                className="h-9 rounded-xl bg-gradient-to-r from-orange-500 via-red-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white font-bold text-xs shadow-md shadow-orange-500/20 active:scale-95 transition-all cursor-pointer border-0 px-3.5"
               >
                 <Link to="/admin/products">
-                  <Plus className="size-3.5 mr-1" />
-                  Product
+                  <Plus className="size-3.5 mr-1 stroke-[2.5]" />
+                  Add Product
                 </Link>
               </Button>
               <Button
                 asChild
                 variant="outline"
                 size="sm"
-                className="h-9 rounded-xl border-border/80 bg-secondary/60 hover:bg-secondary text-foreground px-3 font-semibold text-xs active:scale-95 transition-all cursor-pointer"
+                className="h-9 rounded-xl border-border/80 bg-secondary/50 hover:bg-secondary text-foreground font-semibold text-xs active:scale-95 transition-all cursor-pointer px-3"
               >
                 <Link to="/admin/kitchen">
-                  <ChefHat className="size-3.5 mr-1 text-primary" />
+                  <ChefHat className="size-3.5 mr-1.5 text-amber-500" />
                   Kitchen KDS
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="ghost"
-                size="sm"
-                className="h-9 rounded-xl px-2.5 text-xs text-muted-foreground hover:text-foreground active:scale-95 transition-all cursor-pointer"
-                title="View Storefront"
-              >
-                <Link to="/">
-                  <Store className="size-3.5 mr-1" />
-                  Store
-                  <ArrowUpRight className="size-3 ml-0.5 opacity-60" />
                 </Link>
               </Button>
             </div>
           </div>
 
-          {/* Quick Metrics Strip: Horizontal 3-column chip bar */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-4 rounded-2xl border border-border/60 bg-secondary/35 p-2 sm:p-2.5 backdrop-blur-md">
-            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-emerald-500/25 bg-emerald-500/10 text-emerald-500">
-                <CircleDollarSign className="size-4" />
+          {/* Bottom Live Metrics Strip: Clean, Borderless 3 Columns with Visual Polish */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-1">
+            {/* Metric 1: Today's Revenue */}
+            <div className="flex flex-col min-w-0">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1 mb-0.5 truncate">
+                <CircleDollarSign className="size-3 text-emerald-400 shrink-0" /> Today
               </span>
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate">Today</p>
-                <p className="truncate font-serif text-sm sm:text-base font-black text-foreground tabular-nums">{money(animatedToday)}</p>
-              </div>
+              <span className="font-mono text-base sm:text-lg font-black text-foreground tabular-nums truncate">
+                {money(animatedToday)}
+              </span>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 border-l border-border/50 pl-2 sm:pl-4">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-sky-500/25 bg-sky-500/10 text-sky-500">
-                <ReceiptText className="size-4" />
+            {/* Metric 2: Today's Tickets */}
+            <div className="flex flex-col min-w-0 border-l border-border/50 pl-2.5 sm:pl-4">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1 mb-0.5 truncate">
+                <ReceiptText className="size-3 text-sky-400 shrink-0" /> Tickets
               </span>
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate">Tickets</p>
-                <p className="truncate font-serif text-sm sm:text-base font-black text-foreground tabular-nums">
-                  {weekTotals.today?.orders ?? 0}
-                </p>
-              </div>
+              <span className="font-mono text-base sm:text-lg font-black text-foreground tabular-nums truncate">
+                {weekTotals.today?.orders ?? 0}
+              </span>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 border-l border-border/50 pl-2 sm:pl-4">
-              <GoalRing progress={goalProgress} />
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate">Goal</p>
-                <p className="truncate font-serif text-sm sm:text-base font-black text-foreground tabular-nums">
+            {/* Metric 3: Weekly Goal */}
+            <div className="flex flex-col min-w-0 border-l border-border/50 pl-2.5 sm:pl-4">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1 mb-0.5 truncate">
+                <Target className="size-3 text-amber-400 shrink-0" /> Weekly Goal
+              </span>
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="font-mono text-base sm:text-lg font-black text-foreground tabular-nums truncate">
                   {Math.round(Math.min(1, goalProgress) * 100)}%
-                  <span className="hidden sm:inline ml-1 text-[10px] font-normal text-muted-foreground">of {money(WEEKLY_GOAL)}</span>
-                </p>
+                </span>
+                <div className="hidden sm:block flex-1 h-1.5 rounded-full bg-secondary/80 overflow-hidden max-w-[50px]">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500"
+                    style={{ width: `${Math.min(100, Math.round(goalProgress * 100))}%` }}
+                  />
+                </div>
               </div>
             </div>
           </div>
