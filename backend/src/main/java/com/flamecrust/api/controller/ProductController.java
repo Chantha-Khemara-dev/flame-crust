@@ -25,8 +25,15 @@ public class ProductController {
     @GetMapping
     public ResponseEntity<List<Product>> all() {
         return ResponseEntity.ok()
-                .cacheControl(org.springframework.http.CacheControl.maxAge(java.time.Duration.ofSeconds(60)).cachePublic())
+                .cacheControl(org.springframework.http.CacheControl.noCache().mustRevalidate())
                 .body(products.findByActiveTrueOrderByIdAsc());
+    }
+
+    @GetMapping("/trending")
+    public ResponseEntity<List<Product>> trending() {
+        return ResponseEntity.ok()
+                .cacheControl(org.springframework.http.CacheControl.noCache().mustRevalidate())
+                .body(products.findTopTrendingDishes());
     }
 
     @GetMapping("/categories")

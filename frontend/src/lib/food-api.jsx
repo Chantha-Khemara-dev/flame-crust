@@ -57,20 +57,30 @@ function normalizeProduct(product) {
 }
 
 let inFlightFoodsPromise = null;
-let inFlightCategoriesPromise = null;
-
-async function fetchFoodItems() {
-  if (inFlightFoodsPromise) return inFlightFoodsPromise;
+async function fetchFoodItems(forceRefresh = false) {
+  if (inFlightFoodsPromise && !forceRefresh) return inFlightFoodsPromise;
 
   inFlightFoodsPromise = (async () => {
     try {
-      const products = await getProducts();
+      const fetchOpts = forceRefresh ? { cache: "no-store", headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" } } : {};
+      const products = await getProducts(null, fetchOpts);
       if (Array.isArray(products) && products.length > 0) {
         const normalized = products.map(normalizeProduct);
+        
+        // Detect if sales_count, ratings, or items changed
+        const prevSummary = cachedFoodItems.map((p) => `${p.id}:${p.sales_count ?? p.salesCount ?? 0}`).join(",");
+        const nextSummary = normalized.map((p) => `${p.id}:${p.sales_count ?? p.salesCount ?? 0}`).join(",");
+        const hasChanged = prevSummary !== nextSummary;
+
         cachedFoodItems = normalized;
         try {
           localStorage.setItem("flame_foods_cache", JSON.stringify(normalized));
         } catch (e) {}
+
+        if (hasChanged && typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("foodItemsUpdated", { detail: { items: normalized } }));
+        }
+
         return normalized;
       }
       return cachedFoodItems.length > 0 ? cachedFoodItems : DEFAULT_FALLBACK_PRODUCTS;
@@ -82,6 +92,16 @@ async function fetchFoodItems() {
   })();
 
   return inFlightFoodsPromise;
+}
+
+export function triggerFoodRefresh() {
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem("flame_foods_last_updated", Date.now().toString());
+    } catch (e) {}
+    window.dispatchEvent(new CustomEvent("foodItemsUpdated"));
+  }
+  return fetchFoodItems(true);
 }
 
 async function fetchCategories() {

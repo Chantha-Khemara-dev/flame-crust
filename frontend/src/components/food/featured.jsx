@@ -21,21 +21,65 @@ export function Featured() {
     if (getCachedFoodItems().length === 0) {
       setLoading(true);
     }
-    fetchFoodItems()
-      .then((items) => {
-        if (isMounted && Array.isArray(items) && items.length > 0) {
-          const topDishes = getTopTrendingDishes(items, 4);
-          if (topDishes.length > 0) {
-            setFeatured(topDishes);
+
+    const syncTrending = (force = false) => {
+      fetchFoodItems(force)
+        .then((items) => {
+          if (isMounted && Array.isArray(items) && items.length > 0) {
+            const topDishes = getTopTrendingDishes(items, 4);
+            if (topDishes.length > 0) {
+              setFeatured(topDishes);
+            }
           }
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (isMounted) setLoading(false);
+        });
+    };
+
+    // 1. Initial fetch
+    syncTrending(false);
+
+    // 2. Real-time event listener for local order placement or update
+    const handleFoodUpdate = (e) => {
+      if (e?.detail?.items && Array.isArray(e.detail.items)) {
+        const topDishes = getTopTrendingDishes(e.detail.items, 4);
+        if (isMounted && topDishes.length > 0) {
+          setFeatured(topDishes);
         }
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (isMounted) setLoading(false);
-      });
+      } else {
+        syncTrending(true);
+      }
+    };
+
+    window.addEventListener("foodItemsUpdated", handleFoodUpdate);
+
+    // 3. Multi-tab sync via localStorage storage event
+    const handleStorage = (e) => {
+      if (e.key === "flame_foods_last_updated" || e.key === "flame_foods_cache") {
+        syncTrending(true);
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+
+    // 4. Background real-time polling every 8s while tab is active
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        syncTrending(true);
+      }
+    }, 8000);
+
+    // 5. Visibility and focus triggers
+    const handleFocus = () => syncTrending(true);
+    window.addEventListener("focus", handleFocus);
+
     return () => {
       isMounted = false;
+      clearInterval(interval);
+      window.removeEventListener("foodItemsUpdated", handleFoodUpdate);
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("focus", handleFocus);
     };
   }, []);
 

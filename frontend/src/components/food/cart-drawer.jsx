@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PaymentForm } from "./payment-form.jsx";
 import { useNavigate, useLocation } from "react-router-dom";
+import { triggerFoodRefresh } from "@/lib/food-api";
 
 const DELIVERY_FEE = 3.99;
 
@@ -146,6 +147,13 @@ export function CartDrawer() {
           })
         )
       );
+
+      // Trigger real-time auto-update of trending scores and rankings across active tabs
+      try {
+        triggerFoodRefresh();
+      } catch (e) {
+        console.warn("Error triggering food refresh:", e);
+      }
 
       const dbMethod = ["CASH", "CARD", "ABA_PAY", "WING"].includes(paymentDetails.method) ? paymentDetails.method : "KHQR";
 

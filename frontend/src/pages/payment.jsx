@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { QRCodeCanvas } from "qrcode.react";
 import { BakongKHQR, IndividualInfo } from "bakong-khqr";
 import { getCurrentAccount, addBonusSpins } from "@/components/food/lucky-draw-modal.jsx";
+import { triggerFoodRefresh } from "@/lib/food-api";
 
 // QR session: total validity 5 minutes (300s)
 // Bakong token (verify) schedule per QR: 5 tokens total, no check at start.
@@ -257,6 +258,13 @@ export default function PaymentGatewayPage() {
             price: item.price,
             special_requests: item.specialRequests || null,
           });
+        }
+
+        // Trigger real-time auto-update of trending scores and rankings across active tabs
+        try {
+          triggerFoodRefresh();
+        } catch (e) {
+          console.warn("Error triggering food refresh:", e);
         }
         
         // Create payment record

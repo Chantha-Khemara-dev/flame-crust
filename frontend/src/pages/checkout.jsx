@@ -48,7 +48,7 @@ import { useCart } from "@/lib/cart-store";
 import { create, list, API_URL } from "@/lib/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { getImageUrl } from "@/lib/food-api";
+import { getImageUrl, triggerFoodRefresh } from "@/lib/food-api";
 import {
   getCurrentAccount,
   getWonCoupons,
@@ -737,6 +737,13 @@ function CheckoutPage() {
           })
         )
       );
+
+      // Trigger real-time auto-update of trending scores and rankings across active tabs
+      try {
+        triggerFoodRefresh();
+      } catch (e) {
+        console.warn("Error triggering food refresh:", e);
+      }
 
       await create("payments", {
         order_id: orderId,

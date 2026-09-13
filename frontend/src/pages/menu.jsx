@@ -102,16 +102,52 @@ function MenuPage() {
   }, []);
 
   useEffect(() => {
-    const handleFoodsChanged = () => {
-      fetchFoodItems().then((items) => {
-        if (Array.isArray(items) && items.length > 0) setItemsFromApi(items);
+    let isMounted = true;
+    const syncMenuData = (force = false) => {
+      fetchFoodItems(force).then((items) => {
+        if (isMounted && Array.isArray(items) && items.length > 0) setItemsFromApi(items);
       });
       fetchCategories().then((cats) => {
-        if (Array.isArray(cats) && cats.length > 0) setCategories(cats);
+        if (isMounted && Array.isArray(cats) && cats.length > 0) setCategories(cats);
       });
     };
-    window.addEventListener("foodsChanged", handleFoodsChanged);
-    return () => window.removeEventListener("foodsChanged", handleFoodsChanged);
+
+    const handleFoodUpdates = (e) => {
+      if (e?.detail?.items && Array.isArray(e.detail.items)) {
+        if (isMounted) setItemsFromApi(e.detail.items);
+      } else {
+        syncMenuData(true);
+      }
+    };
+
+    window.addEventListener("foodItemsUpdated", handleFoodUpdates);
+    window.addEventListener("foodsChanged", () => syncMenuData(true));
+
+    const handleStorage = (e) => {
+      if (e.key === "flame_foods_last_updated" || e.key === "flame_foods_cache") {
+        syncMenuData(true);
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+
+    // Auto real-time poll every 8s while tab is visible
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        syncMenuData(true);
+      }
+    }, 8000);
+
+    const handleFocus = () => syncMenuData(true);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      window.removeEventListener("foodItemsUpdated", handleFoodUpdates);
+      window.removeEventListener("foodsChanged", () => syncMenuData(true));
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, []);
 
   const allItems = itemsFromApi || [];
