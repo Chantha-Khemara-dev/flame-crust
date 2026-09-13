@@ -806,7 +806,7 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen flex flex-col bg-background selection:bg-primary/20">
       <Navbar />
-      <main className="flex-1 pt-[calc(4.75rem+env(safe-area-inset-top,0px))] sm:pt-20 lg:pt-22 pb-[calc(8.5rem+env(safe-area-inset-bottom,0px))] sm:pb-20">
+      <main className="flex-1 pt-[calc(4.75rem+env(safe-area-inset-top,0px))] sm:pt-20 lg:pt-22 pb-[calc(10.5rem+env(safe-area-inset-bottom,0px))] sm:pb-24">
         <PageTransition>
           <div className={cn(
             "mx-auto px-3 sm:px-6 lg:px-8 space-y-3.5 sm:space-y-5 transition-all",
@@ -1473,70 +1473,70 @@ export default function ProfilePage() {
                         <p className="text-xs text-muted-foreground mt-1">Time to crave something delicious!</p>
                       </div>
                     ) : (
-                      <div className="space-y-3.5">
+                      <div className="space-y-3.5 pb-8">
                         {orders.map((order) => (
                           <div 
                             key={order.id} 
-                            className="bg-card border border-border/70 rounded-2xl sm:rounded-[24px] p-4 sm:p-6 transition-all hover:border-primary/50 cursor-pointer hover:shadow-warm group"
+                            className="bg-card border border-border/70 rounded-2xl sm:rounded-[24px] p-4 sm:p-5 transition-all hover:border-primary/50 cursor-pointer hover:shadow-warm group"
                             onClick={() => navigate(`/track/${order.id}`)}
                           >
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                              <div>
-                                <div className="flex items-center gap-2.5 mb-1">
-                                  <span className="font-mono text-sm text-muted-foreground font-bold whitespace-nowrap">#{order.order_number}</span>
-                                  <span className={cn(
-                                    "text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider",
-                                    order.status === "DELIVERED" ? "bg-green-600/20 text-green-600 dark:text-green-400" :
-                                    order.status === "CANCELLED" ? "bg-destructive/20 text-destructive" :
-                                    "bg-primary/20 text-primary"
-                                  )}>
-                                    {order.status}
-                                  </span>
-                                </div>
-                                <h4 className="font-semibold text-foreground flex items-center gap-1.5 text-xs sm:text-sm">
-                                  <Clock className="size-3.5 text-muted-foreground" />
-                                  {formatDate(order.created_at)}
-                                </h4>
+                            {/* Top Row: Order # + Status (Left) & Price (Right) */}
+                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                <span className="font-mono text-sm text-foreground font-bold whitespace-nowrap">#{order.order_number}</span>
+                                <span className={cn(
+                                  "text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider shrink-0",
+                                  order.status === "DELIVERED" ? "bg-green-600/20 text-green-600 dark:text-green-400" :
+                                  order.status === "CANCELLED" ? "bg-destructive/20 text-destructive" :
+                                  "bg-primary/20 text-primary"
+                                )}>
+                                  {order.status}
+                                </span>
                               </div>
+                              <span className="font-bold text-base sm:text-lg text-primary font-serif shrink-0">${order.total}</span>
                             </div>
 
-                            <div className="flex flex-wrap justify-between items-center mt-3 pt-3 border-t border-border/60 gap-2">
-                              <span className="font-bold text-base sm:text-lg text-primary">${order.total}</span>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  className="rounded-full text-xs h-7 sm:h-8 px-3"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleReorder(order.id);
-                                  }}
-                                >
-                                  <RefreshCcw className="size-3.5 mr-1.5" /> Reorder
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="rounded-full text-xs h-7 sm:h-8 px-3 text-muted-foreground hover:text-foreground"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedOrderDetails(order);
-                                  }}
-                                >
-                                  Details <ChevronRight className="size-3.5 ml-1" />
-                                </Button>
-                                <Button 
-                                  variant="default" 
-                                  size="sm" 
-                                  className="rounded-full text-xs h-7 sm:h-8 px-4 font-semibold shadow-warm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate(`/track/${order.id}`);
-                                  }}
-                                >
-                                  Track
-                                </Button>
-                              </div>
+                            {/* Second Row: Date & Time */}
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium mb-3">
+                              <Clock className="size-3.5 text-muted-foreground/70 shrink-0" />
+                              <span>{formatDate(order.created_at)}</span>
+                            </div>
+
+                            {/* Bottom Action Row: Buttons */}
+                            <div className="flex items-center justify-end pt-3 border-t border-border/60 gap-2 flex-wrap">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="rounded-full text-xs h-8 px-3.5 font-semibold cursor-pointer active:scale-95"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleReorder(order.id);
+                                }}
+                              >
+                                <RefreshCcw className="size-3.5 mr-1.5" /> Reorder
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="rounded-full text-xs h-8 px-3.5 font-semibold text-muted-foreground hover:text-foreground cursor-pointer active:scale-95"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedOrderDetails(order);
+                                }}
+                              >
+                                Details <ChevronRight className="size-3.5 ml-0.5" />
+                              </Button>
+                              <Button 
+                                variant="default" 
+                                size="sm" 
+                                className="rounded-full text-xs h-8 px-4 font-semibold shadow-warm cursor-pointer active:scale-95"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/track/${order.id}`);
+                                }}
+                              >
+                                Track
+                              </Button>
                             </div>
                           </div>
                         ))}
