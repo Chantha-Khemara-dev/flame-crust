@@ -584,9 +584,9 @@ export default function PaymentGatewayPage() {
           </button>
 
           <button 
-            onClick={() => setShowExitConfirm(true)} 
-            className="absolute top-5 right-5 opacity-70 hover:opacity-100 transition-opacity bg-primary-foreground/10 hover:bg-primary-foreground/20 rounded-full p-1.5 cursor-pointer active:scale-95"
-            title="ជម្រើសទូទាត់ / ចាកចេញ"
+            onClick={handleCancelAndExit} 
+            className="absolute top-5 right-5 opacity-70 hover:opacity-100 transition-opacity bg-primary-foreground/10 hover:bg-primary-foreground/20 rounded-full p-1.5 cursor-pointer active:scale-95 text-primary-foreground"
+            title="ចាកចេញទៅ Checkout"
           >
             <X className="size-5" />
           </button>
@@ -734,29 +734,6 @@ export default function PaymentGatewayPage() {
                   </Button>
                 )}
 
-                {/* Direct Switch to Cash on Delivery (លុយក្រៅ) */}
-                {paymentMethod !== "CARD" && (
-                  <button
-                    type="button"
-                    disabled={isSwitchingMethod || isPaid}
-                    onClick={handleSwitchToCash}
-                    className="w-full p-3 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-left flex items-center justify-between gap-3 transition-all cursor-pointer group shadow-sm active:scale-[0.99]"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="size-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                        <Landmark className="size-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-bold text-xs text-foreground">មិនចង់ស្កេន? ប្តូរទៅបង់ប្រាក់សុទ្ធ / លុយក្រៅ</p>
-                        <p className="text-[10px] text-muted-foreground">បង់ប្រាក់ ${Number(totalAmount).toFixed(2)} ពេលដឹកដល់ផ្ទះ (COD)</p>
-                      </div>
-                    </div>
-                    <span className="text-xs font-bold text-amber-600 dark:text-amber-400 shrink-0 group-hover:translate-x-0.5 transition-transform">
-                      ប្តូរឥឡូវ →
-                    </span>
-                  </button>
-                )}
-
                 {paymentMethod !== "CARD" && (
                   <p className="text-[11px] text-center text-muted-foreground">
                     {manualChecksCount >= MAX_MANUAL_CHECKS ? (
@@ -775,7 +752,7 @@ export default function PaymentGatewayPage() {
                   <button
                     onClick={handleCancelAndExit}
                     type="button"
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer py-1 px-2 rounded-lg hover:bg-secondary"
+                    className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer py-1.5 px-3 rounded-xl hover:bg-secondary border border-border/40"
                   >
                     <ArrowLeft className="size-3.5" /> <span>ថយក្រោយរើសវិធីទូទាត់</span>
                   </button>
@@ -784,7 +761,7 @@ export default function PaymentGatewayPage() {
                     <button
                       onClick={generateQR}
                       type="button"
-                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer py-1 px-2 rounded-lg hover:bg-secondary"
+                      className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer py-1.5 px-3 rounded-xl hover:bg-secondary"
                     >
                       <RefreshCw className="size-3.5" /> <span>បង្កើត QR ថ្មី</span>
                     </button>
@@ -795,66 +772,6 @@ export default function PaymentGatewayPage() {
           )}
         </div>
       </motion.div>
-
-      {/* Dialog: Change Payment Method or Cancel */}
-      <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
-        <AlertDialogContent className="max-w-md w-[92vw] rounded-3xl p-5 sm:p-6 border-border/70">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-lg sm:text-xl font-bold flex items-center gap-2">
-              <AlertCircle className="size-5 text-amber-500" />
-              <span>ជម្រើសចាកចេញ ឬប្តូរវិធីទូទាត់</span>
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs sm:text-sm text-muted-foreground pt-1 leading-relaxed">
-              តើអ្នកចង់ប្តូរទៅបង់ប្រាក់សុទ្ធ (Cash on Delivery) ឬត្រឡប់ទៅជ្រើសរើសវិធីទូទាត់ឡើងវិញ? ទំនិញក្នុងកន្ត្រករបស់អ្នកនៅរក្សាដដែល។
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          <div className="space-y-2.5 py-3">
-            {/* Option 1: Switch to Cash on Delivery */}
-            <button
-              type="button"
-              disabled={isSwitchingMethod}
-              onClick={handleSwitchToCash}
-              className="w-full p-3.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-left flex items-center justify-between gap-3 transition-all cursor-pointer group"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="size-10 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                  <Landmark className="size-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="font-bold text-xs sm:text-sm text-foreground">ប្តូរទៅបង់ប្រាក់សុទ្ធ (Cash / លុយក្រៅ)</p>
-                  <p className="text-[11px] text-muted-foreground">បង់ប្រាក់ ${Number(totalAmount).toFixed(2)} ពេលបុគ្គលិកដឹកដល់ផ្ទះ</p>
-                </div>
-              </div>
-              <span className="text-xs font-bold text-amber-600 dark:text-amber-400 shrink-0">ជ្រើសរើស →</span>
-            </button>
-
-            {/* Option 2: Go back to Checkout to re-choose payment */}
-            <button
-              type="button"
-              onClick={handleCancelAndExit}
-              className="w-full p-3.5 rounded-2xl bg-secondary/80 hover:bg-secondary border border-border/70 text-left flex items-center justify-between gap-3 transition-all cursor-pointer group"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="size-10 rounded-xl bg-muted text-foreground flex items-center justify-center shrink-0">
-                  <ArrowLeft className="size-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="font-bold text-xs sm:text-sm text-foreground">ថយក្រោយទៅ Checkout រើសវិធីទូទាត់</p>
-                  <p className="text-[11px] text-muted-foreground">ទំនិញក្នុងកន្ត្រកនៅរក្សាទុកដដែល (មិនទាន់បញ្ជាទិញទេ)</p>
-                </div>
-              </div>
-              <span className="text-xs font-bold text-muted-foreground group-hover:text-foreground shrink-0">ថយក្រោយ →</span>
-            </button>
-          </div>
-
-          <AlertDialogFooter className="sm:justify-end pt-1">
-            <AlertDialogCancel className="rounded-xl cursor-pointer">
-              នៅបន្តស្កេន QR វិញ
-            </AlertDialogCancel>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
