@@ -374,6 +374,52 @@ export function markWonCouponUsed(storageKey, couponCode) {
   }
 }
 
+export function deleteWonCoupon(storageKey, couponCode) {
+  if (!couponCode) return;
+  const targetCode = String(couponCode).toUpperCase().trim();
+  const keysToCheck = [
+    storageKey ? `flame_lucky_draw_vouchers_${storageKey}` : null,
+    "flame_lucky_draw_vouchers_guest",
+    "flame_lucky_draw_vouchers",
+  ].filter(Boolean);
+
+  for (const k of keysToCheck) {
+    const raw = localStorage.getItem(k);
+    if (!raw) continue;
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const updated = parsed.filter(
+          (v) => !v || !v.code || String(v.code).toUpperCase().trim() !== targetCode
+        );
+        localStorage.setItem(k, JSON.stringify(updated));
+      }
+    } catch {}
+  }
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("flame_coupons_updated"));
+    window.dispatchEvent(new CustomEvent("couponsChanged"));
+  }
+}
+
+export function clearAllWonCoupons(storageKey) {
+  const keysToCheck = [
+    storageKey ? `flame_lucky_draw_vouchers_${storageKey}` : null,
+    "flame_lucky_draw_vouchers_guest",
+    "flame_lucky_draw_vouchers",
+  ].filter(Boolean);
+
+  for (const k of keysToCheck) {
+    localStorage.removeItem(k);
+  }
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("flame_coupons_updated"));
+    window.dispatchEvent(new CustomEvent("couponsChanged"));
+  }
+}
+
 export function formatWonVouchersAsCoupons(wonVouchers) {
   if (!Array.isArray(wonVouchers)) return [];
   return wonVouchers
@@ -395,6 +441,7 @@ export function formatWonVouchersAsCoupons(wonVouchers) {
         active: !isUsed && !isExpired,
         wonAt: v.wonAt,
         expiresAt: v.expiresAt,
+        expires_at: v.expiresAt || v.expires_at,
         label: v.label,
         bgGradient: v.bgGradient,
       };

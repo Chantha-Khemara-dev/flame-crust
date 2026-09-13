@@ -49,7 +49,13 @@ import { getImageUrl } from "@/lib/food-api";
 import { useCart } from "@/lib/cart-store";
 import { useTheme } from "@/components/theme-provider.jsx";
 import { PushNotificationButton } from "@/components/common/PushNotificationButton";
-import { syncLocalVouchersToDatabase, getWonCoupons, formatWonVouchersAsCoupons } from "@/components/food/lucky-draw-modal";
+import { 
+  syncLocalVouchersToDatabase, 
+  getWonCoupons, 
+  formatWonVouchersAsCoupons,
+  deleteWonCoupon,
+  clearAllWonCoupons
+} from "@/components/food/lucky-draw-modal";
 import { toast } from "sonner";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -109,6 +115,7 @@ export default function ProfilePage() {
   
   // Settings & Coupons state
   const [coupons, setCoupons] = useState(() => profileMemoryCache.coupons || []);
+  const [couponFilter, setCouponFilter] = useState("ALL");
   const [settingsForm, setSettingsForm] = useState(() => {
     try {
       const auth = localStorage.getItem("customerAuth");
@@ -225,7 +232,7 @@ export default function ProfilePage() {
         const data = await res.json();
         userOrders = data.orders || [];
         userAddresses = data.addresses || [];
-        activeCoupons = data.coupons || [];
+        activeCoupons = (data.coupons || []).filter(cp => (cp.active == 1 || cp.active === true) && !String(cp.code || "").includes("-"));
         isPwdSet = Boolean(data.hasPassword);
         if (data.customer) {
           const dbCover = data.customer.cover_photo || DEFAULT_COVER_PHOTO;
@@ -1809,29 +1816,34 @@ export default function ProfilePage() {
 
                 {/* ---------------- COUPONS TAB ---------------- */}
                 {activeTab === "COUPONS" && (
-                  <div className="space-y-4">
-                    {/* Lucky Draw Wheel CTA Banner */}
-                    <div className="relative overflow-hidden rounded-2xl sm:rounded-[24px] bg-gradient-to-r from-orange-500 via-amber-500 to-red-500 p-5 sm:p-6 text-white shadow-warm flex flex-col sm:flex-row items-center justify-between gap-4">
-                      <div className="flex items-center gap-4">
-                        <div className="size-14 sm:size-16 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-3xl sm:text-4xl shadow-inner shrink-0">
+                  <div className="space-y-3 sm:space-y-4">
+                    {/* Sleek Compact Lucky Draw Banner */}
+                    <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-to-r from-orange-500 via-amber-500 to-red-500 px-3.5 py-2.5 sm:px-5 sm:py-3.5 text-white shadow-md flex items-center justify-between gap-2.5 sm:gap-4">
+                      <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                        <div className="size-9 sm:size-11 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-lg sm:text-2xl shadow-inner shrink-0">
                           🎰
                         </div>
-                        <div>
-                          <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 text-[10px] font-black uppercase tracking-wider mb-1">
-                            <span>✨ Free Daily Draw</span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="text-xs sm:text-sm md:text-base font-black truncate leading-tight">Flame Fortune Lucky Draw</h4>
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-white/25 text-[9px] font-extrabold uppercase tracking-wider shrink-0">
+                              ✨ Free Daily
+                            </span>
                           </div>
-                          <h4 className="text-lg sm:text-xl font-black">Flame Fortune Lucky Draw</h4>
-                          <p className="text-xs sm:text-sm text-white/85">Draw prizes daily to win up to 20% OFF and free pizza vouchers!</p>
+                          <p className="text-[10px] sm:text-xs text-white/90 truncate mt-0.5">
+                            Spin daily to win up to 20% OFF & free vouchers!
+                          </p>
                         </div>
                       </div>
                       <Button
                         type="button"
                         onClick={() => window.dispatchEvent(new CustomEvent("openLuckyDraw"))}
-                        className="w-full sm:w-auto h-11 px-6 rounded-xl bg-white text-orange-600 hover:bg-white/90 font-extrabold text-xs sm:text-sm shadow-md active:scale-95 shrink-0 cursor-pointer"
+                        className="h-7 sm:h-8.5 px-3 sm:px-4 rounded-lg sm:rounded-xl bg-white text-orange-600 hover:bg-white/90 font-extrabold text-[11px] sm:text-xs shadow-xs active:scale-95 shrink-0 cursor-pointer whitespace-nowrap"
                       >
-                        Draw Lucky Prize 🚀
+                        Draw Prize 🚀
                       </Button>
                     </div>
+
                     {loading ? (
                       <div className="flex justify-center py-12">
                         <div className="size-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
@@ -1843,102 +1855,226 @@ export default function ProfilePage() {
                         <p className="text-xs text-muted-foreground mt-1">Check back soon for new offers and rewards!</p>
                       </div>
                     ) : (
-                      <div className="space-y-6">
-                        <div>
-                          <h4 className="text-sm font-bold mb-3 text-foreground flex items-center gap-1.5">
-                            <span className="size-2 rounded-full bg-emerald-500 animate-pulse"></span> Available Now
-                          </h4>
-                          <div className="grid sm:grid-cols-2 gap-3">
-                            {coupons.filter(c => c.active && (!c.expires_at || new Date(c.expires_at) > new Date())).map(coupon => (
-                              <div key={coupon.id || coupon.code} className="bg-card border border-emerald-500/30 rounded-2xl p-4 relative overflow-hidden shadow-warm flex flex-col justify-between group hover:border-emerald-500/50 transition-all">
-                                <div className="absolute -right-6 -top-6 size-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
-                                <div>
-                                  <div className="flex items-center justify-between gap-2 mb-2">
-                                    <div className="inline-block px-2.5 py-0.5 bg-emerald-600 text-white text-[10px] font-bold rounded-full uppercase tracking-wide">
-                                      {coupon.code}
-                                    </div>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        if (navigator.clipboard && navigator.clipboard.writeText) {
-                                          navigator.clipboard.writeText(coupon.code);
-                                        }
-                                        toast.success(`Copied promo code "${coupon.code}"!`);
-                                      }}
-                                      className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1 cursor-pointer"
-                                      title="Copy Code"
-                                    >
-                                      <Copy className="size-3" /> Copy
-                                    </Button>
-                                  </div>
-                                  <h5 className="font-bold text-base text-foreground">
-                                    {coupon.discount_type === 'PERCENTAGE' ? `${coupon.discount_value}% OFF` : 
-                                     coupon.discount_type === 'FREE_DELIVERY' ? 'FREE DELIVERY' : 
-                                     `$${coupon.discount_value} OFF`}
-                                  </h5>
-                                  <p className="text-xs text-muted-foreground mt-0.5">Min. spend: ${coupon.min_order_amount || 0}</p>
-                                  {coupon.description && (
-                                    <p className="text-[11px] text-muted-foreground mt-1 line-clamp-1">{coupon.description}</p>
-                                  )}
-                                </div>
+                      (() => {
+                        const activeList = coupons.filter(c => c.active && (!c.expires_at || new Date(c.expires_at) > new Date()));
+                        const luckyCount = activeList.filter(c => c.isLuckyDraw || String(c.code).includes("-")).length;
+                        const promoCount = activeList.filter(c => !c.isLuckyDraw && !String(c.code).includes("-")).length;
 
-                                <div className="mt-3 pt-2.5 border-t border-border/60 flex items-center justify-between gap-2">
-                                  <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                                    <Clock className="size-3" />
-                                    {coupon.expires_at ? `Valid until ${new Date(coupon.expires_at).toLocaleDateString()}` : "No expiry"}
-                                  </div>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => {
-                                      const userKey = `user_${customer?.id || customer?.phone || "guest"}`;
-                                      applyCoupon(coupon, coupon.accountKey || userKey);
-                                      toast.success(`Coupon "${coupon.code}" applied to cart!`);
-                                      openCart();
-                                    }}
-                                    className="h-7 px-3 text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-lg cursor-pointer shadow-xs"
+                        const filteredList = activeList.filter(c => {
+                          const isLucky = c.isLuckyDraw || String(c.code).includes("-");
+                          if (couponFilter === "LUCKY") return isLucky;
+                          if (couponFilter === "PROMO") return !isLucky;
+                          return true;
+                        });
+
+                        const handleClearWonVouchers = () => {
+                          const userKey = `user_${customer?.id || customer?.phone || customer?.email || "guest"}`;
+                          clearAllWonCoupons(userKey);
+                          clearAllWonCoupons(customer?.id || customer?.phone || "guest");
+                          setCoupons(prev => prev.filter(c => !c.isLuckyDraw && !String(c.code).includes("-")));
+                          toast.success("Cleared all Lucky Draw vouchers!");
+                        };
+
+                        return (
+                          <div className="space-y-4 sm:space-y-5">
+                            <div>
+                              <div className="flex items-center justify-between gap-2 mb-2.5 flex-wrap">
+                                <h4 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                                  <span className="size-2 rounded-full bg-emerald-500 animate-pulse"></span> Available Now ({filteredList.length})
+                                </h4>
+                                {luckyCount > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={handleClearWonVouchers}
+                                    className="text-[11px] text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors cursor-pointer px-2 py-0.5 rounded-md hover:bg-destructive/10"
+                                    title="Remove all Lucky Draw vouchers"
                                   >
-                                    Apply to Cart
-                                  </Button>
-                                </div>
+                                    <Trash2 className="size-3" /> Clear Won Vouchers
+                                  </button>
+                                )}
                               </div>
-                            ))}
-                            {coupons.filter(c => c.active && (!c.expires_at || new Date(c.expires_at) > new Date())).length === 0 && (
-                              <p className="text-xs text-muted-foreground">No available coupons.</p>
-                            )}
-                          </div>
-                        </div>
 
-                        <div>
-                          <h4 className="text-sm font-bold mb-3 text-muted-foreground flex items-center gap-1.5">
-                            <span className="size-2 rounded-full bg-muted-foreground/30"></span> Used / Expired
-                          </h4>
-                          <div className="grid sm:grid-cols-2 gap-3 opacity-60 grayscale hover:grayscale-0 transition-all duration-300">
-                            {coupons.filter(c => !c.active || (c.expires_at && new Date(c.expires_at) <= new Date())).map(coupon => (
-                              <div key={coupon.id} className="bg-card border border-border/60 rounded-2xl p-4 shadow-2xs">
-                                <div className="flex items-start justify-between">
-                                  <div>
-                                    <div className="inline-block px-2.5 py-0.5 bg-secondary text-muted-foreground text-[10px] font-bold rounded-full mb-1.5 uppercase tracking-wide">
-                                      {coupon.code}
-                                    </div>
-                                    <h5 className="font-bold text-sm text-muted-foreground">
-                                      {coupon.discount_type === 'PERCENTAGE' ? `${coupon.discount_value}% OFF` : 
-                                       coupon.discount_type === 'FREE_DELIVERY' ? 'FREE DELIVERY' : 
-                                       `$${coupon.discount_value} OFF`}
-                                    </h5>
-                                  </div>
+                              {/* Filter tabs: All, Lucky Draw, Store Promos */}
+                              {(luckyCount > 0 && promoCount > 0) && (
+                                <div className="flex items-center gap-1.5 mb-3 overflow-x-auto pb-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => setCouponFilter("ALL")}
+                                    className={cn(
+                                      "px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                                      couponFilter === "ALL" 
+                                        ? "bg-primary text-primary-foreground shadow-2xs" 
+                                        : "bg-secondary text-muted-foreground hover:text-foreground"
+                                    )}
+                                  >
+                                    All ({activeList.length})
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setCouponFilter("LUCKY")}
+                                    className={cn(
+                                      "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer",
+                                      couponFilter === "LUCKY" 
+                                        ? "bg-amber-500 text-white shadow-2xs" 
+                                        : "bg-secondary text-muted-foreground hover:text-foreground"
+                                    )}
+                                  >
+                                    🎰 Lucky Draw ({luckyCount})
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setCouponFilter("PROMO")}
+                                    className={cn(
+                                      "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer",
+                                      couponFilter === "PROMO" 
+                                        ? "bg-emerald-600 text-white shadow-2xs" 
+                                        : "bg-secondary text-muted-foreground hover:text-foreground"
+                                    )}
+                                  >
+                                    🏷️ Store Promos ({promoCount})
+                                  </button>
                                 </div>
-                                <div className="mt-3 pt-2.5 border-t border-border/60 text-[11px] text-muted-foreground flex items-center gap-1">
-                                  {coupon.active ? "Expired" : "Used or Inactive"}
+                              )}
+
+                              <div className="grid sm:grid-cols-2 gap-3">
+                                {filteredList.map(coupon => {
+                                  const isLucky = coupon.isLuckyDraw || String(coupon.code).includes("-");
+                                  return (
+                                    <div key={coupon.id || coupon.code} className="bg-card border border-emerald-500/30 rounded-2xl p-3.5 sm:p-4 relative overflow-hidden shadow-warm flex flex-col justify-between group hover:border-emerald-500/50 transition-all">
+                                      <div className="absolute -right-6 -top-6 size-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                                      <div>
+                                        <div className="flex items-center justify-between gap-2 mb-2">
+                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                            <div className="inline-block px-2.5 py-0.5 bg-emerald-600 text-white text-[10px] font-bold rounded-full uppercase tracking-wide font-mono">
+                                              {coupon.code}
+                                            </div>
+                                            {isLucky && (
+                                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[9px] font-bold rounded-full border border-amber-500/30">
+                                                🎰 Lucky Draw
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="flex items-center gap-1 shrink-0">
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => {
+                                                if (navigator.clipboard && navigator.clipboard.writeText) {
+                                                  navigator.clipboard.writeText(coupon.code);
+                                                }
+                                                toast.success(`Copied promo code "${coupon.code}"!`);
+                                              }}
+                                              className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1 cursor-pointer"
+                                              title="Copy Code"
+                                            >
+                                              <Copy className="size-3" /> Copy
+                                            </Button>
+                                            {isLucky && (
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                  const userKey = `user_${customer?.id || customer?.phone || customer?.email || "guest"}`;
+                                                  deleteWonCoupon(userKey, coupon.code);
+                                                  deleteWonCoupon(customer?.id || customer?.phone || "guest", coupon.code);
+                                                  setCoupons(prev => prev.filter(c => c.code !== coupon.code));
+                                                  toast.success(`Removed voucher "${coupon.code}"`);
+                                                }}
+                                                className="size-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                                                title="Delete Voucher"
+                                              >
+                                                <Trash2 className="size-3" />
+                                              </Button>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <h5 className="font-bold text-base text-foreground">
+                                          {coupon.discount_type === 'PERCENTAGE' ? `${coupon.discount_value}% OFF` : 
+                                           coupon.discount_type === 'FREE_DELIVERY' ? 'FREE DELIVERY' : 
+                                           `$${coupon.discount_value} OFF`}
+                                        </h5>
+                                        <p className="text-xs text-muted-foreground mt-0.5">Min. spend: ${coupon.min_order_amount || 0}</p>
+                                        {coupon.description && (
+                                          <p className="text-[11px] text-muted-foreground mt-1 line-clamp-1">{coupon.description}</p>
+                                        )}
+                                      </div>
+
+                                      <div className="mt-3 pt-2.5 border-t border-border/60 flex items-center justify-between gap-2">
+                                        <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                                          <Clock className="size-3" />
+                                          {coupon.expires_at ? `Valid until ${new Date(coupon.expires_at).toLocaleDateString()}` : "No expiry"}
+                                        </div>
+                                        <Button
+                                          size="sm"
+                                          onClick={() => {
+                                            const userKey = `user_${customer?.id || customer?.phone || "guest"}`;
+                                            applyCoupon(coupon, coupon.accountKey || userKey);
+                                            toast.success(`Coupon "${coupon.code}" applied to cart!`);
+                                            openCart();
+                                          }}
+                                          className="h-7 px-3 text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-lg cursor-pointer shadow-xs"
+                                        >
+                                          Apply to Cart
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                                {filteredList.length === 0 && (
+                                  <p className="text-xs text-muted-foreground col-span-2 py-4 text-center">No coupons matching this category.</p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Expired / Used */}
+                            {coupons.filter(c => !c.active || (c.expires_at && new Date(c.expires_at) <= new Date())).length > 0 && (
+                              <div>
+                                <h4 className="text-sm font-bold mb-3 text-muted-foreground flex items-center gap-1.5">
+                                  <span className="size-2 rounded-full bg-muted-foreground/30"></span> Used / Expired
+                                </h4>
+                                <div className="grid sm:grid-cols-2 gap-3 opacity-60 grayscale hover:grayscale-0 transition-all duration-300">
+                                  {coupons.filter(c => !c.active || (c.expires_at && new Date(c.expires_at) <= new Date())).map(coupon => (
+                                    <div key={coupon.id || coupon.code} className="bg-card border border-border/60 rounded-2xl p-3.5 sm:p-4 shadow-2xs flex flex-col justify-between">
+                                      <div className="flex items-start justify-between">
+                                        <div>
+                                          <div className="inline-block px-2.5 py-0.5 bg-secondary text-muted-foreground text-[10px] font-bold rounded-full mb-1.5 uppercase tracking-wide">
+                                            {coupon.code}
+                                          </div>
+                                          <h5 className="font-bold text-sm text-muted-foreground">
+                                            {coupon.discount_type === 'PERCENTAGE' ? `${coupon.discount_value}% OFF` : 
+                                             coupon.discount_type === 'FREE_DELIVERY' ? 'FREE DELIVERY' : 
+                                             `$${coupon.discount_value} OFF`}
+                                          </h5>
+                                        </div>
+                                        {(coupon.isLuckyDraw || String(coupon.code).includes("-")) && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                              const userKey = `user_${customer?.id || customer?.phone || customer?.email || "guest"}`;
+                                              deleteWonCoupon(userKey, coupon.code);
+                                              deleteWonCoupon(customer?.id || customer?.phone || "guest", coupon.code);
+                                              setCoupons(prev => prev.filter(c => c.code !== coupon.code));
+                                              toast.success(`Removed expired voucher "${coupon.code}"`);
+                                            }}
+                                            className="size-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                                            title="Delete Expired Voucher"
+                                          >
+                                            <Trash2 className="size-3" />
+                                          </Button>
+                                        )}
+                                      </div>
+                                      <div className="mt-3 pt-2 border-t border-border/60 text-[11px] text-muted-foreground flex items-center gap-1">
+                                        {coupon.active ? "Expired" : "Used or Inactive"}
+                                      </div>
+                                    </div>
+                                  ))}
                                 </div>
                               </div>
-                            ))}
-                            {coupons.filter(c => !c.active || (c.expires_at && new Date(c.expires_at) <= new Date())).length === 0 && (
-                              <p className="text-xs text-muted-foreground">No expired coupons.</p>
                             )}
                           </div>
-                        </div>
-                      </div>
+                        );
+                      })()
                     )}
                   </div>
                 )}

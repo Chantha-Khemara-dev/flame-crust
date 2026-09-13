@@ -1009,10 +1009,10 @@ public class AuthController {
                 } catch (Exception ignored) {}
             }
 
-            // 3. Fetch active unexpired coupons with explicit columns
+            // 3. Fetch active unexpired coupons with explicit columns (exclude personal generated vouchers with '-')
             List<Map<String, Object>> coupons = List.of();
             try {
-                coupons = jdbc.queryForList("SELECT id, code, discount_type, discount_value, min_order_amount, expires_at, active FROM coupons WHERE active = 1 AND (expires_at IS NULL OR expires_at > NOW()) ORDER BY id DESC LIMIT 30");
+                coupons = jdbc.queryForList("SELECT id, code, discount_type, discount_value, min_order_amount, expires_at, active FROM coupons WHERE active = 1 AND (code NOT LIKE '%-%') AND (expires_at IS NULL OR expires_at > NOW()) ORDER BY id DESC LIMIT 30");
             } catch (Exception ignored) {}
 
             boolean hasPassword = false;
