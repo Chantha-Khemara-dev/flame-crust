@@ -266,8 +266,8 @@ function CartPage() {
                 </div>
 
                 {/* 2. Coupon & Promo Section */}
-                <div className="bg-card/70 backdrop-blur-md rounded-2xl sm:rounded-3xl border border-border/70 p-3 sm:p-5 shadow-xs space-y-3">
-                  {coupon ? (
+                {coupon && (
+                  <div className="bg-card/70 backdrop-blur-md rounded-2xl sm:rounded-3xl border border-border/70 p-3 sm:p-5 shadow-xs space-y-3">
                     <div className={cn(
                       "p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3",
                       isCouponValid 
@@ -339,54 +339,8 @@ function CartPage() {
                         </button>
                       </div>
                     </div>
-                  ) : (
-                    <div className="space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                          <Ticket className="size-3.5 text-primary" /> Coupons &amp; Promo Codes
-                        </span>
-                        <AvailableCoupons
-                          onSelectCoupon={(c) => applyCoupon(c)}
-                          currentCoupon={coupon}
-                          subtotal={grossSubtotal}
-                          trigger={
-                            <button
-                              type="button"
-                              className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
-                            >
-                              <span>Browse Coupons</span>
-                              <ArrowRight className="size-3" />
-                            </button>
-                          }
-                        />
-                      </div>
-
-                      <form onSubmit={handleApplyCoupon} className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={couponCode}
-                          onChange={(e) => {
-                            setCouponCode(e.target.value.toUpperCase());
-                            if (couponError) setCouponError("");
-                          }}
-                          placeholder="Enter promo code"
-                          className="w-full h-9 px-3.5 rounded-xl bg-background border border-border/80 text-xs font-mono font-bold uppercase placeholder:font-normal placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
-                        />
-                        <Button
-                          type="submit"
-                          size="sm"
-                          disabled={!couponCode.trim() || isApplying}
-                          className="h-9 px-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shrink-0 cursor-pointer shadow-2xs"
-                        >
-                          {isApplying ? <Loader2 className="size-3.5 animate-spin" /> : "Apply"}
-                        </Button>
-                      </form>
-                      {couponError && (
-                        <p className="text-xs text-destructive font-medium">{couponError}</p>
-                      )}
-                    </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* 3. Order Summary Breakdown */}
                 <div className="bg-card/70 backdrop-blur-md rounded-2xl sm:rounded-3xl border border-border/70 p-4 sm:p-5 shadow-xs space-y-2.5 text-xs sm:text-sm">

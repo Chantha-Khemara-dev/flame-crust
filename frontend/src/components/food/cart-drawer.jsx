@@ -513,55 +513,6 @@ export function CartDrawer() {
                         </button>
                       </div>
                     </div>
-                  ) : (
-                    <div className="mt-3.5 p-3 rounded-2xl bg-secondary/40 border border-border/60 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                          <Ticket className="size-3.5 text-primary" /> Coupons &amp; Promo Codes
-                        </span>
-                        <AvailableCoupons
-                          onSelectCoupon={(c) => applyCoupon(c)}
-                          currentCoupon={coupon}
-                          subtotal={grossSubtotal}
-                          trigger={
-                            <button
-                              type="button"
-                              className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
-                            >
-                              <span>Browse Coupons</span>
-                              <ArrowRight className="size-3" />
-                            </button>
-                          }
-                        />
-                      </div>
-
-                      {/* Quick manual promo code input */}
-                      <form onSubmit={handleApplyCoupon} className="flex items-center gap-2">
-                        <div className="relative flex-1">
-                          <input
-                            type="text"
-                            value={couponCode}
-                            onChange={(e) => {
-                              setCouponCode(e.target.value.toUpperCase());
-                              if (couponError) setCouponError("");
-                            }}
-                            placeholder="Enter promo code"
-                            className="w-full h-8 px-3 rounded-xl bg-background border border-border/80 text-xs font-mono font-bold uppercase placeholder:font-normal placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
-                          />
-                        </div>
-                        <Button
-                          type="submit"
-                          size="sm"
-                          disabled={!couponCode.trim() || isApplying}
-                          className="h-8 px-3.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shrink-0 cursor-pointer shadow-2xs"
-                        >
-                          {isApplying ? <Loader2 className="size-3.5 animate-spin" /> : "Apply"}
-                        </Button>
-                      </form>
-                      {couponError && (
-                        <p className="text-[11px] text-destructive font-medium">{couponError}</p>
-                      )}
-                    </div>
                   )}
                 </div>
 

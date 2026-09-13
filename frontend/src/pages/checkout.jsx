@@ -261,6 +261,7 @@ function CheckoutPage() {
       }
     };
     fetchProfile();
+    fetchCoupons();
   }, []);
 
   const handleSelectAddress = (addr, c = customer) => {
@@ -1419,90 +1420,179 @@ function CheckoutPage() {
                 </div>
               </div>
 
-                {/* 3. Promo Code Section */}
-                <div className="rounded-2xl sm:rounded-3xl border border-border/70 bg-card/60 backdrop-blur-xl shadow-sm p-3.5 sm:p-6 space-y-3">
-                  <div className="flex items-center justify-between border-b border-border/40 pb-2.5">
-                    <div className="flex items-center gap-2">
-                      <div className="size-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                        <Ticket className="size-3.5" />
-                      </div>
-                      <h3 className="text-xs sm:text-sm font-bold text-foreground">Promo Code & Coupons</h3>
-                    </div>
+                {/* 3. Promo Code & Coupons Section - Enhanced & Engaging */}
+                {(() => {
+                  const availableCouponsList = allCoupons.filter(c => !c.isUsed && !c.isExpired);
+                  const luckyVouchers = availableCouponsList.filter(c => c.isLuckyDraw || String(c.code).includes("-"));
+                  const bestLucky = luckyVouchers[0];
 
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        fetchCoupons();
-                        setShowCouponModal(true);
-                      }}
-                      className="rounded-full text-xs h-7 px-3 border-primary/30 text-primary hover:bg-primary/10 font-semibold"
-                    >
-                      <Ticket className="size-3.5 mr-1" />
-                      Browse Coupons
-                    </Button>
-                  </div>
+                  return (
+                    <div className="rounded-2xl sm:rounded-3xl border-2 border-amber-500/30 bg-gradient-to-br from-card via-amber-500/[0.04] to-card shadow-warm p-4 sm:p-6 space-y-4 relative overflow-hidden transition-all">
+                      {/* Ambient background glow */}
+                      <div className="absolute -top-10 -right-10 size-36 bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-transparent rounded-full blur-2xl pointer-events-none" />
 
-                  {coupon ? (
-                    <div className="flex items-center justify-between p-3 rounded-2xl bg-green-500/10 border border-green-500/30 gap-2">
-                      <div className="flex items-center gap-2 text-green-700 dark:text-green-400 min-w-0 flex-1">
-                        <CheckCircle2 className="size-4 shrink-0" />
-                        <span className="font-bold text-xs sm:text-sm truncate">
-                          {coupon.code} applied (
-                          {coupon.discount_type === "FREE_DELIVERY"
-                            ? "Free Delivery"
-                            : coupon.discount_type === "PERCENTAGE"
-                              ? `${coupon.discount_value}% OFF`
-                              : `-$${discount.toFixed(2)}`}
-                          )
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
+                      {/* Header Row */}
+                      <div className="flex items-center justify-between gap-3 border-b border-border/50 pb-3 flex-wrap sm:flex-nowrap">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="size-9 sm:size-10 rounded-2xl bg-gradient-to-br from-orange-500 via-amber-500 to-red-500 text-white flex items-center justify-center shadow-md shadow-orange-500/25 shrink-0">
+                            <Ticket className="size-4.5 sm:size-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-serif text-sm sm:text-base font-bold text-foreground truncate">
+                                Coupons &amp; Special Rewards
+                              </h3>
+                              {availableCouponsList.length > 0 && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-extrabold border border-emerald-500/30 shrink-0">
+                                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse mr-1" />
+                                  {availableCouponsList.length} Available
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                              {luckyVouchers.length > 0 
+                                ? "✨ You have Lucky Draw vouchers ready to use!" 
+                                : "Apply a promo code or voucher to save on your order"}
+                            </p>
+                          </div>
+                        </div>
+
                         <Button
                           type="button"
-                          variant="ghost"
-                          size="sm"
                           onClick={() => {
                             fetchCoupons();
                             setShowCouponModal(true);
                           }}
-                          className="rounded-full text-xs h-7 px-2.5 text-primary hover:bg-primary/10 font-semibold"
+                          className="rounded-xl text-xs h-8 px-3.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold shadow-2xs cursor-pointer flex items-center gap-1.5 transition-all active:scale-95 shrink-0 whitespace-nowrap ml-auto"
                         >
-                          Change
-                        </Button>
-                        <button
-                          type="button"
-                          onClick={() => removeCoupon()}
-                          className="p-1.5 hover:bg-green-500/20 rounded-full text-green-700 dark:text-green-300 transition-colors"
-                          title="Remove coupon"
-                        >
-                          <X className="size-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2.5">
-                      <div className="flex gap-2">
-                        <Input
-                          value={couponCode}
-                          onChange={(e) => setCouponCode(e.target.value)}
-                          placeholder="Enter voucher code..."
-                          className="h-9 rounded-xl border-border/60 text-xs sm:text-sm uppercase"
-                        />
-                        <Button
-                          type="button"
-                          onClick={handleApplyCoupon}
-                          disabled={!couponCode.trim() || isApplyingCoupon}
-                          className="h-9 rounded-xl px-4 text-xs font-semibold shrink-0"
-                        >
-                          {isApplyingCoupon ? <Loader2 className="size-3.5 animate-spin" /> : "Apply"}
+                          <Sparkles className="size-3.5" />
+                          <span>Browse Vouchers</span>
+                          <ArrowRight className="size-3" />
                         </Button>
                       </div>
-                      {couponError && <p className="text-[11px] text-destructive">{couponError}</p>}
+
+                      {coupon ? (
+                        /* Applied Coupon Celebration Card */
+                        <div className="rounded-2xl border-2 border-emerald-500/40 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-500/15 p-3.5 sm:p-4 flex items-center justify-between gap-3 shadow-xs">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="size-10 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                              <Sparkles className="size-5" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-mono font-black text-xs sm:text-sm text-foreground uppercase tracking-wide">
+                                  {coupon.code}
+                                </span>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
+                                  Applied ✓
+                                </span>
+                                {coupon.isLuckyDraw && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                                    🎰 Lucky Prize
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                You save ${discount.toFixed(2)} on this order! 🎉
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                fetchCoupons();
+                                setShowCouponModal(true);
+                              }}
+                              className="h-8 px-2.5 text-xs font-bold rounded-xl border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 cursor-pointer"
+                            >
+                              Change
+                            </Button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                removeCoupon();
+                                toast.info("Coupon removed");
+                              }}
+                              className="size-8 rounded-xl flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                              title="Remove coupon"
+                            >
+                              <X className="size-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {/* Lucky Prize Recommendation Banner if user won a voucher */}
+                          {bestLucky && (
+                            <div className="rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 p-3 sm:p-3.5 flex items-center justify-between gap-3 shadow-2xs">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="size-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center text-base shadow-sm shrink-0">
+                                  🎰
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-bold text-xs sm:text-sm text-foreground truncate">
+                                      {bestLucky.label || "Lucky Prize Discount"}
+                                    </span>
+                                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 uppercase">
+                                      Won Prize
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
+                                    Code: <strong className="text-amber-600 dark:text-amber-400 font-bold">{bestLucky.code}</strong> {bestLucky.minOrder ? `• Min. $${bestLucky.minOrder}` : ""}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={grossSubtotal < Number(bestLucky.minOrder || 0)}
+                                onClick={() => {
+                                  const acc = getCurrentAccount();
+                                  applyCoupon(bestLucky, acc.storageKey);
+                                  toast.success(`🎉 Applied Lucky Draw voucher "${bestLucky.code}"!`);
+                                }}
+                                className="h-8 px-3.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold text-xs shrink-0 cursor-pointer shadow-xs whitespace-nowrap active:scale-95"
+                              >
+                                Apply Voucher ✨
+                              </Button>
+                            </div>
+                          )}
+
+                          {/* Quick Manual Code Input Form */}
+                          <div className="space-y-1.5">
+                            <div className="flex gap-2">
+                              <div className="relative flex-1">
+                                <Input
+                                  value={couponCode}
+                                  onChange={(e) => {
+                                    setCouponCode(e.target.value.toUpperCase());
+                                    if (couponError) setCouponError("");
+                                  }}
+                                  placeholder="Enter voucher code (e.g. PIZZA10)..."
+                                  className="h-9.5 rounded-xl border-border/80 text-xs sm:text-sm uppercase font-mono font-bold bg-background/80 placeholder:font-normal placeholder:normal-case focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 transition-all"
+                                />
+                              </div>
+                              <Button
+                                type="button"
+                                onClick={handleApplyCoupon}
+                                disabled={!couponCode.trim() || isApplyingCoupon}
+                                className="h-9.5 rounded-xl px-4 text-xs font-extrabold bg-primary hover:bg-primary/90 text-primary-foreground shrink-0 cursor-pointer shadow-xs transition-all active:scale-95 whitespace-nowrap"
+                              >
+                                {isApplyingCoupon ? <Loader2 className="size-3.5 animate-spin" /> : "Apply Code"}
+                              </Button>
+                            </div>
+                            {couponError && <p className="text-[11px] text-destructive font-semibold">{couponError}</p>}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  );
+                })()}
               </div>
 
               {/* Desktop Sticky Order Summary Column */}
