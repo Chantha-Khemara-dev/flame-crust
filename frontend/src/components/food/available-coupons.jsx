@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Ticket, Loader2, Trash2, Sparkles } from "lucide-react";
+import { Ticket, Loader2, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { list } from "@/lib/api";
@@ -11,7 +11,6 @@ import {
   getCurrentAccount,
   getWonCoupons,
   formatWonVouchersAsCoupons,
-  deleteWonCoupon,
 } from "./lucky-draw-modal.jsx";
 
 export function AvailableCoupons({ 
@@ -134,23 +133,6 @@ export function AvailableCoupons({
       }
     }
     setOpen(false);
-  };
-
-  const handleDeleteWon = (e, coupon) => {
-    e.stopPropagation();
-    try {
-      const acc = getCurrentAccount();
-      deleteWonCoupon(acc.storageKey, coupon.code);
-      const auth = localStorage.getItem("customerAuth");
-      if (auth) {
-        const c = JSON.parse(auth);
-        deleteWonCoupon(`user_${c.id || c.phone || "guest"}`, coupon.code);
-      }
-      setCoupons(prev => prev.filter(item => item.code !== coupon.code));
-      toast.success(`Removed voucher "${coupon.code}"`);
-    } catch (err) {
-      console.error("Failed to delete voucher", err);
-    }
   };
 
   const luckyCount = coupons.filter(c => c.isLuckyDraw || String(c.code).includes("-")).length;
@@ -316,18 +298,6 @@ export function AvailableCoupons({
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {isLucky && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => handleDeleteWon(e, coupon)}
-                            className="size-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg cursor-pointer"
-                            title="Delete Voucher"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        )}
                         <Button 
                           type="button"
                           variant={isCurrentlyApplied ? "default" : (isUsed || isExpired || isMinOrderNotMet) ? "outline" : "secondary"} 

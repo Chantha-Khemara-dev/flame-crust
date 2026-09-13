@@ -318,6 +318,9 @@ export function getWonCoupons(storageKey) {
 
     const all = [];
     const seen = new Set();
+    const now = Date.now();
+    // Auto-remove vouchers that expired more than 24 hours ago, or were used more than 24 hours ago
+    const EXPIRY_GRACE_MS = 24 * 60 * 60 * 1000;
 
     for (const k of keysToCheck) {
       const raw = localStorage.getItem(k);
@@ -325,14 +328,33 @@ export function getWonCoupons(storageKey) {
       try {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
+          let hasPruned = false;
+          const remaining = [];
           for (const item of parsed) {
             if (item && typeof item === "object" && item.code) {
+              const expTime = item.expiresAt ? new Date(item.expiresAt).getTime() : null;
+              const usedTime = item.usedAt ? new Date(item.usedAt).getTime() : null;
+
+              // If expired over 24h ago or used over 24h ago, auto-remove (it disappears)
+              const isPastGrace = (expTime && !isNaN(expTime) && (now - expTime > EXPIRY_GRACE_MS)) ||
+                                  (usedTime && !isNaN(usedTime) && (now - usedTime > EXPIRY_GRACE_MS));
+
+              if (isPastGrace) {
+                hasPruned = true;
+                continue;
+              }
+
+              remaining.push(item);
+
               const uniqueKey = item.code + (item.wonAt || item.id || "");
               if (!seen.has(uniqueKey)) {
                 seen.add(uniqueKey);
                 all.push(item);
               }
             }
+          }
+          if (hasPruned) {
+            localStorage.setItem(k, JSON.stringify(remaining));
           }
         }
       } catch {}
@@ -1392,9 +1414,9 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                               ) : (
                                 <Button
                                   size="sm"
-                                  variant="ghost"
+                                  variant="outline"
                                   onClick={() => onOpenChange(false)}
-                                  className="h-8 sm:h-9 md:h-10 rounded-xl text-xs md:text-sm font-bold text-zinc-400 hover:text-white hover:bg-zinc-800 cursor-pointer"
+                                  className="h-8 sm:h-9 md:h-10 rounded-xl border-zinc-700 bg-zinc-900/80 text-zinc-300 text-xs md:text-sm font-bold hover:bg-zinc-800 hover:text-white cursor-pointer"
                                 >
                                   Close
                                 </Button>
@@ -1435,6 +1457,7 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                       const Icon = getPrizeIcon(voucher);
                       const wonDate = voucher?.wonAt ? new Date(voucher.wonAt) : null;
                       const expDate = voucher?.expiresAt ? new Date(voucher.expiresAt) : null;
+                      const isExpired = expDate && !isNaN(expDate.getTime()) && expDate < new Date();
                       const wonStr = wonDate && !isNaN(wonDate.getTime()) ? wonDate.toLocaleDateString() : null;
                       const expStr = expDate && !isNaN(expDate.getTime()) ? expDate.toLocaleDateString() : "Valid 7 days";
 
@@ -1444,7 +1467,12 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: Math.min(i * 0.05, 0.3) }}
-                          className="relative rounded-2xl border border-amber-500/20 bg-zinc-900/80 hover:border-amber-500/40 hover:shadow-md hover:shadow-orange-500/10 transition-all group overflow-hidden"
+                          className={cn(
+                            "relative rounded-2xl border transition-all group overflow-hidden",
+                            isExpired 
+                              ? "border-border/50 bg-zinc-900/50 opacity-60 grayscale hover:grayscale-0"
+                              : "border-amber-500/20 bg-zinc-900/80 hover:border-amber-500/40 hover:shadow-md hover:shadow-orange-500/10"
+                          )}
                         >
                           <div className={cn("absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b", voucher?.bgGradient || "from-orange-500 to-amber-500")} />
                           <div className="absolute -left-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-[#181512] border border-amber-500/25" />
@@ -1484,16 +1512,16 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                               </Button>
                               <Button
                                 size="sm"
-                                disabled={Boolean(voucher?.used)}
+                                disabled={Boolean(voucher?.used) || isExpired}
                                 onClick={() => handleApplyToCart(voucher)}
                                 className={cn(
                                   "h-8 md:h-9 px-3 md:px-4 rounded-lg text-xs md:text-sm font-bold shadow-sm cursor-pointer",
-                                  voucher?.used
+                                  (voucher?.used || isExpired)
                                     ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
                                     : "bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600"
                                 )}
                               >
-                                {voucher?.used ? "Used" : "Apply"}
+                                {voucher?.used ? "Used" : isExpired ? "Expired" : "Apply"}
                               </Button>
                             </div>
                           </div>
@@ -1504,7 +1532,9 @@ export function LuckyDrawModal({ open, onOpenChange }) {
                               <Clock className="size-3 md:size-3.5 text-amber-400" />
                               {wonStr ? `Won ${wonStr}` : "Won Recently"}
                             </span>
-                            <span className="font-semibold text-zinc-300">Expires {expStr}</span>
+                            <span className={cn("font-semibold", isExpired ? "text-red-400 font-bold" : "text-zinc-300")}>
+                              {isExpired ? `Expired ${expStr}` : `Expires ${expStr}`}
+                            </span>
                           </div>
                         </motion.div>
                       );

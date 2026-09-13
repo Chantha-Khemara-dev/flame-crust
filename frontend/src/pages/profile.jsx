@@ -52,9 +52,7 @@ import { PushNotificationButton } from "@/components/common/PushNotificationButt
 import { 
   syncLocalVouchersToDatabase, 
   getWonCoupons, 
-  formatWonVouchersAsCoupons,
-  deleteWonCoupon,
-  clearAllWonCoupons
+  formatWonVouchersAsCoupons
 } from "@/components/food/lucky-draw-modal";
 import { toast } from "sonner";
 import { cn, formatDate } from "@/lib/utils";
@@ -1831,7 +1829,7 @@ export default function ProfilePage() {
                             </span>
                           </div>
                           <p className="text-[10px] sm:text-xs text-white/90 truncate mt-0.5">
-                            Spin daily to win up to 20% OFF & free vouchers!
+                            Spin daily to win up to 20% OFF!
                           </p>
                         </div>
                       </div>
@@ -1867,14 +1865,6 @@ export default function ProfilePage() {
                           return true;
                         });
 
-                        const handleClearWonVouchers = () => {
-                          const userKey = `user_${customer?.id || customer?.phone || customer?.email || "guest"}`;
-                          clearAllWonCoupons(userKey);
-                          clearAllWonCoupons(customer?.id || customer?.phone || "guest");
-                          setCoupons(prev => prev.filter(c => !c.isLuckyDraw && !String(c.code).includes("-")));
-                          toast.success("Cleared all Lucky Draw vouchers!");
-                        };
-
                         return (
                           <div className="space-y-4 sm:space-y-5">
                             <div>
@@ -1882,16 +1872,6 @@ export default function ProfilePage() {
                                 <h4 className="text-sm font-bold text-foreground flex items-center gap-1.5">
                                   <span className="size-2 rounded-full bg-emerald-500 animate-pulse"></span> Available Now ({filteredList.length})
                                 </h4>
-                                {luckyCount > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={handleClearWonVouchers}
-                                    className="text-[11px] text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors cursor-pointer px-2 py-0.5 rounded-md hover:bg-destructive/10"
-                                    title="Remove all Lucky Draw vouchers"
-                                  >
-                                    <Trash2 className="size-3" /> Clear Won Vouchers
-                                  </button>
-                                )}
                               </div>
 
                               {/* Filter tabs: All, Lucky Draw, Store Promos */}
@@ -1969,23 +1949,6 @@ export default function ProfilePage() {
                                             >
                                               <Copy className="size-3" /> Copy
                                             </Button>
-                                            {isLucky && (
-                                              <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => {
-                                                  const userKey = `user_${customer?.id || customer?.phone || customer?.email || "guest"}`;
-                                                  deleteWonCoupon(userKey, coupon.code);
-                                                  deleteWonCoupon(customer?.id || customer?.phone || "guest", coupon.code);
-                                                  setCoupons(prev => prev.filter(c => c.code !== coupon.code));
-                                                  toast.success(`Removed voucher "${coupon.code}"`);
-                                                }}
-                                                className="size-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
-                                                title="Delete Voucher"
-                                              >
-                                                <Trash2 className="size-3" />
-                                              </Button>
-                                            )}
                                           </div>
                                         </div>
                                         <h5 className="font-bold text-base text-foreground">
@@ -2029,46 +1992,45 @@ export default function ProfilePage() {
                             {/* Expired / Used */}
                             {coupons.filter(c => !c.active || (c.expires_at && new Date(c.expires_at) <= new Date())).length > 0 && (
                               <div>
-                                <h4 className="text-sm font-bold mb-3 text-muted-foreground flex items-center gap-1.5">
-                                  <span className="size-2 rounded-full bg-muted-foreground/30"></span> Used / Expired
-                                </h4>
+                                <div className="flex items-center justify-between mb-3">
+                                  <h4 className="text-sm font-bold text-muted-foreground flex items-center gap-1.5">
+                                    <span className="size-2 rounded-full bg-muted-foreground/30"></span> Used / Expired
+                                  </h4>
+                                  <span className="text-[10px] text-muted-foreground/60">
+                                    Auto-clears after expiration
+                                  </span>
+                                </div>
                                 <div className="grid sm:grid-cols-2 gap-3 opacity-60 grayscale hover:grayscale-0 transition-all duration-300">
-                                  {coupons.filter(c => !c.active || (c.expires_at && new Date(c.expires_at) <= new Date())).map(coupon => (
-                                    <div key={coupon.id || coupon.code} className="bg-card border border-border/60 rounded-2xl p-3.5 sm:p-4 shadow-2xs flex flex-col justify-between">
-                                      <div className="flex items-start justify-between">
-                                        <div>
-                                          <div className="inline-block px-2.5 py-0.5 bg-secondary text-muted-foreground text-[10px] font-bold rounded-full mb-1.5 uppercase tracking-wide">
-                                            {coupon.code}
+                                  {coupons.filter(c => !c.active || (c.expires_at && new Date(c.expires_at) <= new Date())).map(coupon => {
+                                    const isExpired = !coupon.active || (coupon.expires_at && new Date(coupon.expires_at) <= new Date());
+                                    return (
+                                      <div key={coupon.id || coupon.code} className="bg-card border border-border/60 rounded-2xl p-3.5 sm:p-4 shadow-2xs flex flex-col justify-between">
+                                        <div className="flex items-start justify-between">
+                                          <div>
+                                            <div className="inline-block px-2.5 py-0.5 bg-secondary text-muted-foreground text-[10px] font-bold rounded-full mb-1.5 uppercase tracking-wide">
+                                              {coupon.code}
+                                            </div>
+                                            <h5 className="font-bold text-sm text-muted-foreground">
+                                              {coupon.discount_type === 'PERCENTAGE' ? `${coupon.discount_value}% OFF` : 
+                                               coupon.discount_type === 'FREE_DELIVERY' ? 'FREE DELIVERY' : 
+                                               `$${coupon.discount_value} OFF`}
+                                            </h5>
                                           </div>
-                                          <h5 className="font-bold text-sm text-muted-foreground">
-                                            {coupon.discount_type === 'PERCENTAGE' ? `${coupon.discount_value}% OFF` : 
-                                             coupon.discount_type === 'FREE_DELIVERY' ? 'FREE DELIVERY' : 
-                                             `$${coupon.discount_value} OFF`}
-                                          </h5>
+                                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20">
+                                            {isExpired ? "ផុតកំណត់" : "Used"}
+                                          </span>
                                         </div>
-                                        {(coupon.isLuckyDraw || String(coupon.code).includes("-")) && (
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => {
-                                              const userKey = `user_${customer?.id || customer?.phone || customer?.email || "guest"}`;
-                                              deleteWonCoupon(userKey, coupon.code);
-                                              deleteWonCoupon(customer?.id || customer?.phone || "guest", coupon.code);
-                                              setCoupons(prev => prev.filter(c => c.code !== coupon.code));
-                                              toast.success(`Removed expired voucher "${coupon.code}"`);
-                                            }}
-                                            className="size-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
-                                            title="Delete Expired Voucher"
-                                          >
-                                            <Trash2 className="size-3" />
-                                          </Button>
-                                        )}
+                                        <div className="mt-3 pt-2 border-t border-border/60 text-[11px] text-muted-foreground flex items-center justify-between gap-1">
+                                          <span>{isExpired ? "Expired" : "Used or Inactive"}</span>
+                                          {coupon.expires_at && (
+                                            <span className="text-[10px]">
+                                              {new Date(coupon.expires_at).toLocaleDateString()}
+                                            </span>
+                                          )}
+                                        </div>
                                       </div>
-                                      <div className="mt-3 pt-2 border-t border-border/60 text-[11px] text-muted-foreground flex items-center gap-1">
-                                        {coupon.active ? "Expired" : "Used or Inactive"}
-                                      </div>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               </div>
                             )}
