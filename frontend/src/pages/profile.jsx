@@ -1474,7 +1474,7 @@ export default function ProfilePage() {
                         <p className="text-xs text-muted-foreground mt-1">Time to crave something delicious!</p>
                       </div>
                     ) : (
-                      <div className="space-y-2.5 sm:space-y-3 pb-8">
+                      <div className="space-y-3 pb-8">
                         {orders.map((order) => {
                           const isDelivered = order.status === "DELIVERED";
                           const isCancelled = order.status === "CANCELLED";
@@ -1483,41 +1483,46 @@ export default function ProfilePage() {
                           return (
                             <div 
                               key={order.id} 
-                              className="bg-card border border-border/70 hover:border-primary/40 rounded-xl sm:rounded-2xl p-3 sm:p-3.5 transition-all hover:shadow-2xs group cursor-pointer"
+                              className={cn(
+                                "bg-card border border-border/80 rounded-2xl p-3.5 sm:p-4 transition-all hover:shadow-warm group cursor-pointer shadow-2xs",
+                                isDelivered ? "border-l-4 border-l-emerald-500" :
+                                isCancelled ? "border-l-4 border-l-destructive" :
+                                "border-l-4 border-l-primary"
+                              )}
                               onClick={() => navigate(`/track/${order.id}`)}
                             >
                               {/* Top Row: Icon + Order Number & Status + Price */}
-                              <div className="flex items-center justify-between gap-2.5">
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                  {/* Status Icon */}
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  {/* Status Icon with vibrant color background */}
                                   <div className={cn(
-                                    "size-8 sm:size-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 shadow-2xs",
-                                    isDelivered ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
-                                    isCancelled ? "bg-destructive/10 text-destructive" :
-                                    "bg-primary/10 text-primary"
+                                    "size-9 sm:size-10 rounded-xl flex items-center justify-center shrink-0 shadow-2xs",
+                                    isDelivered ? "bg-gradient-to-br from-emerald-500/20 to-teal-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30" :
+                                    isCancelled ? "bg-destructive/15 text-destructive border border-destructive/30" :
+                                    "bg-gradient-to-br from-primary/20 to-amber-500/20 text-primary border border-primary/30"
                                   )}>
-                                    {isDelivered ? <Check className="size-4" /> : 
-                                     isCancelled ? <X className="size-4" /> : 
-                                     <Bike className="size-4 animate-pulse" />}
+                                    {isDelivered ? <Check className="size-4.5 stroke-[2.5]" /> : 
+                                     isCancelled ? <X className="size-4.5 stroke-[2.5]" /> : 
+                                     <Bike className="size-4.5 stroke-[2.2] animate-pulse" />}
                                   </div>
 
                                   {/* Order Number, Status & Date */}
                                   <div className="min-w-0">
-                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                       <span className="font-mono text-xs sm:text-sm font-bold text-foreground whitespace-nowrap">
                                         #{order.order_number}
                                       </span>
                                       <span className={cn(
-                                        "text-[9px] sm:text-[10px] font-bold px-2 py-0.2 rounded-full uppercase tracking-wider shrink-0",
-                                        isDelivered ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" :
-                                        isCancelled ? "bg-destructive/15 text-destructive" :
-                                        "bg-primary/15 text-primary"
+                                        "text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider shrink-0 border",
+                                        isDelivered ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" :
+                                        isCancelled ? "bg-destructive/15 text-destructive border-destructive/30" :
+                                        "bg-primary/15 text-primary border-primary/30 animate-pulse"
                                       )}>
                                         {order.status}
                                       </span>
                                     </div>
-                                    <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5 leading-tight">
-                                      <Clock className="size-3 shrink-0 text-muted-foreground/70" />
+                                    <p className="text-[11px] sm:text-xs text-muted-foreground flex items-center gap-1.5 mt-1 font-medium leading-tight">
+                                      <Clock className="size-3.5 shrink-0 text-muted-foreground/70" />
                                       <span className="truncate">{formatDate(order.created_at)}</span>
                                     </p>
                                   </div>
@@ -1525,62 +1530,63 @@ export default function ProfilePage() {
 
                                 {/* Price */}
                                 <div className="text-right shrink-0">
-                                  <span className="font-serif font-bold text-base sm:text-lg text-primary">
+                                  <span className="font-serif font-black text-base sm:text-xl text-primary drop-shadow-2xs">
                                     ${order.total}
                                   </span>
                                 </div>
                               </div>
 
-                              {/* Bottom Row: View Details Link & Compact Buttons */}
-                              <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-border/40 gap-2">
+                              {/* Bottom Action Row: Distinct, Colorful & Easy-to-Tap Buttons */}
+                              <div className="flex items-center justify-between pt-3 mt-3 border-t border-border/50 gap-2 flex-wrap">
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setSelectedOrderDetails(order);
                                   }}
-                                  className="text-[11px] text-muted-foreground hover:text-foreground font-medium flex items-center gap-0.5 cursor-pointer transition-colors py-0.5"
+                                  className="h-8 px-3 rounded-full bg-secondary/80 hover:bg-secondary text-foreground text-xs font-semibold flex items-center gap-1.5 border border-border/80 hover:border-primary/40 transition-all active:scale-95 cursor-pointer shadow-2xs"
                                 >
+                                  <Eye className="size-3.5 text-primary" />
                                   <span>Details</span>
-                                  <ChevronRight className="size-3" />
+                                  <ChevronRight className="size-3 text-muted-foreground" />
                                 </button>
 
-                                <div className="flex items-center gap-1.5 shrink-0">
+                                <div className="flex items-center gap-2 shrink-0">
                                   <Button 
                                     variant="outline" 
                                     size="sm" 
-                                    className="rounded-full text-[11px] h-7 px-3 font-semibold border-border/70 hover:border-primary hover:text-primary transition-all cursor-pointer active:scale-95"
+                                    className="rounded-full text-xs h-8 px-3.5 font-bold border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500 hover:text-white dark:hover:text-white transition-all cursor-pointer active:scale-95 shadow-2xs"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleReorder(order.id);
                                     }}
                                   >
-                                    <RefreshCcw className="size-3 mr-1" /> Reorder
+                                    <RefreshCcw className="size-3.5 mr-1" /> Reorder
                                   </Button>
 
                                   {isActive ? (
                                     <Button 
                                       variant="default" 
                                       size="sm" 
-                                      className="rounded-full text-[11px] h-7 px-3.5 font-bold shadow-2xs bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer active:scale-95"
+                                      className="rounded-full text-xs h-8 px-4 font-bold shadow-warm bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer active:scale-95"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         navigate(`/track/${order.id}`);
                                       }}
                                     >
-                                      Track Live
+                                      <Bike className="size-3.5 mr-1" /> Track Live
                                     </Button>
                                   ) : (
                                     <Button 
-                                      variant="ghost" 
+                                      variant="outline" 
                                       size="sm" 
-                                      className="rounded-full text-[11px] h-7 px-2.5 text-muted-foreground hover:text-foreground cursor-pointer active:scale-95"
+                                      className="rounded-full text-xs h-8 px-3.5 font-bold bg-primary/10 text-primary border-primary/30 hover:bg-primary hover:text-white transition-all cursor-pointer active:scale-95 shadow-2xs"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         navigate(`/track/${order.id}`);
                                       }}
                                     >
-                                      Track
+                                      <MapPin className="size-3.5 mr-1" /> Track
                                     </Button>
                                   )}
                                 </div>
