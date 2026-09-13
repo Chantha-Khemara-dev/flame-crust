@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   ArrowLeft, 
   CheckCircle2, 
@@ -32,7 +32,7 @@ import { BakongKHQR, IndividualInfo } from "bakong-khqr";
 import ImageUpload from "@/components/ImageUpload";
 import { MapPicker } from "./map-picker";
 import { motion, AnimatePresence } from "framer-motion";
-import { list } from "@/lib/api";
+import { list, API_URL } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { getImageUrl } from "@/lib/food-api";
 import {
@@ -76,6 +76,9 @@ export function PaymentForm({
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [timeLeft, setTimeLeft] = useState(300);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [manualChecksCount, setManualChecksCount] = useState(0);
+  const [isVerifyingBakong, setIsVerifyingBakong] = useState(false);
+  const qrCreatedAtRef = useRef(0);
   const [couponCodeInput, setCouponCodeInput] = useState("");
   const [couponError, setCouponError] = useState("");
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
@@ -149,6 +152,8 @@ export function PaymentForm({
 
   // Generate KHQR when user clicks confirm for KHQR
   const generateQR = (amountToUse = total) => {
+    qrCreatedAtRef.current = Date.now();
+    setManualChecksCount(0);
     try {
       const accountId = import.meta.env.VITE_BAKONG_ACCOUNT_ID || "khemara_chantha1@bkrt";
       const merchantName = import.meta.env.VITE_BAKONG_MERCHANT_NAME || "Flame Crust";
@@ -173,6 +178,43 @@ export function PaymentForm({
     } catch (e) {
       console.warn("KHQR fallback generation:", e);
       setQrCodeString(`https://bakong.nbc.gov.kh/pay?account=khemara_chantha1@bkrt&amount=${Number(amountToUse || 0).toFixed(2)}&currency=USD`);
+    }
+  };
+
+  const handleManualVerifyBakong = async () => {
+    if (isVerifyingBakong || isSubmitting) return;
+    if (manualChecksCount >= 2) {
+      toast.info("អ្នកបានចុចផ្ទៀងផ្ទាត់គ្រប់ ២ ដងហើយ។ សូមរង់ចាំការពិនិត្យស្វ័យប្រវត្តិ ឬជ្រើសរើសប្តូរវិធីទូទាត់។");
+      return;
+    }
+    setManualChecksCount(prev => prev + 1);
+    setIsVerifyingBakong(true);
+    try {
+      const res = await fetch(`${API_URL}/payments/verify-khqr`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          qr_code_string: qrCodeString || "dummy",
+          qr_created_at: qrCreatedAtRef.current
+        })
+      });
+      const data = await res.json();
+      if (data.status === "SUCCESS") {
+        toast.success("Payment verified! ទទួលបានការផ្ទេរប្រាក់ជោគជ័យ");
+        await handleFinalSubmit();
+        return;
+      } else {
+        const remaining = Math.max(0, 2 - (manualChecksCount + 1));
+        toast.warning(
+          `មិនទាន់ទទួលបានការផ្ទេរប្រាក់ទេ។ សូមរង់ចាំបន្តិច ឬពិនិត្យក្នុង App ធនាគាររបស់អ្នកម្ដងទៀត។${remaining > 0 ? ` (នៅសល់សិទ្ធិចុច ${remaining} ដង)` : " (អស់សិទ្ធិចុចផ្ទៀងផ្ទាត់ហើយ)"}`,
+          { duration: 5000 }
+        );
+      }
+    } catch (e) {
+      console.warn("Bakong verification error:", e);
+      toast.error("មិនអាចទាក់ទងទៅប្រព័ន្ធ Bakong បានទេនៅពេលនេះ។ សូមរង់ចាំបន្តិចទៀត។");
+    } finally {
+      setIsVerifyingBakong(false);
     }
   };
 
@@ -1015,29 +1057,50 @@ export function PaymentForm({
                 <span>កំពុងរង់ចាំការបាញ់លុយពី Bakong...</span>
               </div>
 
-              {/* Confirm Paid Button */}
+              {/* Manual Verify Bakong Button (Max 2 Clicks) */}
               <Button
                 type="button"
-                onClick={handleFinalSubmit}
-                disabled={isSubmitting}
-                className="w-full h-11 rounded-full bg-green-600 hover:bg-green-700 text-white font-bold text-xs shadow-md cursor-pointer"
+                onClick={handleManualVerifyBakong}
+                disabled={isVerifyingBakong || isSubmitting || manualChecksCount >= 2}
+                className={cn(
+                  "w-full h-11 rounded-full font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5",
+                  manualChecksCount >= 2
+                    ? "bg-secondary text-muted-foreground border border-border/60 cursor-not-allowed opacity-80"
+                    : "bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer active:scale-95"
+                )}
               >
-                {isSubmitting ? (
+                {isVerifyingBakong ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin mr-1.5" /> កំពុងផ្ទៀងផ្ទាត់ជាមួយ Bakong...
+                  </>
+                ) : isSubmitting ? (
                   <>
                     <Loader2 className="size-3.5 animate-spin mr-1.5" /> Completing Order...
                   </>
+                ) : manualChecksCount >= 2 ? (
+                  <>
+                    <CheckCircle2 className="size-3.5 mr-1 text-muted-foreground" /> អស់សិទ្ធិចុចផ្ទៀងផ្ទាត់ (២/២ ដង)
+                  </>
                 ) : (
                   <>
+                    <ShieldCheck className="size-4 mr-1 text-emerald-200" />
+                    <span>ខ្ញុំបានផ្ទេររួច / ពិនិត្យឥឡូវ (សល់ {2 - manualChecksCount} ដង)</span>
                   </>
                 )}
               </Button>
 
+              {manualChecksCount >= 2 && (
+                <p className="text-[10px] text-amber-500 font-medium">
+                  ⚠️ អ្នកបានចុចគ្រប់ ២ ដងហើយ។ សូមរង់ចាំការពិនិត្យស្វ័យប្រវត្តិ។
+                </p>
+              )}
+
               <button
                 type="button"
                 onClick={() => setShowQRModal(false)}
-                className="text-[11px] text-muted-foreground hover:underline cursor-pointer"
+                className="text-[11px] text-amber-600 dark:text-amber-400 hover:underline font-semibold cursor-pointer py-1 block w-full text-center"
               >
-                Cancel / Change payment method
+                🔄 ប្តូរវិធីទូទាត់ប្រាក់ផ្សេង / ចាកចេញពី QR
               </button>
             </motion.div>
           </div>

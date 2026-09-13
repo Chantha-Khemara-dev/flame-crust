@@ -811,22 +811,24 @@ function CheckoutPage() {
       const targetItemCount = itemCount;
       const targetAddress = `${address1}${address2 ? `, ${address2}` : ""}, ${city}`;
 
-      setTimeout(() => {
-        if (typeof clear === "function") clear();
-        if (typeof removeCoupon === "function") removeCoupon();
-      }, 200);
-
       if ((targetMethod === "KHQR" || targetMethod === "ABA_PAY") && !verifiedPayment) {
+        // Do not clear cart yet so the user can switch payment method or cancel safely
         navigate(`/payment/${orderId}`, {
           replace: true,
           state: {
             total: targetTotal,
             paymentMethod: targetMethod,
             itemCount: targetItemCount,
-            address: targetAddress
+            address: targetAddress,
+            cartItems: lines
           }
         });
       } else {
+        setTimeout(() => {
+          if (typeof clear === "function") clear();
+          if (typeof removeCoupon === "function") removeCoupon();
+        }, 200);
+
         navigate("/order-confirmation", {
           replace: true,
           state: {

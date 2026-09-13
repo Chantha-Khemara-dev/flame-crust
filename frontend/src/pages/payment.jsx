@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { QrCode, CheckCircle2, ShieldCheck, Loader2, CreditCard, X } from "lucide-react";
+import { QrCode, CheckCircle2, ShieldCheck, Loader2, CreditCard, X, RefreshCw, Landmark, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -19,6 +19,8 @@ import { QRCodeCanvas } from "qrcode.react";
 import { BakongKHQR, IndividualInfo } from "bakong-khqr";
 import { getCurrentAccount, addBonusSpins } from "@/components/food/lucky-draw-modal.jsx";
 import { triggerFoodRefresh } from "@/lib/food-api";
+import { useCart } from "@/lib/cart-store";
+import { cn } from "@/lib/utils";
 
 // QR session: total validity 5 minutes (300s)
 // Bakong token (verify) schedule per QR: 5 tokens total, no check at start.
@@ -41,6 +43,9 @@ export default function PaymentGatewayPage() {
   const [timeLeft, setTimeLeft] = useState(300); // 5 minutes
   const [qrCodeString, setQrCodeString] = useState("");
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [manualChecksCount, setManualChecksCount] = useState(0);
+  const MAX_MANUAL_CHECKS = 2;
+  const [isSwitchingMethod, setIsSwitchingMethod] = useState(false);
   const qrCreatedAtRef = useRef(0);
   const paidRef = useRef(false);
   const [totalAmount, setTotalAmount] = useState(location.state?.total || 0);
@@ -141,7 +146,7 @@ export default function PaymentGatewayPage() {
     }
   }, [paymentMethod, totalAmount]);
 
-  const checkPaymentVerification = async () => {
+  const checkPaymentVerification = async (isManual = false) => {
     if (paidRef.current || !qrCodeString) return false;
 
     // Never verify with Bakong after the 5-minute hard cap (+ small grace so the
@@ -175,6 +180,10 @@ export default function PaymentGatewayPage() {
           toast.error("Server បដិសេធ: QR អស់សុពលភាពក្រោយ 5 នាទី។ ការទូទាត់មិនត្រូវបានទទួលយកទេ។");
           return false;
         }
+        if (data.status === "LIMIT_EXCEEDED" || data.errorCode === 17) {
+          if (isManual) toast.error("Bakong API daily limit reached. Please try again later or pay with Cash.");
+          return false;
+        }
         success = data.status === "SUCCESS";
       } else {
         // Fallback: check recent payments by amount
@@ -190,13 +199,32 @@ export default function PaymentGatewayPage() {
       if (success) {
         await processSuccessfulPayment();
         return true;
+      } else if (isManual) {
+        const remaining = Math.max(0, MAX_MANUAL_CHECKS - manualChecksCount);
+        toast.warning(
+          `មិនទាន់ទទួលបានការផ្ទេរប្រាក់ទេ។ សូមរង់ចាំបន្តិច ឬពិនិត្យក្នុង App ធនាគាររបស់អ្នកម្ដងទៀត។${remaining > 0 ? ` (នៅសល់សិទ្ធិចុច ${remaining} ដង)` : " (អស់សិទ្ធិចុចផ្ទៀងផ្ទាត់ហើយ — សូមរង់ចាំការពិនិត្យស្វ័យប្រវត្តិ)"}`,
+          { duration: 5000 }
+        );
       }
     } catch (err) {
       console.error("Verification error:", err);
+      if (isManual) {
+        toast.error("មិនអាចទាក់ទងទៅប្រព័ន្ធ Bakong បានទេនៅពេលនេះ។ សូមរង់ចាំបន្តិចទៀត។");
+      }
     } finally {
       setIsVerifying(false);
     }
     return false;
+  };
+
+  const handleManualCheck = async () => {
+    if (isVerifying) return;
+    if (manualChecksCount >= MAX_MANUAL_CHECKS) {
+      toast.info("អ្នកបានចុចផ្ទៀងផ្ទាត់គ្រប់ចំនួនកំណត់ (២ ដង) ហើយ។ សូមរង់ចាំប្រព័ន្ធផ្ទៀងផ្ទាត់ដោយស្វ័យប្រវត្តិតាមពេលកំណត់។");
+      return;
+    }
+    setManualChecksCount(prev => prev + 1);
+    await checkPaymentVerification(true);
   };
 
   const processSuccessfulPayment = async () => {
@@ -207,7 +235,13 @@ export default function PaymentGatewayPage() {
     }
     paidRef.current = true;
     setIsPaid(true);
-    toast.success("Payment confirmed successfully!");
+
+    // Clear cart upon successful payment
+    try {
+      useCart.getState().clear();
+    } catch (e) {}
+
+    toast.success("Payment confirmed successfully! ទទួលបានការទូទាត់ជោគជ័យ");
     
     // Handle navigation based on whether we have formData
     if (formData && cartItems) {
@@ -363,13 +397,57 @@ export default function PaymentGatewayPage() {
     }
   };
 
-  const handleExitPayment = () => {
+  const handleSwitchToCash = async () => {
+    if (isSwitchingMethod) return;
+    setIsSwitchingMethod(true);
+    try {
+      if (orderId) {
+        await update("orders", orderId, {
+          payment_method: "CASH",
+          status: "PENDING"
+        });
+        await create("payments", {
+          order_id: orderId,
+          method: "CASH",
+          status: "PENDING",
+          amount: Number(Number(totalAmount).toFixed(2))
+        });
+      }
+      try {
+        useCart.getState().clear();
+      } catch (e) {}
+
+      toast.success("បានប្តូរវិធីទូទាត់ទៅជា 'បង់ប្រាក់សុទ្ធពេលដឹកដល់ (Cash)' ជោគជ័យ!");
+      setShowExitConfirm(false);
+      navigate("/order-confirmation", {
+        replace: true,
+        state: {
+          orderId,
+          total: Number(totalAmount),
+          itemCount: location.state?.itemCount || 1,
+          paymentMethod: "CASH",
+          address: location.state?.address || "Phnom Penh"
+        }
+      });
+    } catch (e) {
+      console.error("Failed to switch to cash:", e);
+      toast.error("មិនអាចប្តូរវិធីទូទាត់បានទេ សូមព្យាយាមម្តងទៀត");
+    } finally {
+      setIsSwitchingMethod(false);
+    }
+  };
+
+  const handleCancelAndExit = async () => {
     setShowExitConfirm(false);
     if (orderId) {
-      navigate(`/track/${orderId}`, { replace: true });
-    } else {
-      navigate("/cart", { replace: true });
+      try {
+        await update("orders", orderId, { status: "CANCELLED" });
+      } catch (e) {
+        console.warn("Failed to mark order as cancelled:", e);
+      }
     }
+    toast.info("បានបោះបង់ការទូទាត់។ ការបញ្ជាទិញមិនត្រូវបានគិតជាផ្លូវការទេ។");
+    navigate("/checkout", { replace: true });
   };
 
   const formatTime = (seconds) => {
@@ -389,8 +467,8 @@ export default function PaymentGatewayPage() {
           <ShieldCheck className="size-8 absolute top-6 left-6 opacity-50" />
           <button 
             onClick={() => setShowExitConfirm(true)} 
-            className="absolute top-6 right-6 opacity-70 hover:opacity-100 transition-opacity bg-primary-foreground/10 rounded-full p-1"
-            title="Pay Later / Cancel"
+            className="absolute top-6 right-6 opacity-70 hover:opacity-100 transition-opacity bg-primary-foreground/10 rounded-full p-1 cursor-pointer"
+            title="ប្តូរវិធីទូទាត់ / ចាកចេញ"
           >
             <X className="size-6" />
           </button>
@@ -487,7 +565,7 @@ export default function PaymentGatewayPage() {
                         </span>
                         {paymentMethod !== "CARD" && (
                           <span className="text-xs text-muted-foreground mt-0.5">
-                            បន្ទាប់ពីស្កេនរួច សូមរង់ចាំប្រមាណ ១ នាទី ដើម្បីប្រព័ន្ធផ្ទៀងផ្ទាត់ដោយស្វ័យប្រវត្តិ។
+                            បន្ទាប់ពីស្កេនរួច អ្នកអាចចុចប៊ូតុងខាងក្រោមដើម្បីផ្ទៀងផ្ទាត់ ឬរង់ចាំប្រព័ន្ធស្វ័យប្រវត្តិ។
                           </span>
                         )}
                       </div>
@@ -502,24 +580,68 @@ export default function PaymentGatewayPage() {
 
               {/* Action buttons */}
               <div className="w-full space-y-2.5">
+                {paymentMethod !== "CARD" && (
+                  <Button
+                    type="button"
+                    onClick={handleManualCheck}
+                    disabled={isVerifying || manualChecksCount >= MAX_MANUAL_CHECKS || timeLeft <= 0}
+                    className={cn(
+                      "w-full h-12 rounded-2xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2",
+                      manualChecksCount >= MAX_MANUAL_CHECKS
+                        ? "bg-secondary text-muted-foreground border border-border/60 cursor-not-allowed opacity-80"
+                        : "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white cursor-pointer active:scale-[0.98] shadow-emerald-500/20"
+                    )}
+                  >
+                    {isVerifying ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        <span>កំពុងទាក់ទង Bakong ផ្ទៀងផ្ទាត់...</span>
+                      </>
+                    ) : manualChecksCount >= MAX_MANUAL_CHECKS ? (
+                      <>
+                        <CheckCircle2 className="size-4 text-muted-foreground" />
+                        <span>បានចុចគ្រប់កំណត់ (២/២ ដង) — សូមរង់ចាំ</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="size-4.5 text-emerald-300" />
+                        <span>ខ្ញុំបានផ្ទេររួចរាល់ / ពិនិត្យឥឡូវ (សល់ {MAX_MANUAL_CHECKS - manualChecksCount} ដង)</span>
+                      </>
+                    )}
+                  </Button>
+                )}
 
-                <div className="flex items-center justify-between gap-2 pt-1">
+                {paymentMethod !== "CARD" && (
+                  <p className="text-[11px] text-center text-muted-foreground">
+                    {manualChecksCount >= MAX_MANUAL_CHECKS ? (
+                      <span className="text-amber-500 font-medium">
+                        ⚠️ អ្នកបានចុចគ្រប់ ២ ដងហើយ។ ប្រព័ន្ធកំពុងពិនិត្យស្វ័យប្រវត្តិតាមវដ្ត។
+                      </span>
+                    ) : (
+                      <span>
+                        💡 អ្នកអាចចុចផ្ទៀងផ្ទាត់ដោយផ្ទាល់បាន <strong className="text-foreground">{MAX_MANUAL_CHECKS - manualChecksCount} ដងទៀត</strong> បន្ទាប់ពីផ្ទេរប្រាក់ក្នុង App ធនាគារ។
+                      </span>
+                    )}
+                  </p>
+                )}
+
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/40">
                   {qrCodeString && (
                     <button
                       onClick={generateQR}
                       type="button"
-                      className="text-xs text-muted-foreground hover:text-foreground font-medium"
+                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer py-1 px-2 rounded-lg hover:bg-secondary"
                     >
-                      🔄 Refresh QR
+                      <RefreshCw className="size-3.5" /> <span>បង្កើត QR ថ្មី</span>
                     </button>
                   )}
 
                   <button
                     onClick={() => setShowExitConfirm(true)}
                     type="button"
-                    className="text-xs text-muted-foreground hover:text-foreground font-medium ml-auto"
+                    className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 hover:underline font-semibold ml-auto transition-colors cursor-pointer py-1 px-2 rounded-lg hover:bg-amber-500/10"
                   >
-                    Pay Later / Cancel
+                    <Landmark className="size-3.5" /> <span>ប្តូរវិធីទូទាត់ / ចាកចេញ</span>
                   </button>
                 </div>
               </div>
@@ -528,21 +650,62 @@ export default function PaymentGatewayPage() {
         </div>
       </motion.div>
 
-      {/* Confirm dialog: do not let the user leave the QR payment silently */}
+      {/* Dialog: Change Payment Method or Cancel */}
       <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-md w-[92vw] rounded-3xl p-5 sm:p-6 border-border/70">
           <AlertDialogHeader>
-            <AlertDialogTitle>ចេញពីការទូទាត់?</AlertDialogTitle>
-            <AlertDialogDescription>
-              ប្រសិនបើអ្នកចេញពេលនេះ ការទូទាត់នឹងមិនត្រូវបានផ្ទៀងផ្ទាត់ទេ។
-              តើអ្នកពិតជាចង់ចេញពី QR Code មែនទេ?
+            <AlertDialogTitle className="font-serif text-lg sm:text-xl font-bold flex items-center gap-2">
+              <AlertCircle className="size-5 text-amber-500" />
+              <span>ជម្រើសចាកចេញ ឬប្តូរវិធីទូទាត់</span>
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs sm:text-sm text-muted-foreground pt-1 leading-relaxed">
+              តើអ្នកចង់ប្តូរវិធីទូទាត់ប្រាក់ ឬបោះបង់ការបញ្ជាទិញនេះ? ការចាកចេញនឹងមិនត្រូវបានគិតថាបានទិញជោគជ័យឡើយ។
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>សូមនៅជាប់ QR</AlertDialogCancel>
-            <AlertDialogAction onClick={handleExitPayment}>
-              ចេញពី QR
-            </AlertDialogAction>
+
+          <div className="space-y-2.5 py-3">
+            {/* Option 1: Switch to Cash on Delivery */}
+            <button
+              type="button"
+              disabled={isSwitchingMethod}
+              onClick={handleSwitchToCash}
+              className="w-full p-3.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-left flex items-center justify-between gap-3 transition-all cursor-pointer group"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="size-10 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                  <Landmark className="size-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-bold text-xs sm:text-sm text-foreground">ប្តូរទៅបង់ប្រាក់សុទ្ធ (Cash on Delivery)</p>
+                  <p className="text-[11px] text-muted-foreground">បង់ប្រាក់ ${Number(totalAmount).toFixed(2)} ពេលបុគ្គលិកដឹកដល់ផ្ទះ</p>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-amber-600 dark:text-amber-400 shrink-0">ជ្រើសរើស →</span>
+            </button>
+
+            {/* Option 2: Cancel order and go back to Checkout */}
+            <button
+              type="button"
+              onClick={handleCancelAndExit}
+              className="w-full p-3.5 rounded-2xl bg-destructive/10 hover:bg-destructive/20 border border-destructive/30 text-left flex items-center justify-between gap-3 transition-all cursor-pointer group"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="size-10 rounded-xl bg-destructive/20 text-destructive flex items-center justify-center shrink-0">
+                  <X className="size-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-bold text-xs sm:text-sm text-destructive">បោះបង់ការទិញ &amp; ត្រឡប់ក្រោយ</p>
+                  <p className="text-[11px] text-muted-foreground">ការកុម្ម៉ង់នឹងត្រូវលុបចោល (មិនទាន់ទិញបានទេ)</p>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-destructive shrink-0">បោះបង់ →</span>
+            </button>
+          </div>
+
+          <AlertDialogFooter className="sm:justify-end pt-1">
+            <AlertDialogCancel className="rounded-xl cursor-pointer">
+              នៅបន្តស្កេន QR វិញ
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
