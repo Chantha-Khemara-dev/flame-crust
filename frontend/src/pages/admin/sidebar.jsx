@@ -172,7 +172,7 @@ function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
               <TooltipContent
                 side="right"
                 sideOffset={14}
-                className="bg-zinc-950/95 text-zinc-100 border border-primary/30 shadow-[0_12px_32px_rgba(0,0,0,0.6),0_0_16px_rgba(239,68,68,0.2)] backdrop-blur-xl rounded-xl px-3 py-1.5 text-xs font-bold select-none z-[100]"
+                className="bg-zinc-950/95 dark:bg-zinc-950/95 text-zinc-100 dark:text-zinc-100 border border-zinc-800 dark:border-zinc-800 shadow-[0_12px_32px_rgba(0,0,0,0.6)] backdrop-blur-xl rounded-xl px-3 py-1.5 text-xs font-bold select-none z-[100]"
               >
                 🔥 Expand Sidebar
               </TooltipContent>
@@ -258,14 +258,14 @@ function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
                           className={cn(
                             "flex items-center h-[30px] w-full rounded-lg transition-colors duration-150 group relative overflow-hidden px-2.5",
                             isActive
-                              ? "bg-primary/15 text-primary font-bold border border-primary/25 shadow-xs shadow-primary/5"
-                              : "text-muted-foreground hover:text-foreground hover:bg-secondary/60 font-medium"
+                              ? "bg-primary/20 text-primary font-bold border border-primary/30 shadow-xs shadow-primary/10"
+                              : "text-zinc-400 hover:text-foreground hover:bg-secondary/60 font-medium"
                           )}
                         >
                           <IconComponent
                             className={cn(
                               "size-3.5 shrink-0 transition-transform duration-150 group-hover:scale-110",
-                              isActive ? "text-primary" : "opacity-80 group-hover:opacity-100 group-hover:text-primary"
+                              isActive ? "text-primary" : "text-zinc-400 group-hover:text-primary group-hover:opacity-100"
                             )}
                           />
 
@@ -296,7 +296,7 @@ function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
                         <TooltipContent
                           side="right"
                           sideOffset={14}
-                          className="bg-zinc-950/95 text-zinc-100 border border-primary/30 shadow-[0_12px_32px_rgba(0,0,0,0.6),0_0_16px_rgba(239,68,68,0.2)] backdrop-blur-xl rounded-xl px-3.5 py-2 flex items-center gap-2.5 select-none animate-in fade-in-0 zoom-in-95 data-[side=right]:slide-in-from-left-2 z-[100]"
+                          className="bg-zinc-950/95 dark:bg-zinc-950/95 text-zinc-100 dark:text-zinc-100 border border-zinc-800 dark:border-zinc-800 shadow-[0_12px_32px_rgba(0,0,0,0.6)] backdrop-blur-xl rounded-xl px-3.5 py-2 flex items-center gap-2.5 select-none animate-in fade-in-0 zoom-in-95 data-[side=right]:slide-in-from-left-2 z-[100]"
                         >
                           <span
                             className={cn(
@@ -305,10 +305,10 @@ function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
                             )}
                           />
                           <div className="flex flex-col min-w-0">
-                            <span className="font-bold text-xs tracking-tight text-zinc-100 leading-tight">
+                            <span className="font-bold text-xs tracking-tight text-white dark:text-white leading-tight">
                               {label}
                             </span>
-                            <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground/80">
+                            <span className="text-[9px] font-black uppercase tracking-wider text-zinc-400 dark:text-zinc-400">
                               {group.title}
                             </span>
                           </div>
@@ -353,12 +353,12 @@ function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
               <TooltipContent
                 side="right"
                 sideOffset={14}
-                className="bg-zinc-950/95 text-zinc-100 border border-primary/30 shadow-[0_12px_32px_rgba(0,0,0,0.6),0_0_16px_rgba(239,68,68,0.2)] backdrop-blur-xl rounded-xl px-3.5 py-2 flex items-center gap-2 select-none z-[100]"
+                className="bg-zinc-950/95 dark:bg-zinc-950/95 text-zinc-100 dark:text-zinc-100 border border-zinc-800 dark:border-zinc-800 shadow-[0_12px_32px_rgba(0,0,0,0.6)] backdrop-blur-xl rounded-xl px-3.5 py-2 flex items-center gap-2 select-none z-[100]"
               >
                 <Store className="size-3.5 text-primary shrink-0" />
                 <div className="flex flex-col">
-                  <span className="font-bold text-xs text-zinc-100">Live Storefront</span>
-                  <span className="text-[9px] text-muted-foreground">Customer Menu View</span>
+                  <span className="font-bold text-xs text-white dark:text-white">Live Storefront</span>
+                  <span className="text-[9px] text-zinc-400 dark:text-zinc-400">Customer Menu View</span>
                 </div>
               </TooltipContent>
             )}
@@ -398,14 +398,14 @@ function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
                 <TooltipContent
                   side="right"
                   sideOffset={14}
-                  className="bg-zinc-950/95 text-zinc-100 border border-primary/30 shadow-[0_12px_32px_rgba(0,0,0,0.6),0_0_16px_rgba(239,68,68,0.2)] backdrop-blur-xl rounded-xl px-3.5 py-2 flex items-center gap-2.5 select-none z-[100]"
+                  className="bg-zinc-950/95 dark:bg-zinc-950/95 text-zinc-100 dark:text-zinc-100 border border-zinc-800 dark:border-zinc-800 shadow-[0_12px_32px_rgba(0,0,0,0.6)] backdrop-blur-xl rounded-xl px-3.5 py-2 flex items-center gap-2.5 select-none z-[100]"
                 >
                   <div className="size-6 rounded-md bg-primary/20 text-primary flex items-center justify-center font-black text-[10px]">
                     {adminAuth?.name ? adminAuth.name.slice(0, 2).toUpperCase() : "AD"}
                   </div>
                   <div className="flex flex-col">
-                    <span className="font-bold text-xs text-zinc-100">{adminAuth?.name || "Administrator"}</span>
-                    <span className="text-[9px] text-muted-foreground flex items-center gap-1 font-semibold uppercase">
+                    <span className="font-bold text-xs text-white dark:text-white">{adminAuth?.name || "Administrator"}</span>
+                    <span className="text-[9px] text-zinc-400 dark:text-zinc-400 flex items-center gap-1 font-semibold uppercase">
                       <KeyRound className="size-2.5 text-primary" /> {adminAuth?.role || "ADMIN"}
                     </span>
                   </div>
