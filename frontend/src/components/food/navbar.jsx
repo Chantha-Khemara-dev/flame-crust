@@ -77,7 +77,14 @@ function Navbar() {
       return;
     }
 
+    if (!activeOrders || activeOrders.length === 0) {
+      setOrderConversations([]);
+      return;
+    }
+
     const loadAllConversations = async () => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      if (!activeOrders || activeOrders.length === 0) return;
       try {
         const allDrivers = (await list("drivers").catch(() => [])) || [];
 
@@ -154,7 +161,7 @@ function Navbar() {
     };
 
     loadAllConversations();
-    const chatPoll = setInterval(loadAllConversations, 3000);
+    const chatPoll = setInterval(loadAllConversations, 8000);
     return () => clearInterval(chatPoll);
   }, [activeOrders]);
 
@@ -163,6 +170,7 @@ function Navbar() {
 
   useEffect(() => {
     const checkActiveOrders = async () => {
+      if (typeof document !== "undefined" && document.hidden) return;
       try {
         const stored = localStorage.getItem("customerAuth");
         if (!stored) {
@@ -188,11 +196,14 @@ function Navbar() {
     };
 
     checkActiveOrders();
-    const interval = setInterval(checkActiveOrders, 15000);
+    const interval = setInterval(checkActiveOrders, 30000);
+    const handleVis = () => { if (document.visibilityState === "visible") checkActiveOrders(); };
+    document.addEventListener("visibilitychange", handleVis);
     window.addEventListener("orderPlaced", checkActiveOrders);
     window.addEventListener("authChanged", checkActiveOrders);
     return () => {
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVis);
       window.removeEventListener("orderPlaced", checkActiveOrders);
       window.removeEventListener("authChanged", checkActiveOrders);
     };

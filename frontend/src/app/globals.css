@@ -110,6 +110,8 @@
     scrollbar-gutter: stable;
     overflow-y: scroll;
     overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeSpeed;
   }
   * {
     @apply border-border outline-ring/50;
@@ -118,9 +120,21 @@
     @apply bg-background text-foreground;
     font-family: var(--font-inter), system-ui, sans-serif;
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-playfair), Georgia, serif;
+  }
+}
+
+/* Mobile GPU & Battery Optimization: soften excessive blur on small devices */
+@media (max-width: 768px) {
+  .backdrop-blur-md,
+  .backdrop-blur-lg,
+  .backdrop-blur-xl {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
   }
 }
 

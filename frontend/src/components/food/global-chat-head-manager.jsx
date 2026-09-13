@@ -78,7 +78,7 @@ export function GlobalCustomerChatManager() {
     };
 
     checkActiveDelivery();
-    const interval = setInterval(checkActiveDelivery, 8000);
+    const interval = setInterval(checkActiveDelivery, 20000);
     const handleVis = () => { if (document.visibilityState === "visible") checkActiveDelivery(); };
     document.addEventListener("visibilitychange", handleVis);
     return () => {
@@ -122,7 +122,7 @@ export function GlobalCustomerChatManager() {
     };
 
     checkMessages();
-    const chatInterval = setInterval(checkMessages, 3000);
+    const chatInterval = setInterval(checkMessages, 6000);
     return () => clearInterval(chatInterval);
   }, [activeOrder, driver, chatOpen, isExcludedPage]);
 

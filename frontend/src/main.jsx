@@ -87,6 +87,7 @@ async function triggerInstantUpdate(newVersion) {
 
 async function checkVersion() {
   if (isUpdating || CURRENT_VERSION === 'dev') return;
+  if (typeof document !== 'undefined' && document.hidden) return;
   try {
     const res = await fetch(`/version.json?_t=${Date.now()}`, {
       cache: 'no-store',
@@ -105,8 +106,9 @@ async function checkVersion() {
   }
 }
 
-// Check every 5 seconds for real-time deployment updates
-setInterval(checkVersion, 5000);
+// Low-power adaptive version check:
+// 25s background interval + instant check on app switch/focus
+setInterval(checkVersion, 25000);
 
 // Check on mobile app switch / focus / network reconnect
 if (typeof document !== 'undefined') {
@@ -116,7 +118,7 @@ if (typeof document !== 'undefined') {
   window.addEventListener('focus', checkVersion);
   window.addEventListener('online', checkVersion);
 }
-setTimeout(checkVersion, 1000);
+setTimeout(checkVersion, 1500);
 
 let isRefreshing = false;
 
@@ -145,8 +147,9 @@ const updateSW = registerSW({
       });
 
       setInterval(() => {
+        if (typeof document !== 'undefined' && document.hidden) return;
         registration.update().catch(() => {});
-      }, 10 * 1000);
+      }, 30 * 1000);
     }
   }
 });

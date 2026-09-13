@@ -26,15 +26,19 @@ export function GlobalActiveCallManager() {
     return () => window.removeEventListener("startOnlineCall", handleStartCall);
   }, []);
 
-  // 2. Global Background Polling for Incoming & Ongoing Calls across all pages
   useEffect(() => {
     const checkGlobalActiveCalls = async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      if (callOpen) return;
       if (isPollingRef.current) return;
       isPollingRef.current = true;
 
       try {
         // A. Check for Customer
         const customerAuth = localStorage.getItem("customerAuth");
+        const driverAuth = localStorage.getItem("driverAuth");
+        if (!customerAuth && !driverAuth) return;
+
         if (customerAuth) {
           const cust = JSON.parse(customerAuth);
           let cachedOrders = [];
@@ -43,7 +47,8 @@ export function GlobalActiveCallManager() {
             if (stored) cachedOrders = JSON.parse(stored);
           } catch (e) {}
 
-          for (const ord of cachedOrders) {
+          if (cachedOrders.length > 0) {
+            for (const ord of cachedOrders) {
             const res = await getActiveCall(ord.id);
             if (res.active && res.call) {
               const status = res.call.status;
@@ -97,67 +102,67 @@ export function GlobalActiveCallManager() {
             }
           }
         }
+      }
 
-        // B. Check for Driver
-        const driverAuth = localStorage.getItem("driverAuth");
-        if (driverAuth) {
-          const dAuth = JSON.parse(driverAuth);
-          const allOrders = (await list("orders").catch(() => [])) || [];
-          const myDeliveries = allOrders.filter(
-            o => (String(o.driver_id) === String(dAuth.id) || String(o.driverId) === String(dAuth.id)) &&
-                 o.status !== "DELIVERED" && o.status !== "CANCELLED"
-          );
+      // B. Check for Driver
+      if (driverAuth) {
+        const dAuth = JSON.parse(driverAuth);
+        const allOrders = (await list("orders").catch(() => [])) || [];
+        const myDeliveries = allOrders.filter(
+          o => (String(o.driver_id) === String(dAuth.id) || String(o.driverId) === String(dAuth.id)) &&
+               o.status !== "DELIVERED" && o.status !== "CANCELLED"
+        );
 
-          for (const ord of myDeliveries) {
-            const res = await getActiveCall(ord.id);
-            if (res.active && res.call) {
-              const status = res.call.status;
-              const isReceiver = String(res.call.receiver_type).toUpperCase() === "DRIVER";
-              const isCaller = String(res.call.caller_type).toUpperCase() === "DRIVER";
+        for (const ord of myDeliveries) {
+          const res = await getActiveCall(ord.id);
+          if (res.active && res.call) {
+            const status = res.call.status;
+            const isReceiver = String(res.call.receiver_type).toUpperCase() === "DRIVER";
+            const isCaller = String(res.call.caller_type).toUpperCase() === "DRIVER";
 
-              if (status === "RINGING" && isReceiver) {
+            if (status === "RINGING" && isReceiver) {
+              setActiveCallState({
+                orderId: ord.id,
+                recipient: {
+                  name: res.call.caller_name || ord.customer?.name || "Customer",
+                  role: "Customer",
+                  photo: ord.customer?.avatar || ""
+                },
+                callerType: "DRIVER",
+                currentUser: { name: dAuth.name || "Driver" },
+                isIncoming: true
+              });
+              setCallOpen(true);
+              break;
+            } else if (status === "ACCEPTED" && (isReceiver || isCaller)) {
+              if (!callOpen) {
                 setActiveCallState({
                   orderId: ord.id,
                   recipient: {
-                    name: res.call.caller_name || ord.customer?.name || "Customer",
+                    name: isCaller ? (res.call.receiver_name || ord.customer?.name || "Customer") : (res.call.caller_name || ord.customer?.name || "Customer"),
                     role: "Customer",
                     photo: ord.customer?.avatar || ""
                   },
                   callerType: "DRIVER",
                   currentUser: { name: dAuth.name || "Driver" },
-                  isIncoming: true
+                  isIncoming: false
                 });
                 setCallOpen(true);
-                break;
-              } else if (status === "ACCEPTED" && (isReceiver || isCaller)) {
-                if (!callOpen) {
-                  setActiveCallState({
-                    orderId: ord.id,
-                    recipient: {
-                      name: isCaller ? (res.call.receiver_name || ord.customer?.name || "Customer") : (res.call.caller_name || ord.customer?.name || "Customer"),
-                      role: "Customer",
-                      photo: ord.customer?.avatar || ""
-                    },
-                    callerType: "DRIVER",
-                    currentUser: { name: dAuth.name || "Driver" },
-                    isIncoming: false
-                  });
-                  setCallOpen(true);
-                }
-                break;
               }
+              break;
             }
           }
         }
-      } catch (e) {} finally {
-        isPollingRef.current = false;
       }
-    };
+    } catch (e) {} finally {
+      isPollingRef.current = false;
+    }
+  };
 
-    checkGlobalActiveCalls();
-    const interval = setInterval(checkGlobalActiveCalls, 2000);
-    return () => clearInterval(interval);
-  }, [callOpen]);
+  checkGlobalActiveCalls();
+  const interval = setInterval(checkGlobalActiveCalls, 6000);
+  return () => clearInterval(interval);
+}, [callOpen]);
 
   if (!callOpen || !activeCallState) return null;
 

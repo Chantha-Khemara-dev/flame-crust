@@ -103,6 +103,26 @@ export default defineConfig({
       "Cross-Origin-Embedder-Policy": "unsafe-none",
     },
   },
+  build: {
+    target: 'es2020',
+    cssCodeSplit: true,
+    chunkSizeWarningLimit: 800,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-ui': ['lucide-react', 'clsx', 'tailwind-merge', 'class-variance-authority'],
+          'vendor-radix': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-slot',
+            '@radix-ui/react-tabs',
+            '@radix-ui/react-avatar'
+          ],
+        }
+      }
+    }
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
