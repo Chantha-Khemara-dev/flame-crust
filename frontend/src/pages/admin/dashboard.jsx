@@ -53,6 +53,7 @@ import {
   CircleDollarSign,
   Target,
   GitCommitHorizontal,
+  Users,
 } from "lucide-react";
 
 let memoryDashboardCache = null;
@@ -208,8 +209,8 @@ function AdminDashboardSkeleton() {
   return (
     <div className="w-full space-y-5 sm:space-y-6">
       <Skeleton className="h-48 rounded-[28px] sm:h-52" />
-      <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 sm:gap-5 xl:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, i) => (
+      <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 sm:gap-5 xl:grid-cols-6">
+        {Array.from({ length: 6 }).map((_, i) => (
           <Skeleton key={i} className="h-[132px] rounded-3xl" />
         ))}
       </div>
@@ -233,6 +234,7 @@ function KpiCard({ label, value, hint, icon: Icon, tone = "primary", spark, dela
     emerald: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
     amber: "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
     sky: "border-sky-500/20 bg-sky-500/10 text-sky-600 dark:text-sky-400",
+    violet: "border-violet-500/20 bg-violet-500/10 text-violet-600 dark:text-violet-400",
     flame:
       "border-primary/20 bg-gradient-to-br from-primary via-orange-500 to-amber-500 text-white shadow-warm",
   };
@@ -242,8 +244,8 @@ function KpiCard({ label, value, hint, icon: Icon, tone = "primary", spark, dela
       style={{ animationDelay: `${delay}ms` }}
       className="group relative flex animate-card-fade-in flex-col justify-between overflow-hidden rounded-3xl border border-border/70 bg-card/85 p-4 shadow-warm backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-warm-lg sm:p-5"
     >
-      <div className="flex items-start justify-between gap-2">
-        <span className="truncate text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px]">
+      <div className="flex items-start justify-between gap-1.5 sm:gap-2 min-w-0">
+        <span className="truncate text-[10px] font-extrabold uppercase tracking-tight sm:tracking-[0.12em] text-muted-foreground sm:text-[11px]">
           {label}
         </span>
         <span
@@ -323,8 +325,9 @@ export default function AdminDashboard() {
       getDashboard(),
       list("products", { limit: 100 }).catch(() => null),
       list("orders", { limit: 200, sort: "id", dir: "desc" }).catch(() => null),
+      list("customers", { paginate: true, limit: 1 }).catch(() => null),
     ])
-      .then(([dashData, productsRes, ordersRes]) => {
+      .then(([dashData, productsRes, ordersRes, customersRes]) => {
         if (!isMounted || !dashData) return;
 
         const processedChart = processChartData(dashData);
@@ -335,7 +338,18 @@ export default function AdminDashboard() {
         });
         const ordersAll = toArray(ordersRes);
 
-        setData(dashData);
+        const customerCount = Number(
+          dashData?.totalCustomers ??
+          customersRes?.total ??
+          (Array.isArray(customersRes) ? customersRes.length : 0)
+        );
+
+        const mergedData = {
+          ...dashData,
+          totalCustomers: customerCount || dashData?.totalCustomers || 0,
+        };
+
+        setData(mergedData);
         setRecentOrders(orders);
         setAllOrders(ordersAll.length ? ordersAll : orders);
         setChartData(processedChart);
@@ -343,7 +357,7 @@ export default function AdminDashboard() {
         setError(null);
 
         memoryDashboardCache = {
-          ...dashData,
+          ...mergedData,
           recentOrders: orders,
           allOrders: ordersAll.length ? ordersAll : orders,
           chartDataProcessed: processedChart,
@@ -432,9 +446,15 @@ export default function AdminDashboard() {
     [data?.lowStock]
   );
 
+  const totalCustomersCount = Number(
+    data?.totalCustomers ??
+    (new Set(allOrders.map((o) => o.customer_id).filter(Boolean)).size || 0)
+  );
+
   const animatedRevenue = useCountUp(totalRevenue);
   const animatedOrders = useCountUp(totalOrdersCount);
   const animatedAvg = useCountUp(avgOrderValue);
+  const animatedCustomers = useCountUp(totalCustomersCount);
   const animatedToday = useCountUp(weekTotals.today?.revenue || 0);
 
   const quickLinks = [
@@ -574,7 +594,7 @@ export default function AdminDashboard() {
         </div>
       </section>
 
-      <section className="grid grid-cols-2 gap-3.5 md:grid-cols-3 sm:gap-5 xl:grid-cols-5">
+      <section className="grid grid-cols-2 gap-3.5 md:grid-cols-3 sm:gap-5 xl:grid-cols-6">
         <KpiCard
           delay={0}
           label="Total Revenue"
@@ -616,6 +636,14 @@ export default function AdminDashboard() {
           hint="Published on the menu"
           icon={Package}
           tone="primary"
+        />
+        <KpiCard
+          delay={300}
+          label="Total Customers"
+          value={Math.round(animatedCustomers).toLocaleString()}
+          hint="Registered foodies"
+          icon={Users}
+          tone="violet"
         />
       </section>
 

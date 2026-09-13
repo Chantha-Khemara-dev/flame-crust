@@ -36,11 +36,13 @@ public class DashboardController {
             Long totalOrders = jdbc.queryForObject("SELECT COUNT(*) FROM orders", Long.class);
             Long totalProducts = jdbc.queryForObject("SELECT COUNT(*) FROM products", Long.class);
             Long activeDrivers = jdbc.queryForObject("SELECT COUNT(*) FROM drivers", Long.class);
+            Long totalCustomers = jdbc.queryForObject("SELECT COUNT(*) FROM customers", Long.class);
 
             result.put("totalRevenue", totalRevenue != null ? totalRevenue : BigDecimal.ZERO);
             result.put("totalOrders", totalOrders != null ? totalOrders : 0L);
             result.put("totalProducts", totalProducts != null ? totalProducts : 0L);
             result.put("activeDrivers", activeDrivers != null ? activeDrivers : 0L);
+            result.put("totalCustomers", totalCustomers != null ? totalCustomers : 0L);
 
             // 2. Optimized recent orders with customer names (fast index scan)
             List<Map<String, Object>> recentOrders = jdbc.queryForList(
@@ -96,6 +98,7 @@ public class DashboardController {
             result.put("totalOrders", 0);
             result.put("totalProducts", 0);
             result.put("activeDrivers", 0);
+            result.put("totalCustomers", 0);
             result.put("recentOrders", List.of());
             result.put("orders", List.of());
             result.put("chartData", List.of());
