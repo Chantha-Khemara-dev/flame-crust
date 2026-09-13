@@ -2,51 +2,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { TrendingUp, ArrowRight } from "lucide-react";
-import { fetchFoodItems, getCachedFoodItems } from "@/lib/food-api";
+import { fetchFoodItems, getCachedFoodItems, getTopTrendingDishes } from "@/lib/food-api";
 import { FoodCard } from "./food-card";
 import "./featured.css";
-
-export function getTopTrendingDishes(items, count = 4) {
-  if (!Array.isArray(items) || items.length === 0) return [];
-
-  // Filter for active food dishes (exclude drinks and inactive products)
-  const dishes = items.filter(
-    (item) =>
-      item.active !== false &&
-      item.active !== 0 &&
-      String(item.category || "").toLowerCase() !== "drink" &&
-      String(item.category || "").toLowerCase() !== "drinks"
-  );
-
-  // If popular dishes exist, use them as priority pool
-  const popularDishes = dishes.filter((item) => Boolean(item.popular));
-  const candidatePool = popularDishes.length >= count ? popularDishes : dishes;
-
-  // Sort by true customer demand:
-  // 1. sales_count DESC (most ordered items)
-  // 2. popular flag DESC
-  // 3. rating DESC (highest customer satisfaction)
-  // 4. view_count DESC
-  return [...candidatePool]
-    .sort((a, b) => {
-      const salesA = Number(a.sales_count ?? a.salesCount ?? 0);
-      const salesB = Number(b.sales_count ?? b.salesCount ?? 0);
-      if (salesB !== salesA) return salesB - salesA;
-
-      const popA = a.popular ? 1 : 0;
-      const popB = b.popular ? 1 : 0;
-      if (popB !== popA) return popB - popA;
-
-      const ratingA = Number(a.rating ?? 0);
-      const ratingB = Number(b.rating ?? 0);
-      if (ratingB !== ratingA) return ratingB - ratingA;
-
-      const viewsA = Number(a.view_count ?? a.viewCount ?? 0);
-      const viewsB = Number(b.view_count ?? b.viewCount ?? 0);
-      return viewsB - viewsA;
-    })
-    .slice(0, count);
-}
 
 export function Featured() {
   const [featured, setFeatured] = useState(() => {

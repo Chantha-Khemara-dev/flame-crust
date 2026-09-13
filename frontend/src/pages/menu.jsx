@@ -3,7 +3,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { categoryMeta, categoryOrder as defaultCategoryOrder } from "@/lib/food-data";
-import { fetchFoodItems, fetchCategories, getCachedFoodItems, getCachedCategories } from "@/lib/food-api";
+import { fetchFoodItems, fetchCategories, getCachedFoodItems, getCachedCategories, getTopTrendingDishes } from "@/lib/food-api";
 import { Navbar } from "@/components/food/navbar";
 import { FoodCard } from "@/components/food/food-card";
 import { SearchInput } from "@/components/shared/search-input";
@@ -154,15 +154,7 @@ function MenuPage() {
   }, [allItems, active, search, dietaryFilter]);
 
   const topProducts = useMemo(() => {
-    return [...allItems]
-      .filter((i) => (i.viewCount && i.viewCount > 0) || (i.view_count && i.view_count > 0) || (i.salesCount && i.salesCount > 0) || (i.sales_count && i.sales_count > 0) || i.popular)
-      .sort((a, b) => {
-        // Trending score prioritizes purchases (sales) heavily over just views
-        const scoreA = (a.salesCount || a.sales_count || 0) * 5 + (a.viewCount || a.view_count || 0) * 1;
-        const scoreB = (b.salesCount || b.sales_count || 0) * 5 + (b.viewCount || b.view_count || 0) * 1;
-        return scoreB - scoreA;
-      })
-      .slice(0, 4);
+    return getTopTrendingDishes(allItems, 4);
   }, [allItems]);
 
   const orderedFilteredItems = useMemo(() => {
