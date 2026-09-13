@@ -351,6 +351,10 @@ public class AdminCrudController {
                     Long customerId = ord.getCustomerId();
                     String status = ord.getStatus();
                     if (customerId != null && status != null) {
+                        // Do not notify customer for PENDING status (unpaid or newly initiated orders)
+                        if ("PENDING".equalsIgnoreCase(status)) {
+                            return;
+                        }
                         String statusText = switch (status.toUpperCase()) {
                             case "CONFIRMED" -> "ការកុម្ម៉ង់របស់អ្នកត្រូវបានទទួលយកហើយ!";
                             case "PREPARING" -> "ចុងភៅកំពុងរៀបចំធ្វើម្ហូបរបស់អ្នកយ៉ាងយកចិត្តទុកដាក់ 🍕";
@@ -358,9 +362,11 @@ public class AdminCrudController {
                             case "OUT_FOR_DELIVERY" -> "អ្នកដឹកកំពុងធ្វើដំណើរយកម្ហូបជូនអ្នកហើយ 🚀";
                             case "DELIVERED" -> "ការកុម្ម៉ង់ត្រូវបានដឹកជញ្ជូនជោគជ័យ! សូមពិសារដោយឆ្ងាញ់មាត់ 😋";
                             case "CANCELLED" -> "ការកុម្ម៉ង់របស់អ្នកត្រូវបានបោះបង់";
-                            default -> "ស្ថានភាពការកុម្ម៉ង់៖ " + status;
+                            default -> null;
                         };
-                        webPushService.sendToUser(customerId, "CUSTOMER", "🍕 បច្ចុប្បន្នភាពការកុម្ម៉ង់ #" + orderId, statusText, "/order-tracking/" + orderId);
+                        if (statusText != null) {
+                            webPushService.sendToUser(customerId, "CUSTOMER", "🍕 បច្ចុប្បន្នភាពការកុម្ម៉ង់ #" + orderId, statusText, "/order-tracking/" + orderId);
+                        }
                     }
                 }
             } catch (Exception ex) {

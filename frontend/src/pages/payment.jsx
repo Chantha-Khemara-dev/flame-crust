@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { QrCode, CheckCircle2, ShieldCheck, Loader2, CreditCard, X, RefreshCw, Landmark, AlertCircle } from "lucide-react";
+import { QrCode, CheckCircle2, ShieldCheck, Loader2, CreditCard, X, RefreshCw, Landmark, AlertCircle, ChevronLeft, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -17,7 +17,7 @@ import { get, create, update, list, API_URL } from "@/lib/api";
 import { toast } from "sonner";
 import { QRCodeCanvas } from "qrcode.react";
 import { BakongKHQR, IndividualInfo } from "bakong-khqr";
-import { getCurrentAccount, addBonusSpins } from "@/components/food/lucky-draw-modal.jsx";
+import { getCurrentAccount, addBonusSpins, markWonCouponUsed } from "@/components/food/lucky-draw-modal.jsx";
 import { triggerFoodRefresh } from "@/lib/food-api";
 import { useCart } from "@/lib/cart-store";
 import { cn } from "@/lib/utils";
@@ -226,6 +226,129 @@ export default function PaymentGatewayPage() {
     setManualChecksCount(prev => prev + 1);
     await checkPaymentVerification(true);
   };
+  const createOrderFromFormData = async (methodToUse = paymentMethod, orderStatus = "CONFIRMED", paymentStatus = "PAID") => {
+    if (!formData || !cartItems) return null;
+
+    let customerId = formData.customerId;
+    if (!customerId && formData.phone) {
+      try {
+        const customers = await list("customers");
+        let currentCust = customers.find((item) => item.phone === formData.phone);
+        if (!currentCust) {
+          currentCust = await create("customers", {
+            name: formData.fullName || "Guest",
+            phone: formData.phone,
+            email: formData.email || null,
+            status: "ACTIVE",
+          });
+        }
+        customerId = currentCust?.id;
+      } catch (e) {
+        console.warn("Customer handling error in payment:", e);
+      }
+    }
+
+    let addressId = formData.addressId;
+    if (!addressId || String(addressId).startsWith("local-")) {
+      try {
+        const address = await create("addresses", {
+          customer_id: customerId || null,
+          label: "Delivery",
+          address_line: `${formData.address1 || ""}${formData.address2 ? `, ${formData.address2}` : ""}`.trim() || "Phnom Penh",
+          city: formData.city || "Phnom Penh",
+          notes: formData.notes || null,
+          is_default: true,
+        });
+        addressId = address?.id;
+      } catch (e) {
+        console.warn("Address create error in payment:", e);
+      }
+    }
+
+    const dbTotal = Number(Number(totalAmount).toFixed(2));
+    const newOrder = await create("orders", {
+      order_number: `FC-${Date.now()}`,
+      customer_id: customerId ? Number(customerId) : null,
+      address_id: addressId ? Number(addressId) : null,
+      status: orderStatus,
+      order_type: "DELIVERY",
+      subtotal: Number(Number(formData.subtotal || dbTotal).toFixed(2)),
+      discount_amount: Number(Number(formData.discount || 0).toFixed(2)),
+      delivery_fee: Number(Number(formData.deliveryFee || 0).toFixed(2)),
+      driver_commission: 0.00,
+      total: dbTotal,
+      notes: formData.notes || null,
+    });
+
+    const newOrderId = newOrder.id;
+
+    await Promise.all(
+      cartItems.map((item) =>
+        create("order_items", {
+          order_id: newOrderId,
+          product_id: Number(item.originalId || item.id || item.productId),
+          product_name: item.name || item.productName || "Pizza Item",
+          quantity: item.qty || item.quantity || 1,
+          unit_price: Number(Number(item.price || item.unitPrice || 0).toFixed(2)),
+          line_total: Number((Number(item.price || item.unitPrice || 0) * (item.qty || item.quantity || 1)).toFixed(2)),
+          status: "PENDING",
+          options: item.selectedOptions ? JSON.stringify(item.selectedOptions) : null,
+        })
+      )
+    );
+
+    try {
+      triggerFoodRefresh();
+    } catch (e) {
+      console.warn("Food refresh error:", e);
+    }
+
+    const dbMethod = ["CASH", "CARD", "ABA_PAY", "WING"].includes(methodToUse) ? methodToUse : "KHQR";
+    await create("payments", {
+      order_id: newOrderId,
+      method: dbMethod,
+      status: paymentStatus,
+      amount: dbTotal,
+    });
+
+    const coupon = formData.coupon;
+    if (coupon && coupon.isLuckyDraw) {
+      try {
+        const acc = getCurrentAccount();
+        markWonCouponUsed(acc.storageKey, coupon.code);
+      } catch (e) {
+        console.warn("Lucky draw coupon error:", e);
+      }
+    } else if (coupon && customerId) {
+      try {
+        await create("coupon_usages", {
+          coupon_id: coupon.id,
+          customer_id: customerId,
+          order_id: newOrderId,
+          used_at: new Date().toISOString(),
+        });
+        if (typeof update === "function") {
+          await update("coupons", coupon.id, {
+            ...coupon,
+            used_count: (coupon.used_count || 0) + 1,
+          });
+        }
+      } catch (e) {
+        console.warn("Coupon usage error:", e);
+      }
+    }
+
+    try {
+      const acc = getCurrentAccount();
+      addBonusSpins(acc.storageKey, 1);
+    } catch (e) {}
+
+    try {
+      useCart.getState().clear();
+    } catch (e) {}
+
+    return newOrderId;
+  };
 
   const processSuccessfulPayment = async () => {
     // Guard: reject any payment confirmed after the 5-minute QR validity
@@ -236,94 +359,20 @@ export default function PaymentGatewayPage() {
     paidRef.current = true;
     setIsPaid(true);
 
-    // Clear cart upon successful payment
-    try {
-      useCart.getState().clear();
-    } catch (e) {}
-
     toast.success("Payment confirmed successfully! ទទួលបានការទូទាត់ជោគជ័យ");
-    
-    // Handle navigation based on whether we have formData
+
     if (formData && cartItems) {
-      // Create order after payment
       try {
-        // Create customer if needed
-        let customerId = null;
-        if (formData.phone) {
-          const customers = await list("customers");
-          let currentCust = customers.find((item) => item.phone === formData.phone);
-          if (!currentCust) {
-            currentCust = await create("customers", {
-              name: formData.fullName,
-              phone: formData.phone,
-              email: formData.email || null,
-              status: "ACTIVE",
-            });
-          }
-          customerId = currentCust?.id;
-        }
-
-        // Create address
-        const address = await create("addresses", {
-          customer_id: customerId || null,
-          label: "Delivery",
-          address_line: `${formData.address1}${formData.address2 ? `, ${formData.address2}` : ""}`,
-          city: formData.city || "Phnom Penh",
-          notes: formData.notes || null,
-          is_default: true,
-        });
-
-        // Create order
-        const newOrder = await create("orders", {
-          customer_id: customerId,
-          address_id: address.id,
-          total: totalAmount,
-          status: "PAID",
-          payment_method: paymentMethod,
-          notes: formData.notes || null,
-        });
-
-        // Create order items
-        for (const item of cartItems) {
-          await create("order_items", {
-            order_id: newOrder.id,
-            product_id: item.productId,
-            quantity: item.quantity,
-            price: item.price,
-            special_requests: item.specialRequests || null,
-          });
-        }
-
-        // Trigger real-time auto-update of trending scores and rankings across active tabs
-        try {
-          triggerFoodRefresh();
-        } catch (e) {
-          console.warn("Error triggering food refresh:", e);
-        }
-        
-        // Create payment record
-        const dbMethod = ["CASH", "CARD", "ABA_PAY", "WING"].includes(paymentMethod) ? paymentMethod : "KHQR";
-        await create("payments", {
-          order_id: newOrder.id,
-          method: dbMethod,
-          status: "PAID",
-          amount: Number(Number(totalAmount).toFixed(2))
-        });
-
-        // Award +1 Lucky Spin for ordering pizza!
-        try {
-          const acc = getCurrentAccount();
-          addBonusSpins(acc.storageKey, 1);
-        } catch (e) {}
-
+        const newOrderId = await createOrderFromFormData(paymentMethod, "CONFIRMED", "PAID");
         setTimeout(() => {
-          navigate(`/order-confirmation`, {
+          navigate("/order-confirmation", {
+            replace: true,
             state: {
-              orderId: newOrder.id,
+              orderId: newOrderId,
               total: Number(totalAmount),
-              itemCount: location.state?.itemCount || 1,
+              itemCount: location.state?.itemCount || cartItems.length,
               paymentMethod,
-              address: location.state?.address || "Phnom Penh",
+              address: location.state?.address || `${formData.address1 || ""}, ${formData.city || "Phnom Penh"}`,
             }
           });
         }, 1500);
@@ -331,11 +380,10 @@ export default function PaymentGatewayPage() {
         console.error("Failed to create order after payment:", e);
         toast.error("Payment successful but order creation failed. Please contact support.");
         setTimeout(() => {
-          navigate("/order-confirmation");
+          navigate("/order-confirmation", { replace: true });
         }, 1500);
       }
     } else if (orderId) {
-      // Order already exists, just update it and create payment record
       try {
         const dbMethod = ["CASH", "CARD", "ABA_PAY", "WING"].includes(paymentMethod) ? paymentMethod : "KHQR";
         const paymentsRes = await list("payments", { limit: 100 }).catch(() => []);
@@ -360,7 +408,11 @@ export default function PaymentGatewayPage() {
       } catch (e) {
         console.error("Failed to update existing order:", e);
       }
-      
+
+      try {
+        useCart.getState().clear();
+      } catch (e) {}
+
       const confirmationState = {
         orderId,
         total: Number(totalAmount),
@@ -369,11 +421,11 @@ export default function PaymentGatewayPage() {
         address: location.state?.address || "Phnom Penh",
       };
       setTimeout(() => {
-        navigate("/order-confirmation", { state: confirmationState });
+        navigate("/order-confirmation", { replace: true, state: confirmationState });
       }, 1500);
     } else {
       setTimeout(() => {
-        navigate("/order-confirmation");
+        navigate("/order-confirmation", { replace: true });
       }, 1500);
     }
   };
@@ -413,6 +465,23 @@ export default function PaymentGatewayPage() {
     if (isSwitchingMethod) return;
     setIsSwitchingMethod(true);
     try {
+      if (formData && cartItems) {
+        const newOrderId = await createOrderFromFormData("CASH", "PENDING", "PENDING");
+        toast.success("បានប្តូរទៅបង់ប្រាក់សុទ្ធ (Cash on Delivery) ជោគជ័យ!");
+        setShowExitConfirm(false);
+        navigate("/order-confirmation", {
+          replace: true,
+          state: {
+            orderId: newOrderId,
+            total: Number(totalAmount),
+            itemCount: location.state?.itemCount || cartItems.length,
+            paymentMethod: "CASH",
+            address: location.state?.address || `${formData.address1 || ""}, ${formData.city || "Phnom Penh"}`
+          }
+        });
+        return;
+      }
+
       if (orderId) {
         let switched = false;
         try {
@@ -453,23 +522,23 @@ export default function PaymentGatewayPage() {
             status: "PENDING"
           });
         }
-      }
-      try {
-        useCart.getState().clear();
-      } catch (e) {}
+        try {
+          useCart.getState().clear();
+        } catch (e) {}
 
-      toast.success("បានប្តូរវិធីទូទាត់ទៅជា 'បង់ប្រាក់សុទ្ធពេលដឹកដល់ (Cash)' ជោគជ័យ!");
-      setShowExitConfirm(false);
-      navigate("/order-confirmation", {
-        replace: true,
-        state: {
-          orderId,
-          total: Number(totalAmount),
-          itemCount: location.state?.itemCount || 1,
-          paymentMethod: "CASH",
-          address: location.state?.address || "Phnom Penh"
-        }
-      });
+        toast.success("បានប្តូរទៅបង់ប្រាក់សុទ្ធ (Cash on Delivery) ជោគជ័យ!");
+        setShowExitConfirm(false);
+        navigate("/order-confirmation", {
+          replace: true,
+          state: {
+            orderId,
+            total: Number(totalAmount),
+            itemCount: location.state?.itemCount || 1,
+            paymentMethod: "CASH",
+            address: location.state?.address || "Phnom Penh"
+          }
+        });
+      }
     } catch (e) {
       console.error("Failed to switch to cash:", e);
       toast.error("មិនអាចប្តូរវិធីទូទាត់បានទេ សូមព្យាយាមម្តងទៀត");
@@ -487,7 +556,7 @@ export default function PaymentGatewayPage() {
         console.warn("Failed to mark order as cancelled:", e);
       }
     }
-    toast.info("បានបោះបង់ការទូទាត់។ ការបញ្ជាទិញមិនត្រូវបានគិតជាផ្លូវការទេ។");
+    toast.info("បានត្រឡប់ក្រោយ។ អ្នកអាចជ្រើសរើសវិធីទូទាត់សារជាថ្មីបាន។");
     navigate("/checkout", { replace: true });
   };
 
@@ -505,16 +574,29 @@ export default function PaymentGatewayPage() {
         className="max-w-md w-full bg-card rounded-3xl overflow-hidden shadow-2xl border border-border/60"
       >
         <div className="bg-primary p-6 text-center text-primary-foreground relative">
-          <ShieldCheck className="size-8 absolute top-6 left-6 opacity-50" />
+          <button 
+            onClick={handleCancelAndExit} 
+            className="absolute top-5 left-5 opacity-80 hover:opacity-100 transition-all bg-primary-foreground/15 hover:bg-primary-foreground/25 rounded-full p-1.5 px-2.5 cursor-pointer flex items-center gap-1 text-xs text-primary-foreground font-medium shadow-sm active:scale-95"
+            title="ថយក្រោយទៅរើសវិធីទូទាត់"
+          >
+            <ChevronLeft className="size-4" />
+            <span>ថយក្រោយ</span>
+          </button>
+
           <button 
             onClick={() => setShowExitConfirm(true)} 
-            className="absolute top-6 right-6 opacity-70 hover:opacity-100 transition-opacity bg-primary-foreground/10 rounded-full p-1 cursor-pointer"
-            title="ប្តូរវិធីទូទាត់ / ចាកចេញ"
+            className="absolute top-5 right-5 opacity-70 hover:opacity-100 transition-opacity bg-primary-foreground/10 hover:bg-primary-foreground/20 rounded-full p-1.5 cursor-pointer active:scale-95"
+            title="ជម្រើសទូទាត់ / ចាកចេញ"
           >
-            <X className="size-6" />
+            <X className="size-5" />
           </button>
+
+          <div className="flex items-center justify-center gap-1.5 opacity-90 mb-1 pt-1">
+            <ShieldCheck className="size-4 text-emerald-300" />
+            <span className="text-[11px] font-semibold tracking-wider uppercase">Flame &amp; Crust Gateway</span>
+          </div>
           <h1 className="font-serif text-2xl font-bold">Secure Checkout</h1>
-          <p className="text-primary-foreground/80 mt-1">{paymentMethod.replace("_", " ")}</p>
+          <p className="text-primary-foreground/80 text-xs mt-0.5">{paymentMethod.replace("_", " ")}</p>
         </div>
 
         <div className="p-6 sm:p-8 flex flex-col items-center">
@@ -652,6 +734,29 @@ export default function PaymentGatewayPage() {
                   </Button>
                 )}
 
+                {/* Direct Switch to Cash on Delivery (លុយក្រៅ) */}
+                {paymentMethod !== "CARD" && (
+                  <button
+                    type="button"
+                    disabled={isSwitchingMethod || isPaid}
+                    onClick={handleSwitchToCash}
+                    className="w-full p-3 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-left flex items-center justify-between gap-3 transition-all cursor-pointer group shadow-sm active:scale-[0.99]"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="size-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                        <Landmark className="size-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-xs text-foreground">មិនចង់ស្កេន? ប្តូរទៅបង់ប្រាក់សុទ្ធ / លុយក្រៅ</p>
+                        <p className="text-[10px] text-muted-foreground">បង់ប្រាក់ ${Number(totalAmount).toFixed(2)} ពេលដឹកដល់ផ្ទះ (COD)</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-amber-600 dark:text-amber-400 shrink-0 group-hover:translate-x-0.5 transition-transform">
+                      ប្តូរឥឡូវ →
+                    </span>
+                  </button>
+                )}
+
                 {paymentMethod !== "CARD" && (
                   <p className="text-[11px] text-center text-muted-foreground">
                     {manualChecksCount >= MAX_MANUAL_CHECKS ? (
@@ -666,7 +771,15 @@ export default function PaymentGatewayPage() {
                   </p>
                 )}
 
-                <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/40">
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/40 w-full">
+                  <button
+                    onClick={handleCancelAndExit}
+                    type="button"
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer py-1 px-2 rounded-lg hover:bg-secondary"
+                  >
+                    <ArrowLeft className="size-3.5" /> <span>ថយក្រោយរើសវិធីទូទាត់</span>
+                  </button>
+
                   {qrCodeString && (
                     <button
                       onClick={generateQR}
@@ -676,14 +789,6 @@ export default function PaymentGatewayPage() {
                       <RefreshCw className="size-3.5" /> <span>បង្កើត QR ថ្មី</span>
                     </button>
                   )}
-
-                  <button
-                    onClick={() => setShowExitConfirm(true)}
-                    type="button"
-                    className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 hover:underline font-semibold ml-auto transition-colors cursor-pointer py-1 px-2 rounded-lg hover:bg-amber-500/10"
-                  >
-                    <Landmark className="size-3.5" /> <span>ប្តូរវិធីទូទាត់ / ចាកចេញ</span>
-                  </button>
                 </div>
               </div>
             </>
@@ -700,7 +805,7 @@ export default function PaymentGatewayPage() {
               <span>ជម្រើសចាកចេញ ឬប្តូរវិធីទូទាត់</span>
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs sm:text-sm text-muted-foreground pt-1 leading-relaxed">
-              តើអ្នកចង់ប្តូរវិធីទូទាត់ប្រាក់ ឬបោះបង់ការបញ្ជាទិញនេះ? ការចាកចេញនឹងមិនត្រូវបានគិតថាបានទិញជោគជ័យឡើយ។
+              តើអ្នកចង់ប្តូរទៅបង់ប្រាក់សុទ្ធ (Cash on Delivery) ឬត្រឡប់ទៅជ្រើសរើសវិធីទូទាត់ឡើងវិញ? ទំនិញក្នុងកន្ត្រករបស់អ្នកនៅរក្សាដដែល។
             </AlertDialogDescription>
           </AlertDialogHeader>
 
@@ -717,29 +822,29 @@ export default function PaymentGatewayPage() {
                   <Landmark className="size-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="font-bold text-xs sm:text-sm text-foreground">ប្តូរទៅបង់ប្រាក់សុទ្ធ (Cash on Delivery)</p>
+                  <p className="font-bold text-xs sm:text-sm text-foreground">ប្តូរទៅបង់ប្រាក់សុទ្ធ (Cash / លុយក្រៅ)</p>
                   <p className="text-[11px] text-muted-foreground">បង់ប្រាក់ ${Number(totalAmount).toFixed(2)} ពេលបុគ្គលិកដឹកដល់ផ្ទះ</p>
                 </div>
               </div>
               <span className="text-xs font-bold text-amber-600 dark:text-amber-400 shrink-0">ជ្រើសរើស →</span>
             </button>
 
-            {/* Option 2: Cancel order and go back to Checkout */}
+            {/* Option 2: Go back to Checkout to re-choose payment */}
             <button
               type="button"
               onClick={handleCancelAndExit}
-              className="w-full p-3.5 rounded-2xl bg-destructive/10 hover:bg-destructive/20 border border-destructive/30 text-left flex items-center justify-between gap-3 transition-all cursor-pointer group"
+              className="w-full p-3.5 rounded-2xl bg-secondary/80 hover:bg-secondary border border-border/70 text-left flex items-center justify-between gap-3 transition-all cursor-pointer group"
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className="size-10 rounded-xl bg-destructive/20 text-destructive flex items-center justify-center shrink-0">
-                  <X className="size-5" />
+                <div className="size-10 rounded-xl bg-muted text-foreground flex items-center justify-center shrink-0">
+                  <ArrowLeft className="size-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="font-bold text-xs sm:text-sm text-destructive">បោះបង់ការទិញ &amp; ត្រឡប់ក្រោយ</p>
-                  <p className="text-[11px] text-muted-foreground">ការកុម្ម៉ង់នឹងត្រូវលុបចោល (មិនទាន់ទិញបានទេ)</p>
+                  <p className="font-bold text-xs sm:text-sm text-foreground">ថយក្រោយទៅ Checkout រើសវិធីទូទាត់</p>
+                  <p className="text-[11px] text-muted-foreground">ទំនិញក្នុងកន្ត្រកនៅរក្សាទុកដដែល (មិនទាន់បញ្ជាទិញទេ)</p>
                 </div>
               </div>
-              <span className="text-xs font-bold text-destructive shrink-0">បោះបង់ →</span>
+              <span className="text-xs font-bold text-muted-foreground group-hover:text-foreground shrink-0">ថយក្រោយ →</span>
             </button>
           </div>
 

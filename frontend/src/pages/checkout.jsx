@@ -722,6 +722,42 @@ function CheckoutPage() {
       const finalCustomerId = customerId ? Number(customerId) : null;
       const finalAddressId = addressId ? Number(addressId) : null;
 
+      const targetTotal = Number(total.toFixed(2));
+      const targetMethod = paymentMethod;
+      const targetItemCount = itemCount;
+      const targetAddress = `${address1}${address2 ? `, ${address2}` : ""}, ${city}`;
+
+      // Defer order creation for digital payments (KHQR/ABA) until payment is confirmed or switched to cash
+      if ((targetMethod === "KHQR" || targetMethod === "ABA_PAY") && !verifiedPayment) {
+        setSubmitting(false);
+        navigate("/payment", {
+          state: {
+            total: targetTotal,
+            paymentMethod: targetMethod,
+            itemCount: targetItemCount,
+            address: targetAddress,
+            cartItems: lines,
+            formData: {
+              customerId: finalCustomerId,
+              addressId: finalAddressId,
+              fullName,
+              phone,
+              email: formData.email || null,
+              address1,
+              address2,
+              city,
+              notes,
+              subtotal: Number(subtotal.toFixed(2)),
+              discount: Number(discount.toFixed(2)),
+              deliveryFee: Number(deliveryFee.toFixed(2)),
+              total: targetTotal,
+              coupon,
+            }
+          }
+        });
+        return;
+      }
+
       const isDigitalPaid = verifiedPayment || isPaymentVerified || (paymentMethod === "CARD");
       const orderStatus = isDigitalPaid ? "CONFIRMED" : "PENDING";
       const paymentStatus = isDigitalPaid ? "PAID" : "PENDING";
@@ -806,40 +842,22 @@ function CheckoutPage() {
       } catch (e) {}
 
       setIsSuccessRedirecting(true);
-      const targetTotal = Number(total.toFixed(2));
-      const targetMethod = paymentMethod;
-      const targetItemCount = itemCount;
-      const targetAddress = `${address1}${address2 ? `, ${address2}` : ""}, ${city}`;
 
-      if ((targetMethod === "KHQR" || targetMethod === "ABA_PAY") && !verifiedPayment) {
-        // Do not clear cart yet so the user can switch payment method or cancel safely
-        navigate(`/payment/${orderId}`, {
-          replace: true,
-          state: {
-            total: targetTotal,
-            paymentMethod: targetMethod,
-            itemCount: targetItemCount,
-            address: targetAddress,
-            cartItems: lines
-          }
-        });
-      } else {
-        setTimeout(() => {
-          if (typeof clear === "function") clear();
-          if (typeof removeCoupon === "function") removeCoupon();
-        }, 200);
+      setTimeout(() => {
+        if (typeof clear === "function") clear();
+        if (typeof removeCoupon === "function") removeCoupon();
+      }, 200);
 
-        navigate("/order-confirmation", {
-          replace: true,
-          state: {
-            orderId,
-            total: targetTotal,
-            itemCount: targetItemCount,
-            paymentMethod: targetMethod,
-            address: targetAddress,
-          },
-        });
-      }
+      navigate("/order-confirmation", {
+        replace: true,
+        state: {
+          orderId,
+          total: targetTotal,
+          itemCount: targetItemCount,
+          paymentMethod: targetMethod,
+          address: targetAddress,
+        },
+      });
     } catch (err) {
       console.error("Order submission error:", err);
       toast.error(err.message || "Failed to place order. Please try again.");
@@ -1685,7 +1703,12 @@ function CheckoutPage() {
                       </span>
                     ) : paymentMethod === "CASH" ? (
                       <>
-                        Place Order (Pay on Delivery)
+                        បញ្ជាទិញ (បង់ប្រាក់ពេលដឹកដល់)
+                        <ArrowRight className="size-4 ml-1.5" />
+                      </>
+                    ) : (paymentMethod === "KHQR" || paymentMethod === "ABA_PAY") ? (
+                      <>
+                        បន្តទៅស្កេនទូទាត់ QR
                         <ArrowRight className="size-4 ml-1.5" />
                       </>
                     ) : (
@@ -1737,7 +1760,12 @@ function CheckoutPage() {
                       </span>
                     ) : paymentMethod === "CASH" ? (
                       <span className="flex items-center gap-1">
-                        Place Order
+                        បញ្ជាទិញ (COD)
+                        <ArrowRight className="size-4 ml-1" />
+                      </span>
+                    ) : (paymentMethod === "KHQR" || paymentMethod === "ABA_PAY") ? (
+                      <span className="flex items-center gap-1">
+                        ស្កេនទូទាត់ QR
                         <ArrowRight className="size-4 ml-1" />
                       </span>
                     ) : (
