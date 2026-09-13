@@ -342,35 +342,6 @@ function CartPage() {
                   </div>
                 )}
 
-                {/* 3. Order Summary Breakdown */}
-                <div className="bg-card/70 backdrop-blur-md rounded-2xl sm:rounded-3xl border border-border/70 p-4 sm:p-5 shadow-xs space-y-2.5 text-xs sm:text-sm">
-                  <div className="flex justify-between text-muted-foreground font-medium">
-                    <span>Subtotal</span>
-                    <span className="font-semibold text-foreground">${grossSubtotal.toFixed(2)}</span>
-                  </div>
-
-                  {discount > 0 && (
-                    <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
-                      <span className="flex items-center gap-1.5">
-                        <Ticket className="size-3.5" /> Coupon Discount ({coupon?.code})
-                      </span>
-                      <span>-${discount.toFixed(2)}</span>
-                    </div>
-                  )}
-
-                  {coupon?.discount_type === "FREE_DELIVERY" && (
-                    <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
-                      <span>Delivery Fee</span>
-                      <span className="uppercase text-[10px] bg-emerald-500/15 px-1.5 py-0.5 rounded-md font-bold">FREE</span>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between items-baseline font-bold text-base sm:text-lg pt-2 border-t border-border/40">
-                    <span className="text-foreground">Total</span>
-                    <span className="font-serif text-2xl sm:text-3xl font-bold text-primary">${total.toFixed(2)}</span>
-                  </div>
-                </div>
-
                 {/* Desktop Checkout Button (Hidden on Mobile) */}
                 <div className="hidden sm:block pt-2">
                   <Button

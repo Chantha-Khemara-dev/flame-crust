@@ -20,6 +20,7 @@ import {
   MoreVertical,
   Wifi,
   WifiOff,
+  Store,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -203,16 +204,20 @@ export default function KitchenDashboard() {
     fetchData(false);
   }, [fetchData]);
 
-  const handleSignOut = async () => {
-    try {
-      await unsubscribeFromPushNotifications();
-    } catch (e) {
-      console.error("Failed to unsubscribe push:", e);
-    }
+  const handleSignOut = () => {
     localStorage.removeItem("kitchenAuth");
     localStorage.removeItem("adminAuth");
     window.dispatchEvent(new Event("authChanged"));
-    navigate("/login");
+    unsubscribeFromPushNotifications().catch(() => {});
+    toast.success("Signed out of Kitchen Portal");
+    navigate("/login", { replace: true });
+  };
+
+  const handleExitToStore = () => {
+    localStorage.removeItem("kitchenAuth");
+    window.dispatchEvent(new Event("authChanged"));
+    toast.info("Returned to customer storefront");
+    navigate("/", { replace: true });
   };
 
   const updateOrderStatus = async (orderId, newStatus) => {
@@ -449,6 +454,7 @@ export default function KitchenDashboard() {
           setActiveView("dashboard");
           setStageFilter(stage);
         }}
+        onSignOut={handleSignOut}
       />
 
       <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -549,6 +555,16 @@ export default function KitchenDashboard() {
 
             <Button
               variant="outline"
+              onClick={handleExitToStore}
+              className="hidden h-10 rounded-full border-border/70 bg-card px-4 font-serif text-xs font-bold text-muted-foreground shadow-xs transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary active:scale-95 md:inline-flex"
+              title="Exit to customer storefront"
+            >
+              <Store className="size-3.5 mr-1.5" />
+              <span>Customer Store</span>
+            </Button>
+
+            <Button
+              variant="outline"
               onClick={handleSignOut}
               className="hidden h-10 rounded-full border-border/70 bg-card px-4.5 font-serif text-xs font-bold text-muted-foreground shadow-xs transition-all hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive active:scale-95 sm:inline-flex"
               title="Sign out"
@@ -572,6 +588,13 @@ export default function KitchenDashboard() {
                 align="end"
                 className="min-w-44 rounded-2xl border-border/70 bg-card p-1.5 shadow-warm-lg"
               >
+                <DropdownMenuItem
+                  onClick={handleExitToStore}
+                  className="rounded-xl font-semibold"
+                >
+                  <Store className="size-4 text-primary" />
+                  Customer Store
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={handleRefresh}
                   disabled={refreshing}

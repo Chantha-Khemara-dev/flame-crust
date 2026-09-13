@@ -1009,7 +1009,7 @@ function CheckoutPage() {
                           <span className={cn("font-medium", deliveryFee === 0 ? "text-green-600 dark:text-green-400" : "text-foreground")}>
                             {deliveryFee === 0 ? "FREE" : `$${deliveryFee.toFixed(2)}`}
                           </span>
-                        </div>
+                        </div>/
                       </div>
                     </motion.div>
                   )}

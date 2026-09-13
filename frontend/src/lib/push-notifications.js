@@ -137,7 +137,12 @@ export async function unsubscribeFromPushNotifications() {
   if (!isPushNotificationSupported()) return;
 
   try {
-    const registration = await navigator.serviceWorker.ready;
+    const registration = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('SW ready timeout')), 1000))
+    ]).catch(() => null);
+
+    if (!registration || !registration.pushManager) return;
     const subscription = await registration.pushManager.getSubscription();
     if (subscription) {
       try {
