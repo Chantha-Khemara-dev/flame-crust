@@ -34,7 +34,8 @@ import {
   Loader2,
   Pencil,
   Building2,
-  Copy
+  Copy,
+  Bike
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1473,73 +1474,120 @@ export default function ProfilePage() {
                         <p className="text-xs text-muted-foreground mt-1">Time to crave something delicious!</p>
                       </div>
                     ) : (
-                      <div className="space-y-3.5 pb-8">
-                        {orders.map((order) => (
-                          <div 
-                            key={order.id} 
-                            className="bg-card border border-border/70 rounded-2xl sm:rounded-[24px] p-4 sm:p-5 transition-all hover:border-primary/50 cursor-pointer hover:shadow-warm group"
-                            onClick={() => navigate(`/track/${order.id}`)}
-                          >
-                            {/* Top Row: Order # + Status (Left) & Price (Right) */}
-                            <div className="flex items-center justify-between gap-2 mb-1.5">
-                              <div className="flex items-center gap-2 flex-wrap min-w-0">
-                                <span className="font-mono text-sm text-foreground font-bold whitespace-nowrap">#{order.order_number}</span>
-                                <span className={cn(
-                                  "text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider shrink-0",
-                                  order.status === "DELIVERED" ? "bg-green-600/20 text-green-600 dark:text-green-400" :
-                                  order.status === "CANCELLED" ? "bg-destructive/20 text-destructive" :
-                                  "bg-primary/20 text-primary"
-                                )}>
-                                  {order.status}
-                                </span>
+                      <div className="space-y-2.5 sm:space-y-3 pb-8">
+                        {orders.map((order) => {
+                          const isDelivered = order.status === "DELIVERED";
+                          const isCancelled = order.status === "CANCELLED";
+                          const isActive = !isDelivered && !isCancelled;
+
+                          return (
+                            <div 
+                              key={order.id} 
+                              className="bg-card border border-border/70 hover:border-primary/40 rounded-xl sm:rounded-2xl p-3 sm:p-3.5 transition-all hover:shadow-2xs group cursor-pointer"
+                              onClick={() => navigate(`/track/${order.id}`)}
+                            >
+                              {/* Top Row: Icon + Order Number & Status + Price */}
+                              <div className="flex items-center justify-between gap-2.5">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  {/* Status Icon */}
+                                  <div className={cn(
+                                    "size-8 sm:size-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 shadow-2xs",
+                                    isDelivered ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
+                                    isCancelled ? "bg-destructive/10 text-destructive" :
+                                    "bg-primary/10 text-primary"
+                                  )}>
+                                    {isDelivered ? <Check className="size-4" /> : 
+                                     isCancelled ? <X className="size-4" /> : 
+                                     <Bike className="size-4 animate-pulse" />}
+                                  </div>
+
+                                  {/* Order Number, Status & Date */}
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="font-mono text-xs sm:text-sm font-bold text-foreground whitespace-nowrap">
+                                        #{order.order_number}
+                                      </span>
+                                      <span className={cn(
+                                        "text-[9px] sm:text-[10px] font-bold px-2 py-0.2 rounded-full uppercase tracking-wider shrink-0",
+                                        isDelivered ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" :
+                                        isCancelled ? "bg-destructive/15 text-destructive" :
+                                        "bg-primary/15 text-primary"
+                                      )}>
+                                        {order.status}
+                                      </span>
+                                    </div>
+                                    <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5 leading-tight">
+                                      <Clock className="size-3 shrink-0 text-muted-foreground/70" />
+                                      <span className="truncate">{formatDate(order.created_at)}</span>
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Price */}
+                                <div className="text-right shrink-0">
+                                  <span className="font-serif font-bold text-base sm:text-lg text-primary">
+                                    ${order.total}
+                                  </span>
+                                </div>
                               </div>
-                              <span className="font-bold text-base sm:text-lg text-primary font-serif shrink-0">${order.total}</span>
-                            </div>
 
-                            {/* Second Row: Date & Time */}
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium mb-3">
-                              <Clock className="size-3.5 text-muted-foreground/70 shrink-0" />
-                              <span>{formatDate(order.created_at)}</span>
-                            </div>
+                              {/* Bottom Row: View Details Link & Compact Buttons */}
+                              <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-border/40 gap-2">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedOrderDetails(order);
+                                  }}
+                                  className="text-[11px] text-muted-foreground hover:text-foreground font-medium flex items-center gap-0.5 cursor-pointer transition-colors py-0.5"
+                                >
+                                  <span>Details</span>
+                                  <ChevronRight className="size-3" />
+                                </button>
 
-                            {/* Bottom Action Row: Buttons */}
-                            <div className="flex items-center justify-end pt-3 border-t border-border/60 gap-2 flex-wrap">
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="rounded-full text-xs h-8 px-3.5 font-semibold cursor-pointer active:scale-95"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleReorder(order.id);
-                                }}
-                              >
-                                <RefreshCcw className="size-3.5 mr-1.5" /> Reorder
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="rounded-full text-xs h-8 px-3.5 font-semibold text-muted-foreground hover:text-foreground cursor-pointer active:scale-95"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedOrderDetails(order);
-                                }}
-                              >
-                                Details <ChevronRight className="size-3.5 ml-0.5" />
-                              </Button>
-                              <Button 
-                                variant="default" 
-                                size="sm" 
-                                className="rounded-full text-xs h-8 px-4 font-semibold shadow-warm cursor-pointer active:scale-95"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/track/${order.id}`);
-                                }}
-                              >
-                                Track
-                              </Button>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="rounded-full text-[11px] h-7 px-3 font-semibold border-border/70 hover:border-primary hover:text-primary transition-all cursor-pointer active:scale-95"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleReorder(order.id);
+                                    }}
+                                  >
+                                    <RefreshCcw className="size-3 mr-1" /> Reorder
+                                  </Button>
+
+                                  {isActive ? (
+                                    <Button 
+                                      variant="default" 
+                                      size="sm" 
+                                      className="rounded-full text-[11px] h-7 px-3.5 font-bold shadow-2xs bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer active:scale-95"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate(`/track/${order.id}`);
+                                      }}
+                                    >
+                                      Track Live
+                                    </Button>
+                                  ) : (
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="rounded-full text-[11px] h-7 px-2.5 text-muted-foreground hover:text-foreground cursor-pointer active:scale-95"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate(`/track/${order.id}`);
+                                      }}
+                                    >
+                                      Track
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
