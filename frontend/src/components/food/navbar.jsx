@@ -835,9 +835,13 @@ function Navbar() {
                 className="p-4 rounded-2xl bg-secondary/40 border border-border/60 flex flex-col gap-2.5 hover:bg-secondary/70 hover:border-primary/40 transition-all shadow-xs"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-sm text-foreground font-mono">Order #{order.order_number || order.id}</span>
-                    <span className="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30 shrink-0">
+                  <div className="flex items-center gap-2 flex-wrap min-w-0">
+                    <span className="font-bold text-xs sm:text-sm text-foreground font-mono whitespace-nowrap">
+                      {String(order.order_number || order.id).startsWith("#")
+                        ? order.order_number || order.id
+                        : `#${order.order_number || order.id}`}
+                    </span>
+                    <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30 whitespace-nowrap shrink-0">
                       {order.status.replace(/_/g, " ")}
                     </span>
                   </div>

@@ -373,17 +373,24 @@ export function ActiveOrderWidget() {
                       <Icon className="size-5 sm:size-5.5 animate-pulse" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-bold text-xs sm:text-sm text-foreground font-mono">
-                          Order #{order.order_number || order.id}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono font-bold text-xs sm:text-sm text-foreground whitespace-nowrap">
+                          {String(order.order_number || order.id).startsWith("#")
+                            ? order.order_number || order.id
+                            : `#${order.order_number || order.id}`}
                         </span>
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-secondary text-foreground/90 border border-border/60 whitespace-nowrap shrink-0">
                           {info.statusText}
                         </span>
                       </div>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5 font-medium">
-                        {formatPrice(order.total || order.total_amount || 0)}{" "}
-                        {order.delivery_address ? `• ${order.delivery_address}` : ""}
+                      <p className="text-xs text-muted-foreground truncate mt-1 font-medium flex items-center gap-1.5">
+                        <span className="font-bold text-primary font-mono">{formatPrice(order.total || order.total_amount || 0)}</span>
+                        {order.delivery_address && (
+                          <>
+                            <span>•</span>
+                            <span className="truncate">{order.delivery_address}</span>
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>
