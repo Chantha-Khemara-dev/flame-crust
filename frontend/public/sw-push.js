@@ -1,5 +1,11 @@
 // sw-push.js - Flame & Crust Web Push Notification Service Worker Handler
 
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('push', function(event) {
   let data = {};
   if (event.data) {

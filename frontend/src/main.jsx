@@ -8,6 +8,11 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import { registerSW } from 'virtual:pwa-register';
 import { ErrorBoundary } from "./components/shared/error-boundary.jsx";
 
+// Purge stale runtime cache (like old static-assets) so Android/iOS gets the latest bundle immediately
+if (typeof window !== 'undefined' && 'caches' in window) {
+  caches.delete('static-assets').catch(() => {});
+}
+
 let isRefreshing = false;
 
 const updateSW = registerSW({
@@ -17,13 +22,30 @@ const updateSW = registerSW({
   },
   onRegisteredSW(swUrl, registration) {
     if (registration) {
+      // If a worker is already waiting, activate it immediately
+      if (registration.waiting) {
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+
       // Check for updates on startup
       registration.update().catch(() => {});
 
-      // Check for SW updates every 20 seconds
+      // Watch for new updates arriving in background
+      registration.addEventListener('updatefound', () => {
+        const installingWorker = registration.installing;
+        if (installingWorker) {
+          installingWorker.addEventListener('statechange', () => {
+            if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              installingWorker.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        }
+      });
+
+      // Check for SW updates every 15 seconds
       setInterval(() => {
         registration.update().catch(() => {});
-      }, 20 * 1000);
+      }, 15 * 1000);
 
       // Check for updates when user switches back to the app or window gains focus
       document.addEventListener("visibilitychange", () => {

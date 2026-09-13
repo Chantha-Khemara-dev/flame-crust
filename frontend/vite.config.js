@@ -26,16 +26,6 @@ export default defineConfig({
         importScripts: ['/sw-push.js'],
         runtimeCaching: [
           {
-            urlPattern: /\.(?:css|js)$/i,
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'static-assets',
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          },
-          {
             urlPattern: /^\/api\/.*/i,
             handler: 'NetworkOnly',
           },
