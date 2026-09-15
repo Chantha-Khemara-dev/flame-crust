@@ -292,10 +292,44 @@ export default function KitchenDashboard() {
     return map;
   }, [safeHistory]);
 
+  const [timeScope, setTimeScope] = useState("all");
+
+  const staleOrders = useMemo(() => {
+    return activeOrders.filter((o) => {
+      if (!o.created_at) return false;
+      return (now - new Date(o.created_at).getTime()) > 24 * 3600 * 1000;
+    });
+  }, [activeOrders, now]);
+
+  const handleClearStaleOrders = async () => {
+    if (staleOrders.length === 0) {
+      toast.info("No stale orders older than 24 hours.");
+      return;
+    }
+    const count = staleOrders.length;
+    try {
+      await Promise.all(staleOrders.map(o => update("orders", o.id, { status: "DELIVERED" })));
+      playChime("ready");
+      toast.success(`Cleared ${count} stale test orders! 🧹✨ Board is now fresh.`);
+      fetchData(false);
+    } catch (err) {
+      toast.error("Failed to archive stale orders.");
+    }
+  };
+
+  const scopedActiveOrders = useMemo(() => {
+    if (timeScope === "today") {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      return activeOrders.filter((o) => new Date(o.created_at) >= todayStart);
+    }
+    return activeOrders;
+  }, [activeOrders, timeScope]);
+
   const filteredOrders = useMemo(() => {
     const term = query.trim().toLowerCase();
-    if (!term) return activeOrders;
-    return activeOrders.filter((order) => {
+    if (!term) return scopedActiveOrders;
+    return scopedActiveOrders.filter((order) => {
       const haystack = [
         order.order_number,
         order.id,
@@ -309,7 +343,7 @@ export default function KitchenDashboard() {
         .toLowerCase();
       return haystack.includes(term);
     });
-  }, [activeOrders, query]);
+  }, [scopedActiveOrders, query]);
 
   const pendingOrders = filteredOrders.filter((o) => o.status === "PENDING" || o.status === "CONFIRMED");
   const preparingOrders = filteredOrders.filter((o) => o.status === "PREPARING");
@@ -681,6 +715,10 @@ export default function KitchenDashboard() {
               showImages={prefs.showImages}
               syncing={refreshing}
               error={error}
+              timeScope={timeScope}
+              onTimeScopeChange={setTimeScope}
+              staleOrdersCount={staleOrders.length}
+              onClearStaleOrders={handleClearStaleOrders}
             />
           )}
         </main>

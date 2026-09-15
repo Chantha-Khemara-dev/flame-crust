@@ -61,9 +61,9 @@ export const STAGES = {
     iconBox: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 border-emerald-500/25",
     columnTint: "from-emerald-500/[0.07] via-card to-card",
     hoverBorder: "hover:border-emerald-500/50",
-    action: null,
-    actionLabel: "Awaiting Pickup",
-    nextStatus: null,
+    action: "from-teal-600 via-emerald-600 to-green-600",
+    actionLabel: "Hand to Driver / Done",
+    nextStatus: "DELIVERED",
   },
 };
 

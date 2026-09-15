@@ -13,6 +13,10 @@ import {
   Leaf,
   User,
   Timer,
+  Sparkles,
+  Trash2,
+  Calendar,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getImageUrl } from "@/lib/food-api";
@@ -33,6 +37,7 @@ import {
   shortOrderNo,
   urgencyOf,
   useNow,
+  setKitchenPref,
 } from "./kitchen-ui";
 
 const STAGE_ORDER = ["pending", "preparing", "ready"];
@@ -56,6 +61,10 @@ export function DashboardView({
   showImages = true,
   syncing = false,
   error = null,
+  timeScope = "all",
+  onTimeScopeChange,
+  staleOrdersCount = 0,
+  onClearStaleOrders,
 }) {
   const now = useNow();
   const compact = density === "compact";
@@ -168,8 +177,8 @@ export function DashboardView({
         <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background via-background/70 to-transparent sm:hidden" />
       </div>
 
-      <div className="mb-3.5 flex shrink-0 items-center gap-2 sm:mb-4">
-        <div className="grid flex-1 grid-cols-4 gap-1 rounded-full border border-border/70 bg-card/85 p-1.5 shadow-warm ring-1 ring-black/[0.03] backdrop-blur-xl dark:bg-zinc-900/85 dark:ring-white/[0.05]">
+      <div className="mb-3.5 flex shrink-0 flex-wrap items-center justify-between gap-2.5 sm:mb-4">
+        <div className="grid flex-1 min-w-[280px] grid-cols-4 gap-1 rounded-full border border-border/70 bg-card/85 p-1.5 shadow-warm ring-1 ring-black/[0.03] backdrop-blur-xl dark:bg-zinc-900/85 dark:ring-white/[0.05]">
           {filters.map((filter) => {
             const isActive = stageFilter === filter.id;
             return (
@@ -204,15 +213,76 @@ export function DashboardView({
           })}
         </div>
 
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={onSearchMobile}
-          className="size-10 shrink-0 rounded-full border-border/70 bg-card text-muted-foreground shadow-xs transition-all hover:border-primary/40 hover:text-primary active:scale-95 md:hidden"
-          title="Search tickets"
-        >
-          <Search className="size-4" />
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="flex items-center rounded-full border border-border/70 bg-card/85 p-1 shadow-warm ring-1 ring-black/[0.03] backdrop-blur-xl dark:bg-zinc-900/85">
+            <button
+              type="button"
+              onClick={() => {
+                playChime("tap");
+                onTimeScopeChange?.("all");
+              }}
+              className={cn(
+                "flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold transition-all active:scale-95",
+                timeScope === "all"
+                  ? "bg-primary font-bold text-white shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              All Active
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                playChime("tap");
+                onTimeScopeChange?.("today");
+              }}
+              className={cn(
+                "flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold transition-all active:scale-95",
+                timeScope === "today"
+                  ? "bg-primary font-bold text-white shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Calendar className="size-3.5" />
+              <span>Today Only</span>
+            </button>
+          </div>
+
+          {staleOrdersCount > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Clean up ${staleOrdersCount} old order(s) older than 24h? This will mark them completed.`
+                  )
+                ) {
+                  onClearStaleOrders?.();
+                }
+              }}
+              className="flex h-9 items-center gap-1.5 rounded-full border-destructive/30 bg-destructive/10 px-3 text-xs font-bold text-destructive hover:bg-destructive/20 active:scale-95"
+              title="Archive tickets older than 24 hours"
+            >
+              <Trash2 className="size-3.5" />
+              <span className="hidden sm:inline">Clean Stale</span>
+              <span className="rounded-full bg-destructive/20 px-1.5 py-0.2 text-[10px] tabular-nums">
+                {staleOrdersCount}
+              </span>
+            </Button>
+          )}
+
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={onSearchMobile}
+            className="size-9 shrink-0 rounded-full border-border/70 bg-card text-muted-foreground shadow-xs transition-all hover:border-primary/40 hover:text-primary active:scale-95 md:hidden"
+            title="Search tickets"
+          >
+            <Search className="size-4" />
+          </Button>
+        </div>
       </div>
 
       {error && !syncing && (
@@ -284,7 +354,7 @@ export function DashboardView({
             })}
           </div>
 
-          <div className="hidden flex-1 gap-5 overflow-hidden md:grid md:grid-cols-3">
+          <div className="hidden min-h-0 flex-1 gap-5 overflow-hidden md:grid md:grid-cols-3">
             {STAGE_ORDER.map((stage) => {
               const { list, oldest, late } = stageMeta(stage);
               return (
@@ -347,9 +417,9 @@ function StationColumn({
   return (
     <section
       className={cn(
-        "flex flex-col overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-b shadow-warm ring-1 ring-black/[0.03] transition-colors dark:ring-white/[0.04]",
+        "flex min-h-0 flex-col overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-b shadow-warm ring-1 ring-black/[0.03] transition-colors dark:ring-white/[0.04]",
         config.columnTint,
-        stacked ? "min-h-[220px] md:h-full" : "h-full min-h-[320px]"
+        stacked ? "h-full min-h-0" : "h-full min-h-[320px]"
       )}
     >
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border/60 bg-card/70 px-4 py-3.5 backdrop-blur-xl sm:px-5 dark:bg-card/40">
@@ -391,8 +461,8 @@ function StationColumn({
 
       <div
         className={cn(
-          "flex flex-col gap-3 p-3 custom-scrollbar sm:gap-3.5 sm:p-4",
-          stacked ? "max-h-[460px] overflow-y-auto md:max-h-none md:flex-1" : "flex-1 overflow-y-auto",
+          "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 custom-scrollbar sm:gap-3.5 sm:p-4",
+          stacked ? "max-h-[460px] md:max-h-none" : "",
           expanded && "md:grid md:grid-cols-2 md:content-start md:gap-4 xl:grid-cols-3"
         )}
       >
@@ -518,9 +588,9 @@ function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOp
         }
       }}
       className={cn(
-        "group relative flex cursor-pointer flex-col overflow-hidden rounded-3xl border bg-card shadow-warm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-warm-lg focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none dark:bg-zinc-900/90",
+        "group relative flex shrink-0 cursor-pointer flex-col overflow-hidden rounded-3xl border bg-card shadow-warm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-warm-lg focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none dark:bg-zinc-900/90",
         tone.border,
-        compact ? "p-3.5" : "p-4 sm:p-4.5",
+        compact ? "min-h-[170px] p-3.5" : "min-h-[220px] p-4 sm:p-4.5",
         urgency.level >= 3 && "ring-1 ring-destructive/25"
       )}
     >
@@ -687,7 +757,7 @@ function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOp
             )}
           >
             <config.icon className="mr-2 size-4 transition-transform group-hover/btn:scale-125" />
-            {stage === "pending" ? "Start Cooking" : "Mark as Ready"}
+            {config.actionLabel || (stage === "pending" ? "Start Cooking" : stage === "preparing" ? "Mark as Ready" : "Hand to Driver / Done")}
           </Button>
         ) : (
           <div
