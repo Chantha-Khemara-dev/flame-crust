@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   ThumbsUp,
   Send,
+  Smile,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -66,6 +67,133 @@ function ProductDetailPage() {
   const [newHoverRating, setNewHoverRating] = useState(0);
   const [newComment, setNewComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
+
+  // Review Replies & Emoji Reactions
+  const QUICK_EMOJIS = ["🍕", "🔥", "❤️", "👍", "😍", "😋", "👏", "🎉", "✨", "🤤", "🙏", "💯"];
+
+  const [reviewReplies, setReviewReplies] = useState(() => {
+    try {
+      const saved = localStorage.getItem("flame_crust_review_replies");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return {
+      "1": [
+        {
+          id: "rep-default-1",
+          author_name: "Flame & Crust Team",
+          is_staff: true,
+          comment: "អរគុណបង Khemara ច្រើនសម្រាប់ការគាំទ្រ! 🍕🔥 ហាងយើងខ្ញុំរីករាយណាស់ដែលបងពេញចិត្តរសជាតិភីហ្សា!",
+          created_at: "2026-09-06T09:15:00.000Z"
+        }
+      ]
+    };
+  });
+
+  const [reviewReactions, setReviewReactions] = useState(() => {
+    try {
+      const saved = localStorage.getItem("flame_crust_review_reactions");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return {
+      "1": {
+        "👍": 3,
+        "🔥": 2,
+        "❤️": 1,
+        userReacted: ["👍"]
+      }
+    };
+  });
+
+  const [openReplyReviewIds, setOpenReplyReviewIds] = useState({});
+  const [replyTextMap, setReplyTextMap] = useState({});
+
+  const toggleReply = (reviewId) => {
+    setOpenReplyReviewIds(prev => ({
+      ...prev,
+      [reviewId]: !prev[reviewId]
+    }));
+  };
+
+  const handleInsertEmoji = (reviewId, emoji) => {
+    setReplyTextMap(prev => ({
+      ...prev,
+      [reviewId]: (prev[reviewId] || "") + emoji
+    }));
+  };
+
+  const handleReaction = (reviewId, emoji) => {
+    setReviewReactions(prev => {
+      const current = prev[reviewId] || { userReacted: [] };
+      const userReacted = current.userReacted || [];
+      const hasReacted = userReacted.includes(emoji);
+      const newReacted = hasReacted
+        ? userReacted.filter(e => e !== emoji)
+        : [...userReacted, emoji];
+      const prevCount = current[emoji] || 0;
+      const newCount = hasReacted ? Math.max(0, prevCount - 1) : prevCount + 1;
+
+      const updated = {
+        ...prev,
+        [reviewId]: {
+          ...current,
+          [emoji]: newCount,
+          userReacted: newReacted
+        }
+      };
+      try {
+        localStorage.setItem("flame_crust_review_reactions", JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
+  const handleSubmitReply = (reviewId) => {
+    const text = (replyTextMap[reviewId] || "").trim();
+    if (!text) {
+      toast.error("Please enter a reply message / សូមបញ្ចូលសារឆ្លើយតប");
+      return;
+    }
+
+    let authorName = "Flame & Crust Foodie";
+    let isStaff = false;
+    let authorAvatar = null;
+
+    try {
+      const admin = JSON.parse(localStorage.getItem("adminAuth") || "null");
+      const customer = JSON.parse(localStorage.getItem("customerAuth") || "null");
+      if (admin?.token || admin?.email) {
+        authorName = admin.name || "Flame & Crust Staff";
+        isStaff = true;
+      } else if (customer?.name || customer?.email) {
+        authorName = customer.name || "Customer";
+        authorAvatar = customer.avatar || null;
+      }
+    } catch (e) {}
+
+    const newReply = {
+      id: "rep-" + Date.now(),
+      author_name: authorName,
+      author_avatar: authorAvatar,
+      is_staff: isStaff,
+      comment: text,
+      created_at: new Date().toISOString()
+    };
+
+    setReviewReplies(prev => {
+      const currentList = prev[reviewId] || [];
+      const updated = {
+        ...prev,
+        [reviewId]: [...currentList, newReply]
+      };
+      try {
+        localStorage.setItem("flame_crust_review_replies", JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    setReplyTextMap(prev => ({ ...prev, [reviewId]: "" }));
+    toast.success("Reply posted! 💬 បានផ្ញើការឆ្លើយតបជោគជ័យ");
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -690,9 +818,25 @@ function ProductDetailPage() {
 
                           {/* Comment input */}
                           <div>
-                            <label className="block text-xs font-medium text-foreground mb-1.5">
-                              Your Comment & Feedback (English or ភាសាខ្មែរ)
-                            </label>
+                            <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
+                              <label className="block text-xs font-medium text-foreground">
+                                Your Comment & Feedback (English or ភាសាខ្មែរ)
+                              </label>
+                              <div className="flex items-center gap-1 overflow-x-auto">
+                                <span className="text-[10px] text-muted-foreground mr-0.5">Add Emoji:</span>
+                                {QUICK_EMOJIS.slice(0, 8).map((emoji) => (
+                                  <button
+                                    key={emoji}
+                                    type="button"
+                                    onClick={() => setNewComment((prev) => prev + emoji)}
+                                    className="size-6 flex items-center justify-center rounded-md hover:bg-secondary active:scale-90 text-sm transition-transform cursor-pointer"
+                                    title={`Insert ${emoji}`}
+                                  >
+                                    {emoji}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                             <textarea
                               rows={3}
                               value={newComment}
@@ -930,18 +1074,203 @@ function ProductDetailPage() {
                             </p>
                           </div>
 
-                          {/* Footer action / helpful */}
-                          <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-[11px] text-muted-foreground">
-                            <span className="text-[11px] text-muted-foreground">
-                              Flame & Crust Customer
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => toast.success("Marked review as helpful!")}
-                              className="inline-flex items-center gap-1 hover:text-foreground transition-colors p-1 -m-1"
-                            >
-                              <ThumbsUp className="size-3" /> Helpful
-                            </button>
+                          {/* Footer action / reactions / helpful / reply */}
+                          <div className="mt-4 pt-3 border-t border-border/40 space-y-3">
+                            {/* Actions bar: Emojis on left, Helpful + Reply on right */}
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              {/* Emoji Reactions */}
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {["👍", "❤️", "🔥", "😋", "🍕"].map((emoji) => {
+                                  const reactions = reviewReactions[review.id] || {};
+                                  const count = reactions[emoji] || 0;
+                                  const isActive = (reactions.userReacted || []).includes(emoji);
+                                  return (
+                                    <button
+                                      key={emoji}
+                                      type="button"
+                                      onClick={() => handleReaction(review.id, emoji)}
+                                      className={cn(
+                                        "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all cursor-pointer border",
+                                        isActive
+                                          ? "bg-primary/15 border-primary text-primary font-bold shadow-xs scale-105"
+                                          : "bg-secondary/60 hover:bg-secondary border-border/60 text-muted-foreground hover:text-foreground"
+                                      )}
+                                      title={`React with ${emoji}`}
+                                    >
+                                      <span>{emoji}</span>
+                                      {count > 0 && <span className="text-[11px] font-semibold">{count}</span>}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Right action buttons: Helpful + Reply */}
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleReaction(review.id, "👍")}
+                                  className={cn(
+                                    "inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg transition-colors cursor-pointer",
+                                    (reviewReactions[review.id]?.userReacted || []).includes("👍")
+                                      ? "text-primary font-semibold bg-primary/10"
+                                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                                  )}
+                                >
+                                  <ThumbsUp className="size-3.5" />
+                                  <span>Helpful</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => toggleReply(review.id)}
+                                  className={cn(
+                                    "inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg transition-all cursor-pointer border",
+                                    openReplyReviewIds[review.id]
+                                      ? "bg-primary text-primary-foreground border-primary font-semibold shadow-xs"
+                                      : "border-border/60 hover:border-primary/50 text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                                  )}
+                                >
+                                  <MessageCircle className="size-3.5" />
+                                  <span>Reply</span>
+                                  {(reviewReplies[review.id] || []).length > 0 && (
+                                    <span
+                                      className={cn(
+                                        "ml-0.5 px-1.5 py-0.2 text-[10px] rounded-full font-bold",
+                                        openReplyReviewIds[review.id]
+                                          ? "bg-white/20 text-white"
+                                          : "bg-primary/15 text-primary"
+                                      )}
+                                    >
+                                      {(reviewReplies[review.id] || []).length}
+                                    </span>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Expandable Reply Section */}
+                            <AnimatePresence>
+                              {openReplyReviewIds[review.id] && (
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: "auto" }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  transition={{ duration: 0.2 }}
+                                  className="pt-3 border-t border-border/40 space-y-3"
+                                >
+                                  {/* Existing Replies */}
+                                  <div className="space-y-2">
+                                    {(reviewReplies[review.id] || []).length === 0 ? (
+                                      <p className="text-[11px] text-muted-foreground italic pl-1">
+                                        No replies yet. Be the first to reply! 💬
+                                      </p>
+                                    ) : (
+                                      (reviewReplies[review.id] || []).map((rep) => (
+                                        <div
+                                          key={rep.id}
+                                          className={cn(
+                                            "p-3 rounded-xl border text-xs space-y-1.5 transition-all",
+                                            rep.is_staff
+                                              ? "bg-primary/5 border-primary/25 dark:bg-primary/10"
+                                              : "bg-secondary/40 border-border/60"
+                                          )}
+                                        >
+                                          <div className="flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2">
+                                              <div
+                                                className={cn(
+                                                  "size-6 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0",
+                                                  rep.is_staff
+                                                    ? "bg-primary text-white"
+                                                    : "bg-primary/10 text-primary"
+                                                )}
+                                              >
+                                                {rep.is_staff
+                                                  ? "🔥"
+                                                  : (rep.author_name || "U").charAt(0).toUpperCase()}
+                                              </div>
+                                              <div className="flex items-center gap-1.5">
+                                                <span className="font-semibold text-foreground">
+                                                  {rep.author_name}
+                                                </span>
+                                                {rep.is_staff && (
+                                                  <span className="text-[9px] font-bold uppercase tracking-wider bg-primary/15 text-primary px-1.5 py-0.5 rounded">
+                                                    Official Staff
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+                                            <span className="text-[10px] text-muted-foreground">
+                                              {rep.created_at
+                                                ? new Date(rep.created_at).toLocaleDateString(undefined, {
+                                                    month: "short",
+                                                    day: "numeric",
+                                                  })
+                                                : "Recently"}
+                                            </span>
+                                          </div>
+                                          <p className="text-foreground/90 pl-8 leading-relaxed whitespace-pre-wrap">
+                                            {rep.comment}
+                                          </p>
+                                        </div>
+                                      ))
+                                    )}
+                                  </div>
+
+                                  {/* Reply Input Box & Quick Emoji Picker */}
+                                  <div className="bg-secondary/30 rounded-xl p-3 border border-border/70 space-y-2">
+                                    {/* Quick Emojis Bar */}
+                                    <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
+                                      <span className="text-[11px] text-muted-foreground mr-1 shrink-0 font-medium">
+                                        Emoji:
+                                      </span>
+                                      {QUICK_EMOJIS.map((emoji) => (
+                                        <button
+                                          key={emoji}
+                                          type="button"
+                                          onClick={() => handleInsertEmoji(review.id, emoji)}
+                                          className="size-7 flex items-center justify-center rounded-lg hover:bg-secondary active:scale-95 text-base transition-transform cursor-pointer shrink-0"
+                                          title={`Insert ${emoji}`}
+                                        >
+                                          {emoji}
+                                        </button>
+                                      ))}
+                                    </div>
+
+                                    {/* Text Input + Send Button */}
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="text"
+                                        value={replyTextMap[review.id] || ""}
+                                        onChange={(e) =>
+                                          setReplyTextMap((prev) => ({
+                                            ...prev,
+                                            [review.id]: e.target.value,
+                                          }))
+                                        }
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter" && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleSubmitReply(review.id);
+                                          }
+                                        }}
+                                        placeholder="Write a reply... / សរសេរការឆ្លើយតប..."
+                                        className="flex-1 h-9 rounded-lg border border-border/80 bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                      />
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={() => handleSubmitReply(review.id)}
+                                        className="h-9 px-3.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold flex items-center gap-1 cursor-pointer shrink-0"
+                                      >
+                                        <Send className="size-3.5" />
+                                        <span>Reply</span>
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                           </div>
                         </div>
                       ))}
