@@ -121,11 +121,28 @@ function ProductDetailPage() {
     }));
   };
 
-  const handleReaction = (reviewId, emoji) => {
+  const getClientIdentifier = () => {
+    try {
+      let id = localStorage.getItem("flame_crust_client_id");
+      if (!id) {
+        id = "client_" + Math.random().toString(36).substring(2, 12);
+        localStorage.setItem("flame_crust_client_id", id);
+      }
+      return id;
+    } catch (e) {
+      return "client_guest";
+    }
+  };
+
+  const handleReaction = async (reviewId, emoji) => {
+    const clientId = getClientIdentifier();
+    let willAdd = false;
+
     setReviewReactions(prev => {
       const current = prev[reviewId] || { userReacted: [] };
       const userReacted = current.userReacted || [];
       const hasReacted = userReacted.includes(emoji);
+      willAdd = !hasReacted;
       const newReacted = hasReacted
         ? userReacted.filter(e => e !== emoji)
         : [...userReacted, emoji];
@@ -145,9 +162,21 @@ function ProductDetailPage() {
       } catch (e) {}
       return updated;
     });
+
+    if (willAdd) {
+      try {
+        await create("review_reactions", {
+          review_id: Number(reviewId),
+          emoji,
+          user_identifier: clientId,
+        });
+      } catch (e) {
+        console.warn("DB reaction save error:", e);
+      }
+    }
   };
 
-  const handleSubmitReply = (reviewId) => {
+  const handleSubmitReply = async (reviewId) => {
     const text = (replyTextMap[reviewId] || "").trim();
     if (!text) {
       toast.error("Please enter a reply message / សូមបញ្ចូលសារឆ្លើយតប");
@@ -193,6 +222,25 @@ function ProductDetailPage() {
 
     setReplyTextMap(prev => ({ ...prev, [reviewId]: "" }));
     toast.success("Reply posted! 💬 បានផ្ញើការឆ្លើយតបជោគជ័យ");
+
+    // Persist directly into MySQL database via API
+    try {
+      const saved = await create("review_replies", {
+        review_id: Number(reviewId),
+        author_name: authorName,
+        author_avatar: authorAvatar,
+        is_staff: isStaff,
+        comment: text,
+      });
+      if (saved && saved.id) {
+        setReviewReplies(prev => {
+          const list = (prev[reviewId] || []).map(r => r.id === newReply.id ? { ...r, id: saved.id } : r);
+          return { ...prev, [reviewId]: list };
+        });
+      }
+    } catch (err) {
+      console.warn("DB reply save error:", err);
+    }
   };
 
   useEffect(() => {
@@ -247,17 +295,43 @@ function ProductDetailPage() {
         });
 
         let allReviews = [];
-        let allCustomers = [];
         try {
-          const [reviewsRes, customersRes] = await Promise.allSettled([
+          const [reviewsRes, customersRes, repliesRes, reactionsRes] = await Promise.allSettled([
             list("reviews"),
-            list("customers")
+            list("customers"),
+            list("review_replies"),
+            list("review_reactions")
           ]);
           if (reviewsRes.status === "fulfilled" && Array.isArray(reviewsRes.value)) {
             allReviews = reviewsRes.value;
           }
           if (customersRes.status === "fulfilled" && Array.isArray(customersRes.value)) {
             allCustomers = customersRes.value;
+          }
+          if (repliesRes.status === "fulfilled" && Array.isArray(repliesRes.value)) {
+            const repliesMap = {};
+            repliesRes.value.forEach(rep => {
+              const rId = String(rep.review_id || rep.reviewId);
+              if (!repliesMap[rId]) repliesMap[rId] = [];
+              repliesMap[rId].push(rep);
+            });
+            setReviewReplies(prev => ({ ...prev, ...repliesMap }));
+          }
+          if (reactionsRes.status === "fulfilled" && Array.isArray(reactionsRes.value)) {
+            const clientId = getClientIdentifier();
+            const reactionsMap = {};
+            reactionsRes.value.forEach(react => {
+              const rId = String(react.review_id || react.reviewId);
+              if (!reactionsMap[rId]) reactionsMap[rId] = { userReacted: [] };
+              const emoji = react.emoji;
+              reactionsMap[rId][emoji] = (reactionsMap[rId][emoji] || 0) + 1;
+              if (react.user_identifier === clientId || react.userIdentifier === clientId) {
+                if (!reactionsMap[rId].userReacted.includes(emoji)) {
+                  reactionsMap[rId].userReacted.push(emoji);
+                }
+              }
+            });
+            setReviewReactions(prev => ({ ...prev, ...reactionsMap }));
           }
         } catch (e) {
           // silent

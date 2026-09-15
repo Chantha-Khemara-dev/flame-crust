@@ -67,6 +67,8 @@ public class AdminCrudController {
         map.put("product_variants", new ResourceConfig(ProductVariant.class, ProductVariantRepository.class));
         map.put("products", new ResourceConfig(Product.class, ProductRepository.class));
         map.put("reviews", new ResourceConfig(Review.class, ReviewRepository.class));
+        map.put("review_replies", new ResourceConfig(ReviewReply.class, ReviewReplyRepository.class));
+        map.put("review_reactions", new ResourceConfig(ReviewReaction.class, ReviewReactionRepository.class));
         map.put("roles", new ResourceConfig(Role.class, RoleRepository.class));
         map.put("tables", new ResourceConfig(Table.class, TableRepository.class));
         map.put("users", new ResourceConfig(User.class, UserRepository.class));
