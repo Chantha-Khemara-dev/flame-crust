@@ -97,7 +97,8 @@ export default function PaymentGatewayPage() {
       const res = khqr.generateIndividual(qrInfo);
       if (res && res.data && res.data.qr) {
         setQrCodeString(res.data.qr);
-        console.log("Generated KHQR String:", res.data.qr);
+        qrMd5Ref.current = res.data.md5 || "";
+        console.log("Generated KHQR String:", res.data.qr, "MD5:", res.data.md5);
       } else {
         throw new Error(res?.status?.message || "Invalid QR response");
       }
@@ -146,7 +147,9 @@ export default function PaymentGatewayPage() {
     }
   }, [paymentMethod, totalAmount]);
 
-  const checkPaymentVerification = async (isManual = false) => {
+  const qrMd5Ref = useRef("");
+
+  const checkPaymentVerification = async (isManual = false, currentManualCount = manualChecksCount) => {
     if (paidRef.current || !qrCodeString) return false;
 
     // Never verify with Bakong after the 5-minute hard cap (+ small grace so the
@@ -160,47 +163,38 @@ export default function PaymentGatewayPage() {
     try {
       let success = false;
       
+      const payload = {
+        qr_code_string: qrCodeString,
+        md5: qrMd5Ref.current || undefined,
+        qr_created_at: qrCreatedAtRef.current,
+      };
       if (orderId) {
-        // Verify using order ID
-        const response = await fetch(`${API_URL}/payments/verify-khqr`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            qr_code_string: qrCodeString || "dummy",
-            qrCodeString: qrCodeString || "dummy",
-            order_id: orderId,
-            orderId,
-            qr_created_at: qrCreatedAtRef.current
-          })
-        });
-        const data = await response.json();
-        if (data.status === "EXPIRED") {
-          toast.error("Server បដិសេធ: QR អស់សុពលភាពក្រោយ 5 នាទី។ ការទូទាត់មិនត្រូវបានទទួលយកទេ។");
-          return false;
-        }
-        if (data.status === "LIMIT_EXCEEDED" || data.errorCode === 17) {
-          if (isManual) toast.error("Bakong API daily limit reached. Please try again later or pay with Cash.");
-          return false;
-        }
-        success = data.status === "SUCCESS";
-      } else {
-        // Fallback: check recent payments by amount
-        const payments = await list("payments");
-        const matchingPayment = payments.find(p => 
-          p.amount == totalAmount && 
-          ["KHQR", "ABA_PAY"].includes(p.method) && 
-          ["PAID", "CONFIRMED"].includes(p.status)
-        );
-        success = !!matchingPayment;
+        payload.order_id = orderId;
       }
+
+      const response = await fetch(`${API_URL}/payments/verify-khqr`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (data.status === "EXPIRED") {
+        toast.error("Server បដិសេធ: QR អស់សុពលភាពក្រោយ 5 នាទី។ ការទូទាត់មិនត្រូវបានទទួលយកទេ។");
+        return false;
+      }
+      if (data.status === "LIMIT_EXCEEDED" || data.errorCode === 17) {
+        if (isManual) toast.error("Bakong API daily limit reached. Please try again later or pay with Cash.");
+        return false;
+      }
+      success = data.status === "SUCCESS";
 
       if (success) {
         await processSuccessfulPayment();
         return true;
       } else if (isManual) {
-        const remaining = Math.max(0, MAX_MANUAL_CHECKS - manualChecksCount);
+        const remaining = Math.max(0, MAX_MANUAL_CHECKS - currentManualCount);
         toast.warning(
           `មិនទាន់ទទួលបានការផ្ទេរប្រាក់ទេ។ សូមរង់ចាំបន្តិច ឬពិនិត្យក្នុង App ធនាគាររបស់អ្នកម្ដងទៀត។${remaining > 0 ? ` (នៅសល់សិទ្ធិចុច ${remaining} ដង)` : " (អស់សិទ្ធិចុចផ្ទៀងផ្ទាត់ហើយ — សូមរង់ចាំការពិនិត្យស្វ័យប្រវត្តិ)"}`,
           { duration: 5000 }
@@ -223,8 +217,9 @@ export default function PaymentGatewayPage() {
       toast.info("អ្នកបានចុចផ្ទៀងផ្ទាត់គ្រប់ចំនួនកំណត់ (២ ដង) ហើយ។ សូមរង់ចាំប្រព័ន្ធផ្ទៀងផ្ទាត់ដោយស្វ័យប្រវត្តិតាមពេលកំណត់។");
       return;
     }
-    setManualChecksCount(prev => prev + 1);
-    await checkPaymentVerification(true);
+    const nextCount = manualChecksCount + 1;
+    setManualChecksCount(nextCount);
+    await checkPaymentVerification(true, nextCount);
   };
   const createOrderFromFormData = async (methodToUse = paymentMethod, orderStatus = "CONFIRMED", paymentStatus = "PAID") => {
     if (!formData || !cartItems) return null;
