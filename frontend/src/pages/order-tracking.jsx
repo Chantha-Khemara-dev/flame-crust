@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { 
   ArrowLeft, 
@@ -147,7 +147,12 @@ const STATUS_STEPS = [
 export default function OrderTrackingPage() {
   const { orderId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme } = useTheme();
+
+  // Chat auto-open when navigating from notification query param ?chat=true or ?openChat=true
+  const isChatUrlParam = new URLSearchParams(location.search).get("chat") === "true" || 
+                         new URLSearchParams(location.search).get("openChat") === "true";
 
   const [order, setOrder] = useState(null);
   const [driver, setDriver] = useState(null);
@@ -170,12 +175,19 @@ export default function OrderTrackingPage() {
   const [mapInstance, setMapInstance] = useState(null);
   
   // Chat state
-  const [chatOpen, setChatOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(isChatUrlParam);
   const [chatRecipientType, setChatRecipientType] = useState("DRIVER");
   const [unreadCount, setUnreadCount] = useState(0);
   const [lastMsgText, setLastMsgText] = useState("");
   const [chatHeadDismissed, setChatHeadDismissed] = useState(false);
   const lastKnownMsgIdRef = useRef(null);
+
+  useEffect(() => {
+    if (isChatUrlParam) {
+      setChatOpen(true);
+      setUnreadCount(0);
+    }
+  }, [location.search]);
 
   // Background message monitoring for incoming notifications & sound chime
   useEffect(() => {

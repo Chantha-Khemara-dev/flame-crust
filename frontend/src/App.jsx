@@ -174,6 +174,9 @@ export default function App() {
           <Route path="/payment/:orderId" element={<PaymentGatewayPage />} />
           <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
           <Route path="/track/:orderId" element={<OrderTrackingPage />} />
+          <Route path="/order-tracking/:orderId" element={<OrderTrackingPage />} />
+          <Route path="/order-tracking" element={<Navigate to="/profile" replace />} />
+          <Route path="/track" element={<Navigate to="/profile" replace />} />
           <Route path="/review/:productId" element={<RequireAuth><LeaveReviewPage /></RequireAuth>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
@@ -184,6 +187,7 @@ export default function App() {
           <Route path="/driver/profile" element={<DriverProfilePage />} />
           <Route path="/kitchen/login" element={<Navigate to="/login" replace />} />
           <Route path="/kitchen/dashboard" element={<KitchenDashboardPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </RoleRedirectGuard>
     </Suspense>

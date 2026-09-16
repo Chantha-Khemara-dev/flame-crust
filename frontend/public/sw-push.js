@@ -43,21 +43,33 @@ self.addEventListener('push', function(event) {
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
 
-  const targetUrl = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/';
+  const rawUrl = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/';
+  let targetUrl = '/';
+  try {
+    targetUrl = new URL(rawUrl, self.location.origin).href;
+  } catch (e) {
+    targetUrl = self.location.origin + (rawUrl.startsWith('/') ? rawUrl : '/' + rawUrl);
+  }
 
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
-      // If a tab is already open, focus it and navigate
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async function(clientList) {
+      // If an existing window/PWA tab is found under the same origin
       for (let i = 0; i < clientList.length; i++) {
         const client = clientList[i];
-        if ('focus' in client) {
-          if (client.url && client.url.includes(self.location.origin)) {
-            client.navigate(targetUrl);
+        if (client.url && client.url.includes(self.location.origin)) {
+          if ('navigate' in client) {
+            try {
+              await client.navigate(targetUrl);
+            } catch (err) {
+              console.warn('[SW] client.navigate failed, continuing to focus', err);
+            }
+          }
+          if ('focus' in client) {
             return client.focus();
           }
         }
       }
-      // If no tab is open, open a new window
+      // If no tab is open or available, open a new window
       if (clients.openWindow) {
         return clients.openWindow(targetUrl);
       }

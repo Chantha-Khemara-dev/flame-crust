@@ -343,7 +343,7 @@ public class AdminCrudController {
                         Long driverId = ord.get("driver_id") != null ? ((Number) ord.get("driver_id")).longValue() : null;
 
                         if ("DRIVER".equalsIgnoreCase(senderType) && customerId != null) {
-                            webPushService.sendToUser(customerId, "CUSTOMER", "💬 " + senderName, text, "/order-tracking/" + orderId);
+                            webPushService.sendToUser(customerId, "CUSTOMER", "💬 " + senderName, text, "/track/" + orderId + "?chat=true");
                         } else if ("CUSTOMER".equalsIgnoreCase(senderType) && driverId != null) {
                             webPushService.sendToUser(driverId, "DRIVER", "💬 " + senderName, text, "/driver/dashboard");
                         }
@@ -367,7 +367,7 @@ public class AdminCrudController {
                             default -> null;
                         };
                         if (statusText != null) {
-                            webPushService.sendToUser(customerId, "CUSTOMER", "🍕 បច្ចុប្បន្នភាពការកុម្ម៉ង់ #" + orderId, statusText, "/order-tracking/" + orderId);
+                            webPushService.sendToUser(customerId, "CUSTOMER", "🍕 បច្ចុប្បន្នភាពការកុម្ម៉ង់ #" + orderId, statusText, "/track/" + orderId);
                         }
                     }
                 }

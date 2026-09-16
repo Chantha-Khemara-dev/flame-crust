@@ -1157,7 +1157,7 @@ public class AuthController {
 
                         if ("DRIVER".equalsIgnoreCase(finalSenderType) && customerId != null) {
                             String title = "💬 " + finalSenderName + " (អ្នកដឹកជញ្ជូន 🛵)";
-                            String url = "/order-tracking/" + finalOrderId;
+                            String url = "/track/" + finalOrderId + "?chat=true";
                             webPushService.sendToUserWithExtra(customerId, "CUSTOMER", title, notiBody, url, extra);
                         } else if ("CUSTOMER".equalsIgnoreCase(finalSenderType) && driverId != null) {
                             String title = "💬 " + finalSenderName + " (អតិថិជន 🍕)";
