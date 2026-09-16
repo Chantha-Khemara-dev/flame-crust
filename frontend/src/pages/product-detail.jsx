@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -86,17 +86,7 @@ function ProductDetailPage() {
       const saved = localStorage.getItem("flame_crust_review_replies");
       if (saved) return JSON.parse(saved);
     } catch (e) {}
-    return {
-      "1": [
-        {
-          id: "rep-default-1",
-          author_name: "Flame & Crust Team",
-          is_staff: true,
-          comment: "អរគុណបង Khemara ច្រើនសម្រាប់ការគាំទ្រ! 🍕🔥 ហាងយើងខ្ញុំរីករាយណាស់ដែលបងពេញចិត្តរសជាតិភីហ្សា!",
-          created_at: "2026-09-06T09:15:00.000Z"
-        }
-      ]
-    };
+    return {};
   });
 
   const [reviewReactions, setReviewReactions] = useState(() => {
@@ -104,14 +94,7 @@ function ProductDetailPage() {
       const saved = localStorage.getItem("flame_crust_review_reactions");
       if (saved) return JSON.parse(saved);
     } catch (e) {}
-    return {
-      "1": {
-        "👍": 3,
-        "🔥": 2,
-        "❤️": 1,
-        userReacted: ["👍"]
-      }
-    };
+    return {};
   });
 
   const [replyReactions, setReplyReactions] = useState(() => {
@@ -119,15 +102,10 @@ function ProductDetailPage() {
       const saved = localStorage.getItem("flame_crust_reply_reactions");
       if (saved) return JSON.parse(saved);
     } catch (e) {}
-    return {
-      "rep-default-1": {
-        "👍": 2,
-        "❤️": 1,
-        userReacted: ["❤️"]
-      }
-    };
+    return {};
   });
 
+  const [customersList, setCustomersList] = useState([]);
   const [activeReactionDockReviewId, setActiveReactionDockReviewId] = useState(null);
   const [openReplyReviewIds, setOpenReplyReviewIds] = useState({});
   const [replyTextMap, setReplyTextMap] = useState({});
@@ -148,10 +126,13 @@ function ProductDetailPage() {
   })();
 
   const toggleReply = (reviewId) => {
-    setOpenReplyReviewIds(prev => ({
-      ...prev,
-      [reviewId]: !prev[reviewId]
-    }));
+    setOpenReplyReviewIds(prev => {
+      const current = prev[reviewId] ?? ((reviewReplies[reviewId] || []).length > 0);
+      return {
+        ...prev,
+        [reviewId]: !current
+      };
+    });
   };
 
   const handleInsertEmoji = (reviewId, emoji) => {
@@ -215,17 +196,22 @@ function ProductDetailPage() {
           emoji,
           user_identifier: clientId,
         });
+        syncReviewsData();
       } catch (e) {
         console.warn("DB reaction save error:", e);
       }
     }
   };
 
-  const handleReplyReaction = (replyId, emoji) => {
+  const handleReplyReaction = async (replyId, emoji) => {
+    const clientId = getClientIdentifier();
+    let willAdd = false;
+
     setReplyReactions((prev) => {
       const current = prev[replyId] || { userReacted: [] };
       const userReacted = current.userReacted || [];
       const hasSameReacted = userReacted.includes(emoji);
+      willAdd = !hasSameReacted;
 
       const updatedCounts = { ...current };
 
@@ -250,6 +236,19 @@ function ProductDetailPage() {
       } catch (e) {}
       return updated;
     });
+
+    if (willAdd) {
+      try {
+        await create("review_reactions", {
+          reply_id: String(replyId),
+          emoji,
+          user_identifier: clientId,
+        });
+        syncReviewsData();
+      } catch (e) {
+        console.warn("DB reply reaction error:", e);
+      }
+    }
   };
 
   const handleSubmitReply = async (reviewId) => {
@@ -272,11 +271,17 @@ function ProductDetailPage() {
       } else if (customer?.name || customer?.email) {
         authorName = customer.name || "Customer";
         authorAvatar = customer.avatar || null;
+        if (!authorAvatar && customersList.length > 0) {
+          const matched = customersList.find(c => String(c.id) === String(customer.id) || c.email === customer.email);
+          if (matched?.avatar) authorAvatar = matched.avatar;
+        }
       }
     } catch (e) {}
 
+    const tempId = "rep-" + Date.now();
     const newReply = {
-      id: "rep-" + Date.now(),
+      id: tempId,
+      review_id: Number(reviewId),
       author_name: authorName,
       author_avatar: authorAvatar,
       is_staff: isStaff,
@@ -296,6 +301,7 @@ function ProductDetailPage() {
       return updated;
     });
 
+    setOpenReplyReviewIds(prev => ({ ...prev, [reviewId]: true }));
     setReplyTextMap(prev => ({ ...prev, [reviewId]: "" }));
     toast.success("Reply posted! 💬 បានផ្ញើការឆ្លើយតបជោគជ័យ");
 
@@ -310,14 +316,101 @@ function ProductDetailPage() {
       });
       if (saved && saved.id) {
         setReviewReplies(prev => {
-          const list = (prev[reviewId] || []).map(r => r.id === newReply.id ? { ...r, id: saved.id } : r);
+          const list = (prev[reviewId] || []).map(r => r.id === tempId ? { ...r, id: saved.id } : r);
           return { ...prev, [reviewId]: list };
         });
       }
+      syncReviewsData();
     } catch (err) {
       console.warn("DB reply save error:", err);
     }
   };
+
+  // Live synchronization of reviews, review_replies, and reactions across phone and laptop
+  const syncReviewsData = useCallback(async () => {
+    try {
+      const [repliesRes, reactionsRes] = await Promise.allSettled([
+        list("review_replies", {}, { noCache: true }),
+        list("review_reactions", {}, { noCache: true })
+      ]);
+
+      if (repliesRes.status === "fulfilled" && Array.isArray(repliesRes.value)) {
+        const repliesMap = {};
+        const sortedReplies = [...repliesRes.value].sort((a, b) => {
+          const timeA = new Date(a.created_at || 0).getTime() || Number(a.id || 0);
+          const timeB = new Date(b.created_at || 0).getTime() || Number(b.id || 0);
+          return timeA - timeB;
+        });
+
+        sortedReplies.forEach(rep => {
+          const rId = String(rep.review_id || rep.reviewId);
+          if (!repliesMap[rId]) repliesMap[rId] = [];
+          repliesMap[rId].push(rep);
+        });
+
+        setReviewReplies(repliesMap);
+        try {
+          localStorage.setItem("flame_crust_review_replies", JSON.stringify(repliesMap));
+        } catch (e) {}
+      }
+
+      if (reactionsRes.status === "fulfilled" && Array.isArray(reactionsRes.value)) {
+        const clientId = getClientIdentifier();
+        const reactionsMap = {};
+        const repReactionsMap = {};
+
+        reactionsRes.value.forEach(react => {
+          const revId = react.review_id || react.reviewId;
+          const repId = react.reply_id || react.replyId;
+          const emoji = react.emoji;
+          const isMe = (react.user_identifier === clientId || react.userIdentifier === clientId);
+
+          if (repId) {
+            const key = String(repId);
+            if (!repReactionsMap[key]) repReactionsMap[key] = { userReacted: [] };
+            repReactionsMap[key][emoji] = (repReactionsMap[key][emoji] || 0) + 1;
+            if (isMe && !repReactionsMap[key].userReacted.includes(emoji)) {
+              repReactionsMap[key].userReacted.push(emoji);
+            }
+          } else if (revId) {
+            const key = String(revId);
+            if (!reactionsMap[key]) reactionsMap[key] = { userReacted: [] };
+            reactionsMap[key][emoji] = (reactionsMap[key][emoji] || 0) + 1;
+            if (isMe && !reactionsMap[key].userReacted.includes(emoji)) {
+              reactionsMap[key].userReacted.push(emoji);
+            }
+          }
+        });
+
+        setReviewReactions(reactionsMap);
+        setReplyReactions(repReactionsMap);
+        try {
+          localStorage.setItem("flame_crust_review_reactions", JSON.stringify(reactionsMap));
+          localStorage.setItem("flame_crust_reply_reactions", JSON.stringify(repReactionsMap));
+        } catch (e) {}
+      }
+    } catch (e) {
+      console.warn("Reviews live sync error:", e);
+    }
+  }, []);
+
+  // Background live polling every 3.5s so both phone and laptop see real-time updates
+  useEffect(() => {
+    syncReviewsData();
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      syncReviewsData();
+    }, 3500);
+
+    const handleVis = () => {
+      if (document.visibilityState === "visible") syncReviewsData();
+    };
+    document.addEventListener("visibilitychange", handleVis);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVis);
+    };
+  }, [syncReviewsData]);
 
   useEffect(() => {
     let isMounted = true;
@@ -372,43 +465,18 @@ function ProductDetailPage() {
 
         let allReviews = [];
         try {
-          const [reviewsRes, customersRes, repliesRes, reactionsRes] = await Promise.allSettled([
+          const [reviewsRes, customersRes] = await Promise.allSettled([
             list("reviews"),
             list("customers"),
-            list("review_replies"),
-            list("review_reactions")
           ]);
           if (reviewsRes.status === "fulfilled" && Array.isArray(reviewsRes.value)) {
             allReviews = reviewsRes.value;
           }
           if (customersRes.status === "fulfilled" && Array.isArray(customersRes.value)) {
             allCustomers = customersRes.value;
+            setCustomersList(customersRes.value);
           }
-          if (repliesRes.status === "fulfilled" && Array.isArray(repliesRes.value)) {
-            const repliesMap = {};
-            repliesRes.value.forEach(rep => {
-              const rId = String(rep.review_id || rep.reviewId);
-              if (!repliesMap[rId]) repliesMap[rId] = [];
-              repliesMap[rId].push(rep);
-            });
-            setReviewReplies(prev => ({ ...prev, ...repliesMap }));
-          }
-          if (reactionsRes.status === "fulfilled" && Array.isArray(reactionsRes.value)) {
-            const clientId = getClientIdentifier();
-            const reactionsMap = {};
-            reactionsRes.value.forEach(react => {
-              const rId = String(react.review_id || react.reviewId);
-              if (!reactionsMap[rId]) reactionsMap[rId] = { userReacted: [] };
-              const emoji = react.emoji;
-              reactionsMap[rId][emoji] = (reactionsMap[rId][emoji] || 0) + 1;
-              if (react.user_identifier === clientId || react.userIdentifier === clientId) {
-                if (!reactionsMap[rId].userReacted.includes(emoji)) {
-                  reactionsMap[rId].userReacted.push(emoji);
-                }
-              }
-            });
-            setReviewReactions(prev => ({ ...prev, ...reactionsMap }));
-          }
+          syncReviewsData();
         } catch (e) {
           // silent
         }
@@ -1285,7 +1353,7 @@ function ProductDetailPage() {
 
                                   {/* Facebook-style Nested Replies Thread */}
                                   <AnimatePresence>
-                                    {openReplyReviewIds[review.id] && (
+                                    {(openReplyReviewIds[review.id] ?? ((reviewReplies[review.id] || []).length > 0)) && (
                                       <motion.div
                                         initial={{ opacity: 0, height: 0 }}
                                         animate={{ opacity: 1, height: "auto" }}

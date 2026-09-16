@@ -22,6 +22,9 @@ public class ReviewReaction {
     @Column(name = "user_identifier")
     private String userIdentifier;
 
+    @Column(name = "reply_id")
+    private String replyId;
+
     @Column(name = "created_at")
     @org.hibernate.annotations.CreationTimestamp
     private LocalDateTime createdAt;
