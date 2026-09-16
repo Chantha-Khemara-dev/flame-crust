@@ -21,7 +21,9 @@ import {
   Copy,
   Gauge,
   MessageSquare,
-  Sparkles
+  Sparkles,
+  Plus,
+  Minus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/food/navbar";
@@ -125,14 +127,60 @@ function calculateDistance(coord1, coord2) {
 
 function MapBoundsController({ bounds, triggerCenter }) {
   const map = useMap();
+  const initialFitDoneRef = useRef(false);
+
+  // Auto-fit bounds once on initial load
   useEffect(() => {
-    if (bounds && bounds.length > 0) {
+    if (!initialFitDoneRef.current && bounds && bounds.length > 0) {
+      try {
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16, animate: false });
+        initialFitDoneRef.current = true;
+      } catch (e) {}
+    }
+  }, [bounds, map]);
+
+  // Re-fit bounds when user explicitly taps "Recenter"
+  useEffect(() => {
+    if (triggerCenter > 0 && bounds && bounds.length > 0) {
       try {
         map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16, animate: true });
       } catch (e) {}
     }
-  }, [bounds, triggerCenter, map]);
+  }, [triggerCenter]);
+
   return null;
+}
+
+function MapZoomControls() {
+  const map = useMap();
+  return (
+    <div className="absolute right-3 bottom-3 z-[400] flex flex-col gap-1.5 shadow-md">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          map.zoomIn();
+        }}
+        className="size-8 rounded-lg bg-background/90 backdrop-blur-xs border border-border/80 text-foreground flex items-center justify-center hover:bg-secondary active:scale-95 transition-all cursor-pointer shadow-xs"
+        aria-label="Zoom in"
+        title="Zoom in"
+      >
+        <Plus className="size-4" />
+      </button>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          map.zoomOut();
+        }}
+        className="size-8 rounded-lg bg-background/90 backdrop-blur-xs border border-border/80 text-foreground flex items-center justify-center hover:bg-secondary active:scale-95 transition-all cursor-pointer shadow-xs"
+        aria-label="Zoom out"
+        title="Zoom out"
+      >
+        <Minus className="size-4" />
+      </button>
+    </div>
+  );
 }
 
 const STATUS_STEPS = [
@@ -696,13 +744,13 @@ export default function OrderTrackingPage() {
                     <div className="rounded-2xl border border-border/70 overflow-hidden bg-card shadow-xs">
                       
                       {/* Map Header Strip */}
-                      <div className="px-3.5 py-2.5 bg-secondary/30 border-b border-border/50 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="relative flex h-2 w-2">
+                      <div className="px-3.5 py-2.5 bg-secondary/30 border-b border-border/50 flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="relative flex h-2 w-2 shrink-0">
                             {hasRealDriverGps && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
                             <span className={cn("relative inline-flex rounded-full h-2 w-2", hasRealDriverGps ? "bg-emerald-500" : "bg-amber-500")}></span>
                           </span>
-                          <span className="text-xs font-bold text-foreground">
+                          <span className="text-xs font-bold text-foreground truncate">
                             {hasRealDriverGps 
                               ? <span>Live GPS: <span className="text-primary">Courier Active</span></span>
                               : <span>Delivery Route: <span className="text-muted-foreground">{statusInfo.title}</span></span>
@@ -710,18 +758,18 @@ export default function OrderTrackingPage() {
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] sm:text-xs bg-orange-500/10 text-orange-600 dark:text-orange-400 font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-[11px] bg-orange-500/10 text-orange-600 dark:text-orange-400 font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 whitespace-nowrap">
                             <Gauge className="size-3" />
                             ~{remainingDistanceKm.toFixed(1)} km
                           </span>
                           
                           <button 
                             onClick={() => setRecenterCounter(c => c + 1)}
-                            className="text-[11px] font-bold text-muted-foreground hover:text-foreground flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-secondary/60 transition-colors"
+                            className="text-[11px] font-bold text-muted-foreground hover:text-foreground flex items-center gap-1 px-2.5 py-1 rounded-md bg-secondary/50 hover:bg-secondary/80 border border-border/40 transition-colors whitespace-nowrap cursor-pointer active:scale-95"
                             title="Recenter Map"
                           >
-                            <Compass className="size-3.5" />
+                            <Compass className="size-3.5 text-primary" />
                             <span>Recenter</span>
                           </button>
                         </div>
@@ -735,6 +783,10 @@ export default function OrderTrackingPage() {
                           className="w-full h-full z-0" 
                           zoomControl={false}
                           attributionControl={false}
+                          scrollWheelZoom={true}
+                          touchZoom={true}
+                          doubleClickZoom={true}
+                          dragging={true}
                         >
                           <TileLayer
                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -788,39 +840,44 @@ export default function OrderTrackingPage() {
                           />
 
                           <MapBoundsController bounds={mapBounds} triggerCenter={recenterCounter} />
+                          <MapZoomControls />
                         </MapContainer>
                       </div>
 
                       {/* Driver Strip (When Driver is assigned or On Delivery) */}
                       {driver ? (
-                        <div className="p-3.5 bg-secondary/30 border-t border-border/50 flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-3 sm:p-3.5 bg-secondary/30 border-t border-border/50 flex items-center justify-between gap-2.5 sm:gap-3">
+                          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
                             {driver.profilePhoto || driver.profile_photo ? (
                               <img 
                                 src={driver.profilePhoto || driver.profile_photo} 
                                 alt={driver.name} 
-                                className="size-11 rounded-full object-cover border-2 border-primary/40 shadow-xs shrink-0" 
+                                className="size-10 sm:size-11 rounded-full object-cover border-2 border-primary/40 shadow-xs shrink-0" 
                               />
                             ) : (
-                              <div className="size-11 rounded-full bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                              <div className="size-10 sm:size-11 rounded-full bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center shrink-0 shadow-xs">
                                 <Bike className="size-5" />
                               </div>
                             )}
-                            <div className="min-w-0">
-                              <h4 className="font-bold text-sm text-foreground flex items-center gap-1.5 truncate">
-                                {driver.name}
+                            <div className="min-w-0 flex-1">
+                              <h4 className="font-bold text-sm text-foreground flex items-center gap-1.5 flex-wrap">
+                                <span>{driver.name}</span>
                                 <span className="text-[10px] bg-emerald-500/15 text-emerald-600 font-bold px-2 py-0.5 rounded-full shrink-0">
                                   {hasRealDriverGps ? "Live GPS" : "Assigned"}
                                 </span>
                               </h4>
-                              <p className="text-xs text-muted-foreground truncate mt-0.5">
-                                {driver.vehicleInfo || driver.vehicle_info || "Delivery Partner"}
-                                {hasRealDriverGps && <span className="text-primary font-bold"> • ~{remainingMinutes}m away</span>}
+                              <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 flex-wrap">
+                                <span className="font-medium text-foreground/80">{driver.vehicleInfo || driver.vehicle_info || "Delivery Partner"}</span>
+                                {hasRealDriverGps && (
+                                  <span className="text-primary font-bold whitespace-nowrap">
+                                    • ~{remainingMinutes}m away
+                                  </span>
+                                )}
                               </p>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                             <button
                               type="button"
                               onClick={() => {
@@ -828,22 +885,22 @@ export default function OrderTrackingPage() {
                                 setChatOpen(true);
                                 setUnreadCount(0);
                               }}
-                              className="relative flex items-center gap-1.5 bg-secondary/80 hover:bg-secondary text-foreground font-bold text-xs sm:text-sm px-3.5 py-2.5 rounded-full border border-border/70 shadow-xs transition-all active:scale-95 cursor-pointer"
+                              className="relative flex items-center gap-1 sm:gap-1.5 bg-secondary/80 hover:bg-secondary text-foreground font-bold text-xs sm:text-sm px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-full border border-border/70 shadow-xs transition-all active:scale-95 cursor-pointer"
                               title="Chat with Driver"
                             >
-                              <MessageSquare className="size-4 text-primary" />
+                              <MessageSquare className="size-3.5 sm:size-4 text-primary" />
                               <span>Chat</span>
                               {unreadCount > 0 && (
-                                <span className="absolute -top-1.5 -right-1.5 size-5 bg-red-500 text-white rounded-full text-[10px] font-black flex items-center justify-center animate-bounce shadow-md">
+                                <span className="absolute -top-1 -right-1 size-4 sm:size-5 bg-red-500 text-white rounded-full text-[9px] sm:text-[10px] font-black flex items-center justify-center animate-bounce shadow-md">
                                   {unreadCount}
                                 </span>
                               )}
                             </button>
                             <a 
                               href={`tel:${driver.phone || "0965755963"}`} 
-                              className="flex items-center gap-1.5 bg-primary text-primary-foreground font-bold text-xs sm:text-sm px-4 py-2.5 rounded-full shadow-xs hover:bg-primary/90 transition-all active:scale-95 shrink-0"
+                              className="flex items-center gap-1 sm:gap-1.5 bg-primary text-primary-foreground font-bold text-xs sm:text-sm px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full shadow-xs hover:bg-primary/90 transition-all active:scale-95 shrink-0"
                             >
-                              <PhoneCall className="size-4" />
+                              <PhoneCall className="size-3.5 sm:size-4" />
                               <span>Call</span>
                             </a>
                           </div>

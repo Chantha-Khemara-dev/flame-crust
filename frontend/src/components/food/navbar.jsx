@@ -369,10 +369,14 @@ function Navbar() {
         "fixed top-0 inset-x-0 z-40 transition-colors duration-200 pt-[env(safe-area-inset-top)]",
         mobileOpen
           ? "bg-background border-b border-border/40 shadow-xs"
-          : "bg-transparent border-transparent shadow-none",
-        scrolled && "lg:bg-background lg:border-b lg:border-border/40 lg:shadow-xs"
+          : scrolled
+            ? "bg-background/95 backdrop-blur-md border-b border-border/40 shadow-xs"
+            : "bg-transparent border-transparent shadow-none"
       )}
-      style={{ backdropFilter: "none", WebkitBackdropFilter: "none" }}
+      style={{
+        backdropFilter: scrolled ? "blur(12px)" : "none",
+        WebkitBackdropFilter: scrolled ? "blur(12px)" : "none"
+      }}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 sm:h-20 gap-2 sm:gap-4">
