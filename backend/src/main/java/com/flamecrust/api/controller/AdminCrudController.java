@@ -208,6 +208,17 @@ public class AdminCrudController {
                 if (!mutableBody.containsKey("rating") || mutableBody.get("rating") == null) {
                     mutableBody.put("rating", 5.0);
                 }
+            if ("review_reactions".equalsIgnoreCase(resource)) {
+                String userIdentifier = mutableBody.get("user_identifier") != null ? mutableBody.get("user_identifier").toString().trim() : null;
+                Object revIdObj = mutableBody.get("review_id");
+                Object repIdObj = mutableBody.get("reply_id");
+                if (userIdentifier != null && !userIdentifier.isBlank()) {
+                    if (repIdObj != null && !repIdObj.toString().isBlank()) {
+                        jdbc.update("DELETE FROM review_reactions WHERE user_identifier = ? AND reply_id = ?", userIdentifier, repIdObj.toString().trim());
+                    } else if (revIdObj != null && !revIdObj.toString().isBlank()) {
+                        jdbc.update("DELETE FROM review_reactions WHERE user_identifier = ? AND review_id = ?", userIdentifier, Long.valueOf(revIdObj.toString()));
+                    }
+                }
             }
 
             ObjectMapper copyMapper = mapper.copy().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);

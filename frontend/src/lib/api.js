@@ -502,4 +502,18 @@ export async function deleteOrderMessage(messageId, senderType = "CUSTOMER") {
   }
 }
 
+export async function toggleReviewReaction(data) {
+  try {
+    const res = await globalThis.fetch(`${API_URL}/auth/review-reactions/toggle`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    return await res.json();
+  } catch (e) {
+    return { success: false };
+  }
+}
+
+
 

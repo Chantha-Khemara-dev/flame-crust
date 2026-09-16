@@ -33,7 +33,7 @@ import { PageTransition } from "@/components/shared/page-transition";
 import { getImageUrl, getCachedFoodItems, fetchFoodItems } from "@/lib/food-api";
 import { DEFAULT_FALLBACK_PRODUCTS, DEFAULT_REVIEWS } from "@/lib/food-data";
 import { useCart } from "@/lib/cart-store";
-import { list, get, getProducts, create } from "@/lib/api";
+import { list, get, getProducts, create, toggleReviewReaction } from "@/lib/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import "./product-detail.css";
@@ -157,13 +157,11 @@ function ProductDetailPage() {
 
   const handleReaction = async (reviewId, emoji) => {
     const clientId = getClientIdentifier();
-    let willAdd = false;
 
     setReviewReactions(prev => {
       const current = prev[reviewId] || { userReacted: [] };
       const userReacted = current.userReacted || [];
       const hasSameReacted = userReacted.includes(emoji);
-      willAdd = !hasSameReacted;
 
       const updatedCounts = { ...current };
 
@@ -189,29 +187,25 @@ function ProductDetailPage() {
       return updated;
     });
 
-    if (willAdd) {
-      try {
-        await create("review_reactions", {
-          review_id: Number(reviewId),
-          emoji,
-          user_identifier: clientId,
-        });
-        syncReviewsData();
-      } catch (e) {
-        console.warn("DB reaction save error:", e);
-      }
+    try {
+      await toggleReviewReaction({
+        review_id: Number(reviewId),
+        emoji,
+        user_identifier: clientId,
+      });
+      syncReviewsData();
+    } catch (e) {
+      console.warn("DB reaction toggle error:", e);
     }
   };
 
   const handleReplyReaction = async (replyId, emoji) => {
     const clientId = getClientIdentifier();
-    let willAdd = false;
 
     setReplyReactions((prev) => {
       const current = prev[replyId] || { userReacted: [] };
       const userReacted = current.userReacted || [];
       const hasSameReacted = userReacted.includes(emoji);
-      willAdd = !hasSameReacted;
 
       const updatedCounts = { ...current };
 
@@ -237,17 +231,15 @@ function ProductDetailPage() {
       return updated;
     });
 
-    if (willAdd) {
-      try {
-        await create("review_reactions", {
-          reply_id: String(replyId),
-          emoji,
-          user_identifier: clientId,
-        });
-        syncReviewsData();
-      } catch (e) {
-        console.warn("DB reply reaction error:", e);
-      }
+    try {
+      await toggleReviewReaction({
+        reply_id: String(replyId),
+        emoji,
+        user_identifier: clientId,
+      });
+      syncReviewsData();
+    } catch (e) {
+      console.warn("DB reply reaction toggle error:", e);
     }
   };
 

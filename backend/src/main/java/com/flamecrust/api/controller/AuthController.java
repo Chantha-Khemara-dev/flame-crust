@@ -1314,6 +1314,73 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/review-reactions/toggle")
+    public ResponseEntity<?> toggleReviewReaction(@RequestBody Map<String, Object> payload) {
+        try {
+            String userIdentifier = payload.get("user_identifier") != null ? payload.get("user_identifier").toString().trim() : null;
+            if (userIdentifier == null || userIdentifier.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "user_identifier is required"));
+            }
+            String emoji = payload.get("emoji") != null ? payload.get("emoji").toString().trim() : "👍";
+            Object reviewIdObj = payload.get("review_id");
+            Object replyIdObj = payload.get("reply_id");
+            
+            Long reviewId = (reviewIdObj != null && !reviewIdObj.toString().isBlank()) ? Long.valueOf(reviewIdObj.toString()) : null;
+            String replyId = (replyIdObj != null && !replyIdObj.toString().isBlank()) ? replyIdObj.toString().trim() : null;
+
+            if (replyId != null) {
+                List<Map<String, Object>> existing = jdbc.queryForList(
+                    "SELECT id, emoji FROM review_reactions WHERE user_identifier = ? AND reply_id = ?",
+                    userIdentifier, replyId
+                );
+                if (!existing.isEmpty()) {
+                    Long existingId = ((Number) existing.get(0).get("id")).longValue();
+                    String existingEmoji = (String) existing.get(0).get("emoji");
+                    if (emoji.equals(existingEmoji)) {
+                        // Clicking same emoji again -> remove reaction
+                        jdbc.update("DELETE FROM review_reactions WHERE id = ?", existingId);
+                        return ResponseEntity.ok(Map.of("action", "removed", "reply_id", replyId, "emoji", emoji));
+                    } else {
+                        // Switching to a different emoji
+                        jdbc.update("DELETE FROM review_reactions WHERE user_identifier = ? AND reply_id = ?", userIdentifier, replyId);
+                        jdbc.update("INSERT INTO review_reactions (reply_id, emoji, user_identifier) VALUES (?, ?, ?)", replyId, emoji, userIdentifier);
+                        return ResponseEntity.ok(Map.of("action", "updated", "reply_id", replyId, "emoji", emoji));
+                    }
+                } else {
+                    jdbc.update("INSERT INTO review_reactions (reply_id, emoji, user_identifier) VALUES (?, ?, ?)", replyId, emoji, userIdentifier);
+                    return ResponseEntity.ok(Map.of("action", "added", "reply_id", replyId, "emoji", emoji));
+                }
+            } else if (reviewId != null) {
+                List<Map<String, Object>> existing = jdbc.queryForList(
+                    "SELECT id, emoji FROM review_reactions WHERE user_identifier = ? AND review_id = ?",
+                    userIdentifier, reviewId
+                );
+                if (!existing.isEmpty()) {
+                    Long existingId = ((Number) existing.get(0).get("id")).longValue();
+                    String existingEmoji = (String) existing.get(0).get("emoji");
+                    if (emoji.equals(existingEmoji)) {
+                        // Clicking same emoji again -> remove reaction
+                        jdbc.update("DELETE FROM review_reactions WHERE id = ?", existingId);
+                        return ResponseEntity.ok(Map.of("action", "removed", "review_id", reviewId, "emoji", emoji));
+                    } else {
+                        // Switching to a different emoji
+                        jdbc.update("DELETE FROM review_reactions WHERE user_identifier = ? AND review_id = ?", userIdentifier, reviewId);
+                        jdbc.update("INSERT INTO review_reactions (review_id, emoji, user_identifier) VALUES (?, ?, ?)", reviewId, emoji, userIdentifier);
+                        return ResponseEntity.ok(Map.of("action", "updated", "review_id", reviewId, "emoji", emoji));
+                    }
+                } else {
+                    jdbc.update("INSERT INTO review_reactions (review_id, emoji, user_identifier) VALUES (?, ?, ?)", reviewId, emoji, userIdentifier);
+                    return ResponseEntity.ok(Map.of("action", "added", "review_id", reviewId, "emoji", emoji));
+                }
+            } else {
+                return ResponseEntity.badRequest().body(Map.of("error", "Either review_id or reply_id must be provided"));
+            }
+        } catch (Exception e) {
+            log.error("Error toggling review reaction", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @GetMapping("/active-calls")
     public ResponseEntity<?> getActiveCall(@RequestParam("orderId") Long orderId) {
         try {
