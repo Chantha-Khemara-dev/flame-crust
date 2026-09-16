@@ -36,11 +36,11 @@ export default defineConfig({
           }
         ]
       },
-      includeAssets: ['logo.png', 'logo-192.png', 'logoPizza.png', 'favicon.ico', 'robots.txt', 'sw-push.js'],
+      includeAssets: ['logo.png', 'logo-192.png', 'robots.txt', 'sw-push.js'],
       manifest: {
-        name: 'Flame & Crust Pizza',
+        name: 'Flame Crust',
         short_name: 'FlameCrust',
-        description: 'Artisan Pizza, Bagels & Burgers Delivery',
+        description: 'Flame Crust Pizza Delivery',
         theme_color: '#EF4444',
         background_color: '#ffffff',
         display: 'standalone',
@@ -50,13 +50,13 @@ export default defineConfig({
             src: '/logo-192.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
           },
           {
             src: '/logo.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
           }
         ]
       },
