@@ -39,32 +39,56 @@ import { cn } from "@/lib/utils";
 import "./product-detail.css";
 
 /**
+ * Detects if a message is emoji-only (no text), to render Facebook-style large emojis.
+ */
+function isEmojiOnly(text) {
+  if (!text) return false;
+  // Strip whitespace, then check if remaining chars are all emoji
+  const stripped = text.replace(/\s/g, "");
+  if (stripped.length === 0 || stripped.length > 12) return false;
+  // Match common emoji ranges (emoji, modifiers, ZWJ sequences, variation selectors)
+  const emojiRegex = /^(?:\p{Emoji_Presentation}|\p{Emoji}\uFE0F?(?:\u200D\p{Emoji}\uFE0F?)*)+$/u;
+  return emojiRegex.test(stripped);
+}
+
+/**
  * Parses comment text:
  * - Converts URLs (http/https/www) into clickable <a> links
+ * - Styles @mentions as bold primary-colored text
  * - Emojis render naturally as Unicode in React
  */
 function renderCommentText(text) {
   if (!text) return null;
-  // Split keeps captured groups in the result: [text, url, text, url, ...]
-  const urlRegex = /(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi;
-  const parts = text.split(urlRegex);
-  if (parts.length === 1) return text; // no links found
+  // Combined regex: URLs and @mentions
+  const tokenRegex = /(https?:\/\/[^\s<]+|www\.[^\s<]+|@[\w\s]+?)(?=\s|$)/gi;
+  const parts = text.split(tokenRegex);
+  if (parts.length === 1) return text;
   return parts.map((part, i) => {
     if (!part) return null;
-    // Odd indices are the captured URL groups from split()
     if (i % 2 === 1) {
-      const href = part.startsWith("http") ? part : `https://${part}`;
-      return (
-        <a
-          key={i}
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-primary hover:underline break-all"
-        >
-          {part}
-        </a>
-      );
+      // URL
+      if (/^(https?:\/\/|www\.)/i.test(part)) {
+        const href = part.startsWith("http") ? part : `https://${part}`;
+        return (
+          <a
+            key={i}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline break-all"
+          >
+            {part}
+          </a>
+        );
+      }
+      // @mention
+      if (part.startsWith("@")) {
+        return (
+          <span key={i} className="font-bold text-primary/80">
+            {part}
+          </span>
+        );
+      }
     }
     return part;
   });
@@ -1299,7 +1323,63 @@ function ProductDetailPage() {
                                 {/* Right side: Bubble + Actions + Nested Thread */}
                                 <div className="flex-1 min-w-0">
                                   {/* Facebook Comment Bubble */}
-                                  <div className="relative bg-secondary/50 dark:bg-zinc-800/70 rounded-2xl rounded-tl-xs px-3.5 sm:px-4 py-2.5 inline-block max-w-full">
+                                  {isEmojiOnly(review.comment) ? (
+                                    /* Emoji-only review: large emoji without bubble */
+                                    <div className={cn("relative inline-block", totalReactionCount > 0 && "mb-3")}>
+                                      {/* Header: Name, Verified, Stars */}
+                                      <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          <h4 className="font-bold text-foreground text-xs sm:text-sm hover:underline cursor-pointer">
+                                            {review.customer_name || "Customer"}
+                                          </h4>
+                                          {(review.is_verified_purchase || review.is_verified_purchase === 1) && (
+                                            <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.2 rounded-full">
+                                              <CheckCircle2 className="size-2.5" />
+                                              Verified
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-0.5">
+                                          {[1, 2, 3, 4, 5].map((star) => (
+                                            <Star
+                                              key={star}
+                                              className={cn(
+                                                "size-3",
+                                                star <= review.rating
+                                                  ? "fill-yellow-500 text-yellow-500"
+                                                  : "fill-muted text-muted-foreground/30"
+                                              )}
+                                            />
+                                          ))}
+                                        </div>
+                                      </div>
+                                      <span className="text-4xl sm:text-5xl leading-none">
+                                        {review.comment.trim()}
+                                      </span>
+                                      {/* Floating Reaction Pill */}
+                                      {totalReactionCount > 0 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleReply(review.id)}
+                                          className="absolute -bottom-2.5 right-0 bg-card dark:bg-zinc-800 border border-border/80 shadow-xs hover:shadow-sm rounded-full px-1.5 sm:px-2 py-0.5 flex items-center gap-1 text-[11px] font-bold text-foreground cursor-pointer transition-transform hover:scale-105"
+                                          title={`${totalReactionCount} reactions`}
+                                        >
+                                          <div className="flex items-center -space-x-1">
+                                            {activeEmojis.slice(0, 3).map(([emoji]) => (
+                                              <span key={emoji} className="text-xs leading-none">
+                                                {emoji}
+                                              </span>
+                                            ))}
+                                          </div>
+                                          <span className="text-[10px] text-muted-foreground font-semibold">{totalReactionCount}</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className={cn(
+                                      "relative bg-secondary/50 dark:bg-zinc-800/70 rounded-2xl rounded-tl-xs px-3.5 sm:px-4 py-2.5 inline-block max-w-full",
+                                      totalReactionCount > 0 && "mb-3"
+                                    )}>
                                     {/* Header inside bubble: Name, Verified Buyer, Stars */}
                                     <div className="flex items-center justify-between gap-2 flex-wrap">
                                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -1354,6 +1434,7 @@ function ProductDetailPage() {
                                       </button>
                                     )}
                                   </div>
+                                  )}
 
                                   {/* Facebook Action Bar below Bubble */}
                                   <div className="flex items-center gap-3 sm:gap-4 mt-1 pl-1 sm:pl-2 text-xs font-semibold text-muted-foreground">
@@ -1407,7 +1488,7 @@ function ProductDetailPage() {
                                             មិនទាន់មានការឆ្លើយតបនៅឡើយទេ • ក្លាយជាអ្នកដំបូងដែលឆ្លើយតប! 💬
                                           </p>
                                         ) : (
-                                          <div className="space-y-3">
+                                          <div className="space-y-4">
                                             {(reviewReplies[review.id] || []).map((rep) => {
                                               const repReactions = replyReactions[rep.id] || {};
                                               const repActiveEmojis = Object.entries(repReactions)
@@ -1443,35 +1524,69 @@ function ProductDetailPage() {
 
                                                   {/* Reply Bubble + Actions */}
                                                   <div className="flex-1 min-w-0">
-                                                    <div className="relative bg-secondary/40 dark:bg-zinc-800/60 rounded-2xl rounded-tl-xs px-3.5 py-2 inline-block max-w-full">
-                                                      <div className="flex items-center gap-1.5 flex-wrap">
-                                                        <span className="font-bold text-xs text-foreground hover:underline cursor-pointer">
+                                                    {isEmojiOnly(rep.comment) ? (
+                                                      /* Emoji-only: large emoji without bubble (Facebook-style) */
+                                                      <div className={cn("relative inline-block", repTotalReactionCount > 0 && "mb-2.5")}>
+                                                        <span className="font-bold text-xs text-foreground hover:underline cursor-pointer block mb-0.5">
                                                           {rep.author_name}
+                                                          {rep.is_staff && (
+                                                            <span className="text-[9px] font-bold bg-primary text-primary-foreground px-1.5 py-0.2 rounded-full ml-1.5">
+                                                              Official Staff
+                                                            </span>
+                                                          )}
                                                         </span>
-                                                        {rep.is_staff && (
-                                                          <span className="text-[9px] font-bold bg-primary text-primary-foreground px-1.5 py-0.2 rounded-full">
-                                                            Official Staff
-                                                          </span>
+                                                        <span className="text-3xl sm:text-4xl leading-none">
+                                                          {rep.comment.trim()}
+                                                        </span>
+                                                        {/* Floating Reaction Pill */}
+                                                        {repTotalReactionCount > 0 && (
+                                                          <div className="absolute -bottom-2 right-0 bg-card dark:bg-zinc-800 border border-border/80 shadow-2xs rounded-full px-1.5 py-0.2 flex items-center gap-1 text-[10px] font-bold text-foreground pointer-events-none select-none">
+                                                            <div className="flex items-center -space-x-1">
+                                                              {repActiveEmojis.slice(0, 2).map(([emoji]) => (
+                                                                <span key={emoji} className="text-[11px] leading-none">
+                                                                  {emoji}
+                                                                </span>
+                                                              ))}
+                                                            </div>
+                                                            <span className="text-[9px] text-muted-foreground font-semibold">{repTotalReactionCount}</span>
+                                                          </div>
                                                         )}
                                                       </div>
-                                                      <p className="text-xs text-foreground/90 mt-0.5 leading-relaxed whitespace-pre-wrap">
-                                                        {renderCommentText(rep.comment)}
-                                                      </p>
-
-                                                      {/* Floating Reaction Pill at Bottom-Right of Reply Bubble */}
-                                                      {repTotalReactionCount > 0 && (
-                                                        <div className="absolute -bottom-2 right-2 bg-card dark:bg-zinc-800 border border-border/80 shadow-2xs rounded-full px-1.5 py-0.2 flex items-center gap-1 text-[10px] font-bold text-foreground pointer-events-none select-none">
-                                                          <div className="flex items-center -space-x-1">
-                                                            {repActiveEmojis.slice(0, 2).map(([emoji]) => (
-                                                              <span key={emoji} className="text-[11px] leading-none">
-                                                                {emoji}
-                                                              </span>
-                                                            ))}
-                                                          </div>
-                                                          <span className="text-[9px] text-muted-foreground font-semibold">{repTotalReactionCount}</span>
+                                                    ) : (
+                                                      /* Normal text bubble */
+                                                      <div className={cn(
+                                                        "relative bg-secondary/40 dark:bg-zinc-800/60 rounded-2xl rounded-tl-xs px-3.5 py-2 inline-block max-w-full",
+                                                        repTotalReactionCount > 0 && "mb-2.5"
+                                                      )}>
+                                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                                          <span className="font-bold text-xs text-foreground hover:underline cursor-pointer">
+                                                            {rep.author_name}
+                                                          </span>
+                                                          {rep.is_staff && (
+                                                            <span className="text-[9px] font-bold bg-primary text-primary-foreground px-1.5 py-0.2 rounded-full">
+                                                              Official Staff
+                                                            </span>
+                                                          )}
                                                         </div>
-                                                      )}
-                                                    </div>
+                                                        <p className="text-xs text-foreground/90 mt-0.5 leading-relaxed whitespace-pre-wrap">
+                                                          {renderCommentText(rep.comment)}
+                                                        </p>
+
+                                                        {/* Floating Reaction Pill at Bottom-Right of Reply Bubble */}
+                                                        {repTotalReactionCount > 0 && (
+                                                          <div className="absolute -bottom-2 right-2 bg-card dark:bg-zinc-800 border border-border/80 shadow-2xs rounded-full px-1.5 py-0.2 flex items-center gap-1 text-[10px] font-bold text-foreground pointer-events-none select-none">
+                                                            <div className="flex items-center -space-x-1">
+                                                              {repActiveEmojis.slice(0, 2).map(([emoji]) => (
+                                                                <span key={emoji} className="text-[11px] leading-none">
+                                                                  {emoji}
+                                                                </span>
+                                                              ))}
+                                                            </div>
+                                                            <span className="text-[9px] text-muted-foreground font-semibold">{repTotalReactionCount}</span>
+                                                          </div>
+                                                        )}
+                                                      </div>
+                                                    )}
 
                                                     <div className="flex items-center gap-3 mt-0.5 pl-2 text-[11px] font-semibold text-muted-foreground">
                                                       {/* Facebook Reaction Button on Reply */}
