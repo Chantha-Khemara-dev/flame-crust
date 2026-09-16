@@ -68,7 +68,16 @@ function ProductDetailPage() {
   const [newComment, setNewComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
 
-  // Review Replies & Emoji Reactions
+  // Review Replies & Facebook-Style Emoji Reactions
+  const FB_REACTIONS = [
+    { id: "like", emoji: "👍", label: "ចូលចិត្ត", color: "text-blue-500 font-bold", name: "Like" },
+    { id: "love", emoji: "❤️", label: "ស្រឡាញ់", color: "text-red-500 font-bold", name: "Love" },
+    { id: "care", emoji: "🥰", label: "យកចិត្តទុកដាក់", color: "text-amber-500 font-bold", name: "Care" },
+    { id: "haha", emoji: "😆", label: "សើច", color: "text-amber-500 font-bold", name: "Haha" },
+    { id: "wow", emoji: "😮", label: "ភ្ញាក់ផ្អើល", color: "text-amber-500 font-bold", name: "Wow" },
+    { id: "sad", emoji: "😢", label: "សោកសៅ", color: "text-amber-500 font-bold", name: "Sad" },
+    { id: "angry", emoji: "😡", label: "ខឹង", color: "text-orange-600 font-bold", name: "Angry" },
+  ];
   const QUICK_EMOJIS = ["🍕", "🔥", "❤️", "👍", "😍", "😋", "👏", "🎉", "✨", "🤤", "🙏", "💯"];
 
   const [reviewReplies, setReviewReplies] = useState(() => {
@@ -104,8 +113,23 @@ function ProductDetailPage() {
     };
   });
 
+  const [activeReactionDockReviewId, setActiveReactionDockReviewId] = useState(null);
   const [openReplyReviewIds, setOpenReplyReviewIds] = useState({});
   const [replyTextMap, setReplyTextMap] = useState({});
+
+  const currentAuthUser = (() => {
+    try {
+      const admin = JSON.parse(localStorage.getItem("adminAuth") || "null");
+      const customer = JSON.parse(localStorage.getItem("customerAuth") || "null");
+      if (admin?.token || admin?.email) {
+        return { name: admin.name || "Staff", avatar: admin.avatar || null, isStaff: true };
+      }
+      if (customer?.name || customer?.email) {
+        return { name: customer.name || "Customer", avatar: customer.avatar || null, isStaff: false };
+      }
+    } catch (e) {}
+    return { name: "You", avatar: null, isStaff: false };
+  })();
 
   const toggleReply = (reviewId) => {
     setOpenReplyReviewIds(prev => ({
@@ -141,21 +165,26 @@ function ProductDetailPage() {
     setReviewReactions(prev => {
       const current = prev[reviewId] || { userReacted: [] };
       const userReacted = current.userReacted || [];
-      const hasReacted = userReacted.includes(emoji);
-      willAdd = !hasReacted;
-      const newReacted = hasReacted
-        ? userReacted.filter(e => e !== emoji)
-        : [...userReacted, emoji];
-      const prevCount = current[emoji] || 0;
-      const newCount = hasReacted ? Math.max(0, prevCount - 1) : prevCount + 1;
+      const hasSameReacted = userReacted.includes(emoji);
+      willAdd = !hasSameReacted;
+
+      const updatedCounts = { ...current };
+
+      // Remove any previously selected reaction by this user on this review
+      userReacted.forEach(prevEmoji => {
+        updatedCounts[prevEmoji] = Math.max(0, (updatedCounts[prevEmoji] || 1) - 1);
+      });
+
+      if (!hasSameReacted) {
+        updatedCounts[emoji] = (updatedCounts[emoji] || 0) + 1;
+        updatedCounts.userReacted = [emoji];
+      } else {
+        updatedCounts.userReacted = [];
+      }
 
       const updated = {
         ...prev,
-        [reviewId]: {
-          ...current,
-          [emoji]: newCount,
-          userReacted: newReacted
-        }
+        [reviewId]: updatedCounts
       };
       try {
         localStorage.setItem("flame_crust_review_reactions", JSON.stringify(updated));
@@ -1080,274 +1109,346 @@ function ProductDetailPage() {
                       .filter((r) =>
                         selectedRatingFilter === 0 ? true : Number(r.rating) === selectedRatingFilter
                       )
-                      .map((review) => (
-                        <div
-                          key={review.id}
-                          className="review-card-hover bg-card border border-border/70 rounded-2xl p-5 sm:p-6 flex flex-col justify-between"
-                        >
-                          <div>
-                            {/* Author & Rating Header */}
-                            <div className="flex items-start justify-between gap-3 mb-3">
-                              <div className="flex items-center gap-3">
+                      .map((review) => {
+                        const reactions = reviewReactions[review.id] || {};
+                        const activeEmojis = Object.entries(reactions)
+                          .filter(([key, val]) => key !== "userReacted" && typeof val === "number" && val > 0)
+                          .sort((a, b) => b[1] - a[1]);
+                        const totalReactionCount = activeEmojis.reduce((sum, [, count]) => sum + count, 0);
+                        const userReactedEmojis = reactions.userReacted || [];
+                        const userReaction = userReactedEmojis.length > 0 
+                          ? FB_REACTIONS.find(r => r.emoji === userReactedEmojis[0]) || { emoji: userReactedEmojis[0], label: "ចូលចិត្ត", color: "text-primary font-bold" }
+                          : null;
+
+                        return (
+                          <div
+                            key={review.id}
+                            className="review-card-hover bg-card border border-border/70 rounded-2xl p-4 sm:p-5 flex flex-col justify-between"
+                          >
+                            <div>
+                              {/* Facebook-Style Comment Post Header & Bubble */}
+                              <div className="flex items-start gap-2.5 sm:gap-3">
+                                {/* Author Avatar */}
                                 {review.customer_avatar ? (
                                   <img
                                     src={review.customer_avatar}
                                     alt={review.customer_name}
-                                    className="size-10 sm:size-11 rounded-full object-cover ring-2 ring-primary/20 shrink-0"
+                                    className="size-9 sm:size-10 rounded-full object-cover ring-2 ring-primary/20 shrink-0 mt-0.5"
                                   />
                                 ) : (
-                                  <div className="size-10 sm:size-11 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
+                                  <div className="size-9 sm:size-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">
                                     {(review.customer_name || "C").charAt(0).toUpperCase()}
                                   </div>
                                 )}
-                                <div>
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <h4 className="font-semibold text-foreground text-sm sm:text-base">
-                                      {review.customer_name || "Customer"}
-                                    </h4>
-                                    {(review.is_verified_purchase || review.is_verified_purchase === 1) && (
-                                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full">
-                                        <CheckCircle2 className="size-3" />
-                                        Verified Buyer
-                                      </span>
+
+                                {/* Right side: Bubble + Actions + Nested Thread */}
+                                <div className="flex-1 min-w-0">
+                                  {/* Facebook Comment Bubble */}
+                                  <div className="relative bg-secondary/50 dark:bg-zinc-800/70 rounded-2xl rounded-tl-xs px-3.5 sm:px-4 py-2.5 inline-block max-w-full">
+                                    {/* Header inside bubble: Name, Verified Buyer, Stars */}
+                                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <h4 className="font-bold text-foreground text-xs sm:text-sm hover:underline cursor-pointer">
+                                          {review.customer_name || "Customer"}
+                                        </h4>
+                                        {(review.is_verified_purchase || review.is_verified_purchase === 1) && (
+                                          <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.2 rounded-full">
+                                            <CheckCircle2 className="size-2.5" />
+                                            Verified
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      {/* Rating Stars */}
+                                      <div className="flex items-center gap-0.5">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                          <Star
+                                            key={star}
+                                            className={cn(
+                                              "size-3",
+                                              star <= review.rating
+                                                ? "fill-yellow-500 text-yellow-500"
+                                                : "fill-muted text-muted-foreground/30"
+                                            )}
+                                          />
+                                        ))}
+                                      </div>
+                                    </div>
+
+                                    {/* Comment Text */}
+                                    <p className="text-xs sm:text-sm text-foreground/90 mt-1 leading-relaxed whitespace-pre-wrap">
+                                      {review.comment}
+                                    </p>
+
+                                    {/* Facebook Floating Reaction Pill at Bottom-Right */}
+                                    {totalReactionCount > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleReply(review.id)}
+                                        className="absolute -bottom-2.5 right-2 bg-card dark:bg-zinc-800 border border-border/80 shadow-xs hover:shadow-sm rounded-full px-1.5 sm:px-2 py-0.5 flex items-center gap-1 text-[11px] font-bold text-foreground cursor-pointer transition-transform hover:scale-105"
+                                        title={`${totalReactionCount} reactions`}
+                                      >
+                                        <div className="flex items-center -space-x-1">
+                                          {activeEmojis.slice(0, 3).map(([emoji]) => (
+                                            <span key={emoji} className="text-xs leading-none">
+                                              {emoji}
+                                            </span>
+                                          ))}
+                                        </div>
+                                        <span className="text-[10px] text-muted-foreground font-semibold">{totalReactionCount}</span>
+                                      </button>
                                     )}
                                   </div>
-                                  <div className="flex items-center gap-1 mt-0.5">
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                      <Star
-                                        key={star}
-                                        className={cn(
-                                          "size-3.5",
-                                          star <= review.rating
-                                            ? "fill-yellow-500 text-yellow-500"
-                                            : "fill-muted text-muted-foreground/30"
-                                        )}
-                                      />
-                                    ))}
-                                    <span className="text-[11px] font-semibold text-foreground ml-1">
-                                      {review.rating}.0
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
 
-                              <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-                                {review.created_at
-                                  ? new Date(review.created_at).toLocaleDateString(undefined, {
-                                      year: "numeric",
-                                      month: "short",
-                                      day: "numeric",
-                                    })
-                                  : "Recently"}
-                              </span>
-                            </div>
-
-                            {/* Comment Text */}
-                            <p className="text-xs sm:text-sm text-foreground/85 leading-relaxed">
-                              {review.comment}
-                            </p>
-                          </div>
-
-                          {/* Footer action / reactions / helpful / reply */}
-                          <div className="mt-4 pt-3 border-t border-border/40 space-y-3">
-                            {/* Actions bar: Emojis on left, Helpful + Reply on right */}
-                            <div className="flex items-center justify-between flex-wrap gap-2">
-                              {/* Emoji Reactions */}
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                {["👍", "❤️", "🔥", "😋", "🍕"].map((emoji) => {
-                                  const reactions = reviewReactions[review.id] || {};
-                                  const count = reactions[emoji] || 0;
-                                  const isActive = (reactions.userReacted || []).includes(emoji);
-                                  return (
-                                    <button
-                                      key={emoji}
-                                      type="button"
-                                      onClick={() => handleReaction(review.id, emoji)}
-                                      className={cn(
-                                        "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all cursor-pointer border",
-                                        isActive
-                                          ? "bg-primary/15 border-primary text-primary font-bold shadow-xs scale-105"
-                                          : "bg-secondary/60 hover:bg-secondary border-border/60 text-muted-foreground hover:text-foreground"
-                                      )}
-                                      title={`React with ${emoji}`}
-                                    >
-                                      <span>{emoji}</span>
-                                      {count > 0 && <span className="text-[11px] font-semibold">{count}</span>}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-
-                              {/* Right action buttons: Helpful + Reply */}
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => handleReaction(review.id, "👍")}
-                                  className={cn(
-                                    "inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg transition-colors cursor-pointer",
-                                    (reviewReactions[review.id]?.userReacted || []).includes("👍")
-                                      ? "text-primary font-semibold bg-primary/10"
-                                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
-                                  )}
-                                >
-                                  <ThumbsUp className="size-3.5" />
-                                  <span>Helpful</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => toggleReply(review.id)}
-                                  className={cn(
-                                    "inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg transition-all cursor-pointer border",
-                                    openReplyReviewIds[review.id]
-                                      ? "bg-primary text-primary-foreground border-primary font-semibold shadow-xs"
-                                      : "border-border/60 hover:border-primary/50 text-muted-foreground hover:text-foreground hover:bg-secondary/60"
-                                  )}
-                                >
-                                  <MessageCircle className="size-3.5" />
-                                  <span>Reply</span>
-                                  {(reviewReplies[review.id] || []).length > 0 && (
-                                    <span
-                                      className={cn(
-                                        "ml-0.5 px-1.5 py-0.2 text-[10px] rounded-full font-bold",
-                                        openReplyReviewIds[review.id]
-                                          ? "bg-white/20 text-white"
-                                          : "bg-primary/15 text-primary"
-                                      )}
-                                    >
-                                      {(reviewReplies[review.id] || []).length}
-                                    </span>
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Expandable Reply Section */}
-                            <AnimatePresence>
-                              {openReplyReviewIds[review.id] && (
-                                <motion.div
-                                  initial={{ opacity: 0, height: 0 }}
-                                  animate={{ opacity: 1, height: "auto" }}
-                                  exit={{ opacity: 0, height: 0 }}
-                                  transition={{ duration: 0.2 }}
-                                  className="pt-3 border-t border-border/40 space-y-3"
-                                >
-                                  {/* Existing Replies */}
-                                  <div className="space-y-2">
-                                    {(reviewReplies[review.id] || []).length === 0 ? (
-                                      <p className="text-[11px] text-muted-foreground italic pl-1">
-                                        No replies yet. Be the first to reply! 💬
-                                      </p>
-                                    ) : (
-                                      (reviewReplies[review.id] || []).map((rep) => (
-                                        <div
-                                          key={rep.id}
+                                  {/* Facebook Action Bar below Bubble */}
+                                  <div className="flex items-center gap-3 sm:gap-4 mt-1 pl-1 sm:pl-2 text-xs font-semibold text-muted-foreground">
+                                    {/* Reaction Button with Floating FB Reactions Dock */}
+                                    <div className="relative">
+                                      <div className="flex items-center gap-0.5">
+                                        <button
+                                          type="button"
+                                          onMouseEnter={() => setActiveReactionDockReviewId(review.id)}
+                                          onClick={() => handleReaction(review.id, userReaction ? userReaction.emoji : "👍")}
                                           className={cn(
-                                            "p-3 rounded-xl border text-xs space-y-1.5 transition-all",
-                                            rep.is_staff
-                                              ? "bg-primary/5 border-primary/25 dark:bg-primary/10"
-                                              : "bg-secondary/40 border-border/60"
+                                            "flex items-center gap-1 font-semibold transition-colors cursor-pointer hover:underline",
+                                            userReaction ? userReaction.color : "hover:text-foreground"
                                           )}
                                         >
-                                          <div className="flex items-center justify-between gap-2">
-                                            <div className="flex items-center gap-2">
-                                              <div
-                                                className={cn(
-                                                  "size-6 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0",
-                                                  rep.is_staff
-                                                    ? "bg-primary text-white"
-                                                    : "bg-primary/10 text-primary"
-                                                )}
-                                              >
-                                                {rep.is_staff
-                                                  ? "🔥"
-                                                  : (rep.author_name || "U").charAt(0).toUpperCase()}
-                                              </div>
-                                              <div className="flex items-center gap-1.5">
-                                                <span className="font-semibold text-foreground">
-                                                  {rep.author_name}
-                                                </span>
-                                                {rep.is_staff && (
-                                                  <span className="text-[9px] font-bold uppercase tracking-wider bg-primary/15 text-primary px-1.5 py-0.5 rounded">
-                                                    Official Staff
+                                          <span>{userReaction ? userReaction.emoji : "👍"}</span>
+                                          <span>{userReaction ? userReaction.label : "ចូលចិត្ត"}</span>
+                                        </button>
+
+                                        <button
+                                          type="button"
+                                          onClick={() => setActiveReactionDockReviewId(prev => prev === review.id ? null : review.id)}
+                                          className="text-[10px] text-muted-foreground/60 hover:text-foreground cursor-pointer px-0.5"
+                                          title="ជ្រើសរើស Reaction (Choose reaction)"
+                                        >
+                                          ▾
+                                        </button>
+                                      </div>
+
+                                      {/* Floating Animated Facebook Reaction Dock */}
+                                      {activeReactionDockReviewId === review.id && (
+                                        <div 
+                                          className="absolute bottom-full left-0 mb-2 z-40 bg-card dark:bg-zinc-800 border border-border/80 shadow-2xl rounded-full px-2 py-1.5 flex items-center gap-1 animate-in fade-in zoom-in-95 duration-150"
+                                          onMouseLeave={() => setActiveReactionDockReviewId(null)}
+                                        >
+                                          {FB_REACTIONS.map((r) => (
+                                            <button
+                                              key={r.id}
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleReaction(review.id, r.emoji);
+                                                setActiveReactionDockReviewId(null);
+                                              }}
+                                              className="size-7 sm:size-8 rounded-full flex items-center justify-center text-lg sm:text-xl hover:scale-130 active:scale-95 transition-all duration-150 cursor-pointer relative group/emoji"
+                                              title={`${r.emoji} ${r.label}`}
+                                            >
+                                              <span>{r.emoji}</span>
+                                              <span className="absolute -top-7 px-1.5 py-0.5 rounded bg-black/80 text-white text-[9px] font-bold opacity-0 group-hover/emoji:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                                                {r.label}
+                                              </span>
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Reply Button (ឆ្លើយតប) */}
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleReply(review.id)}
+                                      className="font-semibold hover:text-foreground hover:underline cursor-pointer flex items-center gap-1"
+                                    >
+                                      <MessageCircle className="size-3.5" />
+                                      <span>ឆ្លើយតប</span>
+                                      {(reviewReplies[review.id] || []).length > 0 && (
+                                        <span className="text-[11px] font-bold text-primary">
+                                          ({(reviewReplies[review.id] || []).length})
+                                        </span>
+                                      )}
+                                    </button>
+
+                                    {/* Timestamp */}
+                                    <span className="text-[11px] text-muted-foreground/70">
+                                      {review.created_at
+                                        ? new Date(review.created_at).toLocaleDateString(undefined, {
+                                            month: "short",
+                                            day: "numeric",
+                                          })
+                                        : "Recently"}
+                                    </span>
+                                  </div>
+
+                                  {/* Facebook-style Nested Replies Thread */}
+                                  <AnimatePresence>
+                                    {openReplyReviewIds[review.id] && (
+                                      <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: "auto" }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="mt-3 ml-2 sm:ml-4 pl-2.5 sm:pl-4 border-l-2 border-border/60 space-y-3"
+                                      >
+                                        {/* Existing Replies */}
+                                        {(reviewReplies[review.id] || []).length === 0 ? (
+                                          <p className="text-[11px] text-muted-foreground italic pl-1">
+                                            មិនទាន់មានការឆ្លើយតបនៅឡើយទេ • ក្លាយជាអ្នកដំបូងដែលឆ្លើយតប! 💬
+                                          </p>
+                                        ) : (
+                                          (reviewReplies[review.id] || []).map((rep) => (
+                                            <div key={rep.id} className="flex items-start gap-2 sm:gap-2.5">
+                                              {/* Reply Avatar */}
+                                              {rep.author_avatar ? (
+                                                <img
+                                                  src={rep.author_avatar}
+                                                  alt={rep.author_name}
+                                                  className="size-7 sm:size-8 rounded-full object-cover shrink-0 ring-1 ring-border mt-0.5"
+                                                />
+                                              ) : (
+                                                <div
+                                                  className={cn(
+                                                    "size-7 sm:size-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 mt-0.5",
+                                                    rep.is_staff
+                                                      ? "bg-primary text-white"
+                                                      : "bg-secondary text-foreground"
+                                                  )}
+                                                >
+                                                  {rep.is_staff ? "🔥" : (rep.author_name || "U").charAt(0).toUpperCase()}
+                                                </div>
+                                              )}
+
+                                              {/* Reply Bubble + Actions */}
+                                              <div className="flex-1 min-w-0">
+                                                <div className="bg-secondary/40 dark:bg-zinc-800/60 rounded-2xl rounded-tl-xs px-3.5 py-2 inline-block max-w-full">
+                                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <span className="font-bold text-xs text-foreground hover:underline cursor-pointer">
+                                                      {rep.author_name}
+                                                    </span>
+                                                    {rep.is_staff && (
+                                                      <span className="text-[9px] font-bold bg-primary text-primary-foreground px-1.5 py-0.2 rounded-full">
+                                                        Official Staff
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                  <p className="text-xs text-foreground/90 mt-0.5 leading-relaxed whitespace-pre-wrap">
+                                                    {rep.comment}
+                                                  </p>
+                                                </div>
+
+                                                <div className="flex items-center gap-3 mt-0.5 pl-2 text-[11px] font-semibold text-muted-foreground">
+                                                  <button 
+                                                    type="button"
+                                                    onClick={() => handleReaction(review.id, "👍")}
+                                                    className="hover:text-foreground hover:underline cursor-pointer"
+                                                  >
+                                                    ចូលចិត្ត
+                                                  </button>
+                                                  <button 
+                                                    type="button"
+                                                    onClick={() => {
+                                                      const inputEl = document.getElementById(`reply-input-${review.id}`);
+                                                      if (inputEl) inputEl.focus();
+                                                    }}
+                                                    className="hover:text-foreground hover:underline cursor-pointer"
+                                                  >
+                                                    ឆ្លើយតប
+                                                  </button>
+                                                  <span className="text-[10px] text-muted-foreground/70">
+                                                    {rep.created_at
+                                                      ? new Date(rep.created_at).toLocaleDateString(undefined, {
+                                                          month: "short",
+                                                          day: "numeric",
+                                                        })
+                                                      : "Recently"}
                                                   </span>
-                                                )}
+                                                </div>
                                               </div>
                                             </div>
-                                            <span className="text-[10px] text-muted-foreground">
-                                              {rep.created_at
-                                                ? new Date(rep.created_at).toLocaleDateString(undefined, {
-                                                    month: "short",
-                                                    day: "numeric",
-                                                  })
-                                                : "Recently"}
-                                            </span>
+                                          ))
+                                        )}
+
+                                        {/* Facebook-style Pill Reply Input Box */}
+                                        <div className="flex items-center gap-2 pt-1">
+                                          {currentAuthUser.avatar ? (
+                                            <img
+                                              src={currentAuthUser.avatar}
+                                              alt={currentAuthUser.name}
+                                              className="size-7 sm:size-8 rounded-full object-cover shrink-0 ring-1 ring-border"
+                                            />
+                                          ) : (
+                                            <div className="size-7 sm:size-8 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-xs shrink-0">
+                                              {(currentAuthUser.name || "U").charAt(0).toUpperCase()}
+                                            </div>
+                                          )}
+
+                                          <div className="flex-1 flex items-center gap-2 bg-secondary/50 dark:bg-zinc-800/80 border border-border/70 rounded-full px-3.5 py-1.5 focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/40 transition-all">
+                                            <input
+                                              id={`reply-input-${review.id}`}
+                                              type="text"
+                                              value={replyTextMap[review.id] || ""}
+                                              onChange={(e) =>
+                                                setReplyTextMap((prev) => ({
+                                                  ...prev,
+                                                  [review.id]: e.target.value,
+                                                }))
+                                              }
+                                              onKeyDown={(e) => {
+                                                if (e.key === "Enter" && !e.shiftKey) {
+                                                  e.preventDefault();
+                                                  handleSubmitReply(review.id);
+                                                }
+                                              }}
+                                              placeholder="សរសេរការឆ្លើយតប... (Write a reply...)"
+                                              className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none border-none p-0"
+                                            />
+
+                                            {/* Quick Emoji Picker */}
+                                            <div className="relative group/emojis">
+                                              <button
+                                                type="button"
+                                                className="text-base text-muted-foreground hover:text-foreground transition-transform hover:scale-115 cursor-pointer p-0.5"
+                                                title="Add Emoji"
+                                              >
+                                                😊
+                                              </button>
+                                              <div className="absolute bottom-full right-0 mb-2 hidden group-hover/emojis:flex items-center gap-1 bg-card dark:bg-zinc-800 border border-border shadow-xl rounded-full p-1 z-30">
+                                                {QUICK_EMOJIS.slice(0, 8).map((emoji) => (
+                                                  <button
+                                                    key={emoji}
+                                                    type="button"
+                                                    onClick={() => handleInsertEmoji(review.id, emoji)}
+                                                    className="size-6 text-sm hover:scale-125 transition-transform"
+                                                  >
+                                                    {emoji}
+                                                  </button>
+                                                ))}
+                                              </div>
+                                            </div>
+
+                                            {/* Send Button */}
+                                            <button
+                                              type="button"
+                                              onClick={() => handleSubmitReply(review.id)}
+                                              disabled={!(replyTextMap[review.id] || "").trim()}
+                                              className="text-primary hover:text-primary/80 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer p-1 transition-all"
+                                              title="Send Reply"
+                                            >
+                                              <Send className="size-3.5" />
+                                            </button>
                                           </div>
-                                          <p className="text-foreground/90 pl-8 leading-relaxed whitespace-pre-wrap">
-                                            {rep.comment}
-                                          </p>
                                         </div>
-                                      ))
+                                      </motion.div>
                                     )}
-                                  </div>
-
-                                  {/* Reply Input Box & Quick Emoji Picker */}
-                                  <div className="bg-secondary/30 rounded-xl p-3 border border-border/70 space-y-2">
-                                    {/* Quick Emojis Bar */}
-                                    <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
-                                      <span className="text-[11px] text-muted-foreground mr-1 shrink-0 font-medium">
-                                        Emoji:
-                                      </span>
-                                      {QUICK_EMOJIS.map((emoji) => (
-                                        <button
-                                          key={emoji}
-                                          type="button"
-                                          onClick={() => handleInsertEmoji(review.id, emoji)}
-                                          className="size-7 flex items-center justify-center rounded-lg hover:bg-secondary active:scale-95 text-base transition-transform cursor-pointer shrink-0"
-                                          title={`Insert ${emoji}`}
-                                        >
-                                          {emoji}
-                                        </button>
-                                      ))}
-                                    </div>
-
-                                    {/* Text Input + Send Button */}
-                                    <div className="flex items-center gap-2">
-                                      <input
-                                        type="text"
-                                        value={replyTextMap[review.id] || ""}
-                                        onChange={(e) =>
-                                          setReplyTextMap((prev) => ({
-                                            ...prev,
-                                            [review.id]: e.target.value,
-                                          }))
-                                        }
-                                        onKeyDown={(e) => {
-                                          if (e.key === "Enter" && !e.shiftKey) {
-                                            e.preventDefault();
-                                            handleSubmitReply(review.id);
-                                          }
-                                        }}
-                                        placeholder="Write a reply... / សរសេរការឆ្លើយតប..."
-                                        className="flex-1 h-9 rounded-lg border border-border/80 bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                                      />
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        onClick={() => handleSubmitReply(review.id)}
-                                        className="h-9 px-3.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold flex items-center gap-1 cursor-pointer shrink-0"
-                                      >
-                                        <Send className="size-3.5" />
-                                        <span>Reply</span>
-                                      </Button>
-                                    </div>
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
+                                  </AnimatePresence>
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                   </div>
                 )}
               </section>
