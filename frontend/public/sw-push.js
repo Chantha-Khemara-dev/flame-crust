@@ -23,7 +23,7 @@ self.addEventListener('push', function(event) {
   const options = {
     body: data.body || 'អ្នកមានការជូនដំណឹងថ្មីពី Flame & Crust',
     icon: data.icon || '/logo-192.png',
-    badge: data.badge || '/logo-192.png',
+    badge: data.badge || data.icon || '/logo-192.png',
     image: data.image || undefined,
     vibrate: [200, 100, 200, 100, 200],
     tag: data.tag || (data.data?.orderId ? ('order-' + data.data.orderId) : ('fc-push-' + Date.now())),

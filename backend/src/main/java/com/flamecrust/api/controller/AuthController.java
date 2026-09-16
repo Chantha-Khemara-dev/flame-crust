@@ -23,6 +23,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import com.flamecrust.api.service.WebPushService;
 
 @RestController
@@ -1103,17 +1105,90 @@ public class AuthController {
                 return ResponseEntity.badRequest().body(Map.of("error", "Message cannot be empty"));
             }
 
+            // Resolve real sender ID, sender name, and photo from database
+            Long targetSenderId = senderId;
+            String resolvedSenderName = senderName;
+            String senderPhoto = null;
+
+            if ("CUSTOMER".equalsIgnoreCase(senderType)) {
+                if (targetSenderId == null) {
+                    List<Long> cIds = jdbc.queryForList("SELECT customer_id FROM orders WHERE id = ?", Long.class, orderId);
+                    if (!cIds.isEmpty() && cIds.get(0) != null) {
+                        targetSenderId = cIds.get(0);
+                    }
+                }
+                if (targetSenderId != null) {
+                    List<Map<String, Object>> custRows = jdbc.queryForList("SELECT name, avatar FROM customers WHERE id = ?", targetSenderId);
+                    if (!custRows.isEmpty()) {
+                        Map<String, Object> c = custRows.get(0);
+                        if (c.get("avatar") != null && !c.get("avatar").toString().isBlank()) {
+                            senderPhoto = c.get("avatar").toString();
+                        }
+                        if (c.get("name") != null && !c.get("name").toString().isBlank()) {
+                            if (resolvedSenderName == null || resolvedSenderName.isBlank() || "Customer".equalsIgnoreCase(resolvedSenderName)) {
+                                resolvedSenderName = c.get("name").toString();
+                            }
+                        }
+                    }
+                }
+                if (resolvedSenderName == null || resolvedSenderName.isBlank() || "Customer".equalsIgnoreCase(resolvedSenderName)) {
+                    try {
+                        List<String> contactNames = jdbc.queryForList(
+                            "SELECT a.contact_name FROM orders o JOIN addresses a ON o.address_id = a.id WHERE o.id = ? AND a.contact_name IS NOT NULL", 
+                            String.class, orderId
+                        );
+                        if (!contactNames.isEmpty() && contactNames.get(0) != null && !contactNames.get(0).isBlank()) {
+                            resolvedSenderName = contactNames.get(0);
+                        }
+                    } catch (Exception ignored) {}
+                }
+                if (resolvedSenderName == null || resolvedSenderName.isBlank()) {
+                    resolvedSenderName = "Customer";
+                }
+                if (senderPhoto == null || senderPhoto.isBlank()) {
+                    senderPhoto = "https://api.dicebear.com/7.x/initials/svg?seed=" + URLEncoder.encode(resolvedSenderName, StandardCharsets.UTF_8) + "&backgroundColor=f87171&textColor=ffffff";
+                }
+            } else if ("DRIVER".equalsIgnoreCase(senderType)) {
+                if (targetSenderId == null) {
+                    List<Long> dIds = jdbc.queryForList("SELECT driver_id FROM orders WHERE id = ?", Long.class, orderId);
+                    if (!dIds.isEmpty() && dIds.get(0) != null) {
+                        targetSenderId = dIds.get(0);
+                    }
+                }
+                if (targetSenderId != null) {
+                    List<Map<String, Object>> dRows = jdbc.queryForList("SELECT name, profile_photo FROM drivers WHERE id = ?", targetSenderId);
+                    if (!dRows.isEmpty()) {
+                        Map<String, Object> d = dRows.get(0);
+                        if (d.get("profile_photo") != null && !d.get("profile_photo").toString().isBlank()) {
+                            senderPhoto = d.get("profile_photo").toString();
+                        }
+                        if (d.get("name") != null && !d.get("name").toString().isBlank()) {
+                            if (resolvedSenderName == null || resolvedSenderName.isBlank() || "Driver".equalsIgnoreCase(resolvedSenderName)) {
+                                resolvedSenderName = d.get("name").toString();
+                            }
+                        }
+                    }
+                }
+                if (resolvedSenderName == null || resolvedSenderName.isBlank()) {
+                    resolvedSenderName = "Driver";
+                }
+                if (senderPhoto == null || senderPhoto.isBlank()) {
+                    senderPhoto = "https://api.dicebear.com/7.x/initials/svg?seed=" + URLEncoder.encode(resolvedSenderName, StandardCharsets.UTF_8) + "&backgroundColor=f59e0b&textColor=ffffff";
+                }
+            }
+
             jdbc.update(
                 "INSERT INTO order_messages (order_id, sender_type, sender_id, sender_name, message, is_read) VALUES (?, ?, ?, ?, ?, FALSE)",
-                orderId, senderType, senderId, senderName, message.trim()
+                orderId, senderType, targetSenderId, resolvedSenderName, message.trim()
             );
 
             // Asynchronously dispatch real Web Push Notification with sender photo & direct open URL
             final String finalMsgText = message.trim();
-            final String finalSenderName = senderName;
+            final String finalSenderName = resolvedSenderName;
             final String finalSenderType = senderType;
-            final Long finalSenderId = senderId;
+            final Long finalSenderId = targetSenderId;
             final Long finalOrderId = orderId;
+            final String finalSenderPhoto = senderPhoto;
 
             CompletableFuture.runAsync(() -> {
                 try {
@@ -1122,19 +1197,6 @@ public class AuthController {
                         Map<String, Object> ord = orders.get(0);
                         Long customerId = ord.get("customer_id") != null ? ((Number) ord.get("customer_id")).longValue() : null;
                         Long driverId = ord.get("driver_id") != null ? ((Number) ord.get("driver_id")).longValue() : null;
-
-                        String senderPhoto = null;
-                        if ("DRIVER".equalsIgnoreCase(finalSenderType) && finalSenderId != null) {
-                            List<String> photos = jdbc.queryForList("SELECT profile_photo FROM drivers WHERE id = ?", String.class, finalSenderId);
-                            if (!photos.isEmpty() && photos.get(0) != null && !photos.get(0).isBlank()) {
-                                senderPhoto = photos.get(0);
-                            }
-                        } else if ("CUSTOMER".equalsIgnoreCase(finalSenderType) && finalSenderId != null) {
-                            List<String> avatars = jdbc.queryForList("SELECT avatar FROM customers WHERE id = ?", String.class, finalSenderId);
-                            if (!avatars.isEmpty() && avatars.get(0) != null && !avatars.get(0).isBlank()) {
-                                senderPhoto = avatars.get(0);
-                            }
-                        }
 
                         // Parse voice/image or text
                         String notiBody = finalMsgText;
@@ -1147,13 +1209,16 @@ public class AuthController {
                         }
 
                         Map<String, Object> extra = new HashMap<>();
-                        if (senderPhoto != null) {
-                            extra.put("icon", senderPhoto);
+                        if (finalSenderPhoto != null) {
+                            extra.put("icon", finalSenderPhoto);
+                            extra.put("badge", finalSenderPhoto);
                         }
                         if (attachedImage != null) {
                             extra.put("image", attachedImage);
                         }
                         extra.put("orderId", finalOrderId);
+                        extra.put("senderName", finalSenderName);
+                        extra.put("tag", "order-chat-" + finalOrderId);
 
                         if ("DRIVER".equalsIgnoreCase(finalSenderType) && customerId != null) {
                             String title = "💬 " + finalSenderName + " (អ្នកដឹកជញ្ជូន 🛵)";

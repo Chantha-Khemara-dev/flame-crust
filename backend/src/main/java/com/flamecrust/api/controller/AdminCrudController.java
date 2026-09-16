@@ -19,6 +19,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import com.flamecrust.api.service.WebPushService;
 
 @RestController
@@ -328,7 +330,8 @@ public class AdminCrudController {
                 if ("order_messages".equalsIgnoreCase(resource) && savedEntity instanceof OrderMessage msg) {
                     Long orderId = msg.getOrderId();
                     String senderType = msg.getSenderType();
-                    String senderName = msg.getSenderName() != null ? msg.getSenderName() : "Flame & Crust";
+                    String senderName = msg.getSenderName() != null ? msg.getSenderName() : "Customer";
+                    Long senderId = msg.getSenderId();
                     String text = msg.getMessage();
                     if (text != null && text.startsWith("[VOICE]:")) {
                         text = "🎤 បានផ្ញើសារសំឡេង (Voice message)";
@@ -342,10 +345,86 @@ public class AdminCrudController {
                         Long customerId = ord.get("customer_id") != null ? ((Number) ord.get("customer_id")).longValue() : null;
                         Long driverId = ord.get("driver_id") != null ? ((Number) ord.get("driver_id")).longValue() : null;
 
-                        if ("DRIVER".equalsIgnoreCase(senderType) && customerId != null) {
-                            webPushService.sendToUser(customerId, "CUSTOMER", "💬 " + senderName, text, "/track/" + orderId + "?chat=true");
-                        } else if ("CUSTOMER".equalsIgnoreCase(senderType) && driverId != null) {
-                            webPushService.sendToUser(driverId, "DRIVER", "💬 " + senderName, text, "/driver/dashboard");
+                        String resolvedSenderName = senderName;
+                        String senderPhoto = null;
+
+                        if ("CUSTOMER".equalsIgnoreCase(senderType)) {
+                            Long targetCustId = senderId != null ? senderId : customerId;
+                            if (targetCustId != null) {
+                                List<Map<String, Object>> custRows = jdbc.queryForList("SELECT name, avatar FROM customers WHERE id = ?", targetCustId);
+                                if (!custRows.isEmpty()) {
+                                    Map<String, Object> c = custRows.get(0);
+                                    if (c.get("avatar") != null && !c.get("avatar").toString().isBlank()) {
+                                        senderPhoto = c.get("avatar").toString();
+                                    }
+                                    if (c.get("name") != null && !c.get("name").toString().isBlank()) {
+                                        if (resolvedSenderName == null || resolvedSenderName.isBlank() || "Customer".equalsIgnoreCase(resolvedSenderName)) {
+                                            resolvedSenderName = c.get("name").toString();
+                                        }
+                                    }
+                                }
+                            }
+                            if (resolvedSenderName == null || resolvedSenderName.isBlank() || "Customer".equalsIgnoreCase(resolvedSenderName)) {
+                                try {
+                                    List<String> contactNames = jdbc.queryForList(
+                                        "SELECT a.contact_name FROM orders o JOIN addresses a ON o.address_id = a.id WHERE o.id = ? AND a.contact_name IS NOT NULL", 
+                                        String.class, orderId
+                                    );
+                                    if (!contactNames.isEmpty() && contactNames.get(0) != null && !contactNames.get(0).isBlank()) {
+                                        resolvedSenderName = contactNames.get(0);
+                                    }
+                                } catch (Exception ignored) {}
+                            }
+                            if (resolvedSenderName == null || resolvedSenderName.isBlank()) {
+                                resolvedSenderName = "Customer";
+                            }
+                            if (senderPhoto == null || senderPhoto.isBlank()) {
+                                senderPhoto = "https://api.dicebear.com/7.x/initials/svg?seed=" + URLEncoder.encode(resolvedSenderName, StandardCharsets.UTF_8) + "&backgroundColor=f87171&textColor=ffffff";
+                            }
+
+                            if (driverId != null) {
+                                Map<String, Object> extra = new HashMap<>();
+                                extra.put("icon", senderPhoto);
+                                extra.put("badge", senderPhoto);
+                                extra.put("orderId", orderId);
+                                extra.put("senderName", resolvedSenderName);
+                                extra.put("tag", "order-chat-" + orderId);
+                                String title = "💬 " + resolvedSenderName + " (អតិថិជន 🍕)";
+                                webPushService.sendToUserWithExtra(driverId, "DRIVER", title, text, "/driver/dashboard", extra);
+                            }
+                        } else if ("DRIVER".equalsIgnoreCase(senderType)) {
+                            Long targetDriverId = senderId != null ? senderId : driverId;
+                            if (targetDriverId != null) {
+                                List<Map<String, Object>> dRows = jdbc.queryForList("SELECT name, profile_photo FROM drivers WHERE id = ?", targetDriverId);
+                                if (!dRows.isEmpty()) {
+                                    Map<String, Object> d = dRows.get(0);
+                                    if (d.get("profile_photo") != null && !d.get("profile_photo").toString().isBlank()) {
+                                        senderPhoto = d.get("profile_photo").toString();
+                                    }
+                                    if (d.get("name") != null && !d.get("name").toString().isBlank()) {
+                                        if (resolvedSenderName == null || resolvedSenderName.isBlank() || "Driver".equalsIgnoreCase(resolvedSenderName)) {
+                                            resolvedSenderName = d.get("name").toString();
+                                        }
+                                    }
+                                }
+                            }
+                            if (resolvedSenderName == null || resolvedSenderName.isBlank()) {
+                                resolvedSenderName = "Driver";
+                            }
+                            if (senderPhoto == null || senderPhoto.isBlank()) {
+                                senderPhoto = "https://api.dicebear.com/7.x/initials/svg?seed=" + URLEncoder.encode(resolvedSenderName, StandardCharsets.UTF_8) + "&backgroundColor=f59e0b&textColor=ffffff";
+                            }
+
+                            if (customerId != null) {
+                                Map<String, Object> extra = new HashMap<>();
+                                extra.put("icon", senderPhoto);
+                                extra.put("badge", senderPhoto);
+                                extra.put("orderId", orderId);
+                                extra.put("senderName", resolvedSenderName);
+                                extra.put("tag", "order-chat-" + orderId);
+                                String title = "💬 " + resolvedSenderName + " (អ្នកដឹកជញ្ជូន 🛵)";
+                                webPushService.sendToUserWithExtra(customerId, "CUSTOMER", title, text, "/track/" + orderId + "?chat=true", extra);
+                            }
                         }
                     }
                 } else if ("orders".equalsIgnoreCase(resource) && savedEntity instanceof Order ord) {

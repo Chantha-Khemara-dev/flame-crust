@@ -89,7 +89,15 @@ export function showChatNotificationToast({ senderName, message, photo, onReply 
     >
       <div className="relative shrink-0">
         {photo ? (
-          <img src={photo} alt={senderName} className="size-11 rounded-full object-cover border-2 border-red-500/60 shadow-xs" />
+          <img 
+            src={photo} 
+            alt={senderName} 
+            className="size-11 rounded-full object-cover border-2 border-red-500/60 shadow-xs" 
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(senderName || "FC")}&backgroundColor=f87171&textColor=ffffff`;
+            }}
+          />
         ) : (
           <div className="size-11 rounded-full bg-gradient-to-tr from-amber-500 to-red-600 text-white flex items-center justify-center font-bold shadow-xs">
             <MessageSquare className="size-5" />

@@ -204,6 +204,13 @@ export default function OrderTrackingPage() {
 
   const [order, setOrder] = useState(null);
   const [driver, setDriver] = useState(null);
+  const [customer, setCustomer] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("customerAuth") || "null");
+    } catch (e) {
+      return null;
+    }
+  });
 
   // Auto-sync customer push subscription token to backend if notification permission is already granted
   useEffect(() => {
@@ -311,6 +318,16 @@ export default function OrderTrackingPage() {
       }
       if (!orderData) throw new Error("Order not found");
       setOrder(orderData);
+
+      const custId = orderData.customerId || orderData.customer_id;
+      if (custId) {
+        try {
+          const custData = await get("customers", custId);
+          if (custData) {
+            setCustomer(prev => ({ ...(prev || {}), ...custData }));
+          }
+        } catch(e) {}
+      }
 
       const driverId = orderData.driverId || orderData.driver_id;
       if (driverId) {
@@ -1077,7 +1094,10 @@ export default function OrderTrackingPage() {
           orderNumber={order.order_number || order.id}
           currentUser={{
             type: "CUSTOMER",
-            name: order.customer_name || address?.name || "Customer"
+            id: customer?.id || order.customerId || order.customer_id,
+            name: customer?.name || order.customer_name || address?.contact_name || address?.name || "Customer",
+            photo: customer?.avatar,
+            avatar: customer?.avatar
           }}
           recipient={{
             name: chatRecipientType === "DRIVER" ? (driver?.name || "Courier Partner") : "Flame & Crust Kitchen",

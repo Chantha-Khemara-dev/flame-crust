@@ -923,10 +923,12 @@ export default function DriverDashboardPage() {
                     message: lastMsg.message,
                     timestamp: Date.now()
                   });
+                  const custName = ord.customer?.name || (lastMsg.sender_name && lastMsg.sender_name !== "Customer" ? lastMsg.sender_name : null) || ord.address?.contact_name || "Customer";
+                  const custPhoto = ord.customer?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(custName)}&backgroundColor=f87171&textColor=ffffff`;
                   showChatNotificationToast({
-                    senderName: ord.customer?.name || lastMsg.sender_name || "Customer",
+                    senderName: custName,
                     message: lastMsg.message,
-                    photo: ord.customer?.avatar,
+                    photo: custPhoto,
                     onReply: () => {
                       setSelectedChatOrder(ord);
                       setUnreadMap(prev => ({ ...prev, [ord.id]: 0 }));
@@ -1382,8 +1384,8 @@ export default function DriverDashboardPage() {
             id: driver?.id
           }}
           recipient={{
-            name: selectedChatOrder.customer?.name || "Customer",
-            photo: selectedChatOrder.customer?.avatar,
+            name: selectedChatOrder.customer?.name || selectedChatOrder.address?.contact_name || "Customer",
+            photo: selectedChatOrder.customer?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(selectedChatOrder.customer?.name || "Customer")}&backgroundColor=f87171&textColor=ffffff`,
             role: "Customer",
             phone: selectedChatOrder.customer?.phone || selectedChatOrder.customer_phone
           }}

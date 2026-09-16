@@ -67,10 +67,14 @@ public class WebPushService {
             payload.put("body", body);
             
             String icon = (extraData != null && extraData.get("icon") != null) ? extraData.get("icon").toString() : "/logo-192.png";
+            String badge = (extraData != null && extraData.get("badge") != null) ? extraData.get("badge").toString() : icon;
             payload.put("icon", icon);
-            payload.put("badge", "/logo-192.png");
+            payload.put("badge", badge);
             if (extraData != null && extraData.get("image") != null) {
                 payload.put("image", extraData.get("image").toString());
+            }
+            if (extraData != null && extraData.get("tag") != null) {
+                payload.put("tag", extraData.get("tag").toString());
             }
             
             Map<String, Object> data = new HashMap<>();
