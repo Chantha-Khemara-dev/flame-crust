@@ -11,7 +11,7 @@
 .pd-main {
   flex: 1 1 0%;
   padding-top: calc(4.5rem + env(safe-area-inset-top));
-  padding-bottom: 7rem;
+  padding-bottom: calc(9.5rem + env(safe-area-inset-bottom, 1rem));
 }
 
 @media (min-width: 640px) {
