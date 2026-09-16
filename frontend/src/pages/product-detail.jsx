@@ -38,6 +38,38 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import "./product-detail.css";
 
+/**
+ * Parses comment text:
+ * - Converts URLs (http/https/www) into clickable <a> links
+ * - Emojis render naturally as Unicode in React
+ */
+function renderCommentText(text) {
+  if (!text) return null;
+  // Split keeps captured groups in the result: [text, url, text, url, ...]
+  const urlRegex = /(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi;
+  const parts = text.split(urlRegex);
+  if (parts.length === 1) return text; // no links found
+  return parts.map((part, i) => {
+    if (!part) return null;
+    // Odd indices are the captured URL groups from split()
+    if (i % 2 === 1) {
+      const href = part.startsWith("http") ? part : `https://${part}`;
+      return (
+        <a
+          key={i}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline break-all"
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+}
+
 function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -1300,7 +1332,7 @@ function ProductDetailPage() {
 
                                     {/* Comment Text */}
                                     <p className="text-xs sm:text-sm text-foreground/90 mt-1 leading-relaxed whitespace-pre-wrap">
-                                      {review.comment}
+                                      {renderCommentText(review.comment)}
                                     </p>
 
                                     {/* Facebook Floating Reaction Pill at Bottom-Right */}
@@ -1423,7 +1455,7 @@ function ProductDetailPage() {
                                                         )}
                                                       </div>
                                                       <p className="text-xs text-foreground/90 mt-0.5 leading-relaxed whitespace-pre-wrap">
-                                                        {rep.comment}
+                                                        {renderCommentText(rep.comment)}
                                                       </p>
 
                                                       {/* Floating Reaction Pill at Bottom-Right of Reply Bubble */}

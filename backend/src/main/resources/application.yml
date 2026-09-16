@@ -13,7 +13,7 @@ spring:
     clean-disabled: false
   
   datasource:
-    url: ${MYSQL_URL:${SPRING_DATASOURCE_URL:jdbc:mysql://spring-mysql-db-flame-crust.k.aivencloud.com:25875/defaultdb?sslMode=REQUIRED&serverTimezone=UTC}}
+    url: ${MYSQL_URL:${SPRING_DATASOURCE_URL:jdbc:mysql://spring-mysql-db-flame-crust.k.aivencloud.com:25875/defaultdb?sslMode=REQUIRED&serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8}}
     username: ${MYSQL_USER:${SPRING_DATASOURCE_USERNAME:avnadmin}}
     password: ${MYSQL_PASSWORD:${SPRING_DATASOURCE_PASSWORD:}}
     driver-class-name: com.mysql.cj.jdbc.Driver
