@@ -1581,6 +1581,9 @@ function ProductDetailPage() {
                 </div>
               </section>
             )}
+            
+            {/* Extra spacer to prevent mobile sticky bottom bar from covering the last element */}
+            <div className="h-32 sm:h-4 w-full block" aria-hidden="true"></div>
           </div>
         </PageTransition>
       </main>

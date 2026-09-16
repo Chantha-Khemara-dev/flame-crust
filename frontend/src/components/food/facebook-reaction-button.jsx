@@ -125,23 +125,41 @@ export function FacebookReactionButton({
     const deltaY = Math.abs((endTouch?.clientY || touchStartPos.current.y) - touchStartPos.current.y);
 
     if (isDockOpen) {
+      // Check if user directly tapped an emoji button without sliding
+      const targetEl = e.target;
+      const emojiBtn = targetEl?.closest("[data-reaction-emoji]");
+      
+      if (emojiBtn && duration < 500 && deltaX < 15 && deltaY < 15) {
+        // Direct tap on an emoji
+        const emoji = emojiBtn.getAttribute("data-reaction-emoji");
+        onSelectReaction(emoji);
+        setIsDockOpen(false);
+        setHighlightedEmoji(null);
+        if (e.cancelable) e.preventDefault();
+        return;
+      }
+
       // If user was sliding and released on an emoji
       if (highlightedEmoji) {
         onSelectReaction(highlightedEmoji);
         setIsDockOpen(false);
         setHighlightedEmoji(null);
+        if (e.cancelable) e.preventDefault();
       } else {
-        // Released outside emojis, auto-close after 350ms
+        // Released outside emojis, auto-close after 350ms (or allow click to propagate)
         setTimeout(() => {
           setIsDockOpen(false);
           setHighlightedEmoji(null);
         }, 350);
       }
-      if (e.cancelable) e.preventDefault();
     } else {
       // Quick tap (< 240ms) without triggering dock -> toggle like
       if (duration < 240 && deltaX < 12 && deltaY < 12) {
-        onSelectReaction(userReaction ? userReaction.emoji : "👍");
+        // Make sure we didn't tap the toggle arrow
+        const targetEl = e.target;
+        if (!targetEl?.closest(".reaction-dock-toggle")) {
+          onSelectReaction(userReaction ? userReaction.emoji : "👍");
+        }
       }
     }
 
@@ -217,7 +235,7 @@ export function FacebookReactionButton({
             setIsDockOpen((prev) => !prev);
           }}
           className={cn(
-            "text-muted-foreground/60 hover:text-foreground cursor-pointer px-0.5 transition-transform",
+            "reaction-dock-toggle text-muted-foreground/60 hover:text-foreground cursor-pointer px-0.5 transition-transform",
             size === "sm" ? "text-[9px]" : "text-[10px]",
             isDockOpen && "rotate-180"
           )}
