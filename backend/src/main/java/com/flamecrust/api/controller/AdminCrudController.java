@@ -208,6 +208,7 @@ public class AdminCrudController {
                 if (!mutableBody.containsKey("rating") || mutableBody.get("rating") == null) {
                     mutableBody.put("rating", 5.0);
                 }
+            }
             if ("review_reactions".equalsIgnoreCase(resource)) {
                 String userIdentifier = mutableBody.get("user_identifier") != null ? mutableBody.get("user_identifier").toString().trim() : null;
                 Object revIdObj = mutableBody.get("review_id");

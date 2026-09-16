@@ -33,7 +33,7 @@ import { PageTransition } from "@/components/shared/page-transition";
 import { getImageUrl, getCachedFoodItems, fetchFoodItems } from "@/lib/food-api";
 import { DEFAULT_FALLBACK_PRODUCTS, DEFAULT_REVIEWS } from "@/lib/food-data";
 import { useCart } from "@/lib/cart-store";
-import { list, get, getProducts, create, toggleReviewReaction } from "@/lib/api";
+import { list, get, getProducts, create, toggleReviewReaction, getApiUrl } from "@/lib/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import "./product-detail.css";
@@ -320,80 +320,82 @@ function ProductDetailPage() {
 
   // Live synchronization of reviews, review_replies, and reactions across phone and laptop
   const syncReviewsData = useCallback(async () => {
+    if (!id) return;
     try {
       const ts = Date.now();
-      const [repliesRes, reactionsRes] = await Promise.allSettled([
-        list("review_replies", { _t: ts }, { noCache: true }),
-        list("review_reactions", { _t: ts }, { noCache: true })
-      ]);
+      const res = await globalThis.fetch(`${getApiUrl()}/products/${id}/reviews-sync?_t=${ts}`, { cache: "no-store" });
+      if (!res.ok) throw new Error("Sync failed");
+      const data = await res.json();
+      
+      const { reviews = [], replies = [], reactions = [] } = data;
 
-      if (repliesRes.status === "fulfilled" && Array.isArray(repliesRes.value)) {
-        const repliesMap = {};
-        const sortedReplies = [...repliesRes.value].sort((a, b) => {
-          const timeA = new Date(a.created_at || 0).getTime() || Number(a.id || 0);
-          const timeB = new Date(b.created_at || 0).getTime() || Number(b.id || 0);
-          return timeA - timeB;
-        });
+      // 1. Sync Reviews
+      setAllReviews(reviews);
 
-        sortedReplies.forEach(rep => {
-          const rId = String(rep.review_id || rep.reviewId);
-          if (!repliesMap[rId]) repliesMap[rId] = [];
-          repliesMap[rId].push(rep);
-        });
+      // 2. Sync Replies
+      const repliesMap = {};
+      const sortedReplies = [...replies].sort((a, b) => {
+        const timeA = new Date(a.createdAt || a.created_at || 0).getTime() || Number(a.id || 0);
+        const timeB = new Date(b.createdAt || b.created_at || 0).getTime() || Number(b.id || 0);
+        return timeA - timeB;
+      });
 
-        setReviewReplies(repliesMap);
-        try {
-          localStorage.setItem("flame_crust_review_replies", JSON.stringify(repliesMap));
-        } catch (e) {}
-      }
+      sortedReplies.forEach(rep => {
+        const rId = String(rep.reviewId || rep.review_id);
+        if (!repliesMap[rId]) repliesMap[rId] = [];
+        repliesMap[rId].push(rep);
+      });
+      setReviewReplies(repliesMap);
+      try {
+        localStorage.setItem("flame_crust_review_replies", JSON.stringify(repliesMap));
+      } catch (e) {}
 
-      if (reactionsRes.status === "fulfilled" && Array.isArray(reactionsRes.value)) {
-        const clientId = getClientIdentifier();
-        const reactionsMap = {};
-        const repReactionsMap = {};
+      // 3. Sync Reactions
+      const clientId = getClientIdentifier();
+      const reactionsMap = {};
+      const repReactionsMap = {};
 
-        reactionsRes.value.forEach(react => {
-          const revId = react.review_id || react.reviewId;
-          const repId = react.reply_id || react.replyId;
-          const emoji = react.emoji;
-          const isMe = (react.user_identifier === clientId || react.userIdentifier === clientId);
+      reactions.forEach(react => {
+        const revId = react.reviewId || react.review_id;
+        const repId = react.replyId || react.reply_id;
+        const emoji = react.emoji;
+        const isMe = (react.userIdentifier === clientId || react.user_identifier === clientId);
 
-          if (repId) {
-            const key = String(repId);
-            if (!repReactionsMap[key]) repReactionsMap[key] = { userReacted: [] };
-            repReactionsMap[key][emoji] = (repReactionsMap[key][emoji] || 0) + 1;
-            if (isMe && !repReactionsMap[key].userReacted.includes(emoji)) {
-              repReactionsMap[key].userReacted.push(emoji);
-            }
-          } else if (revId) {
-            const key = String(revId);
-            if (!reactionsMap[key]) reactionsMap[key] = { userReacted: [] };
-            reactionsMap[key][emoji] = (reactionsMap[key][emoji] || 0) + 1;
-            if (isMe && !reactionsMap[key].userReacted.includes(emoji)) {
-              reactionsMap[key].userReacted.push(emoji);
-            }
+        if (repId) {
+          const key = String(repId);
+          if (!repReactionsMap[key]) repReactionsMap[key] = { userReacted: [] };
+          repReactionsMap[key][emoji] = (repReactionsMap[key][emoji] || 0) + 1;
+          if (isMe && !repReactionsMap[key].userReacted.includes(emoji)) {
+            repReactionsMap[key].userReacted.push(emoji);
           }
-        });
+        } else if (revId) {
+          const key = String(revId);
+          if (!reactionsMap[key]) reactionsMap[key] = { userReacted: [] };
+          reactionsMap[key][emoji] = (reactionsMap[key][emoji] || 0) + 1;
+          if (isMe && !reactionsMap[key].userReacted.includes(emoji)) {
+            reactionsMap[key].userReacted.push(emoji);
+          }
+        }
+      });
 
-        setReviewReactions(reactionsMap);
-        setReplyReactions(repReactionsMap);
-        try {
-          localStorage.setItem("flame_crust_review_reactions", JSON.stringify(reactionsMap));
-          localStorage.setItem("flame_crust_reply_reactions", JSON.stringify(repReactionsMap));
-        } catch (e) {}
-      }
+      setReviewReactions(reactionsMap);
+      setReplyReactions(repReactionsMap);
+      try {
+        localStorage.setItem("flame_crust_review_reactions", JSON.stringify(reactionsMap));
+        localStorage.setItem("flame_crust_reply_reactions", JSON.stringify(repReactionsMap));
+      } catch (e) {}
     } catch (e) {
       console.warn("Reviews live sync error:", e);
     }
-  }, []);
+  }, [id]);
 
-  // Background live polling every 3.5s so both phone and laptop see real-time updates
+  // Background live polling every 8.5s so both phone and laptop see real-time updates without killing battery
   useEffect(() => {
     syncReviewsData();
     const interval = setInterval(() => {
       if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       syncReviewsData();
-    }, 3500);
+    }, 8500);
 
     const handleVis = () => {
       if (document.visibilityState === "visible") syncReviewsData();
