@@ -111,6 +111,10 @@ function ProductDetailPage() {
   const [replyTextMap, setReplyTextMap] = useState({});
   const [openQuickEmojiReviewId, setOpenQuickEmojiReviewId] = useState(null);
 
+  // Guard: track the last time a reaction was toggled so syncReviewsData
+  // doesn't overwrite optimistic state before the backend has committed.
+  const lastReactionTime = useRef(0);
+
   const currentAuthUser = (() => {
     try {
       const admin = JSON.parse(localStorage.getItem("adminAuth") || "null");
@@ -157,6 +161,7 @@ function ProductDetailPage() {
 
   const handleReaction = async (reviewId, emoji) => {
     const clientId = getClientIdentifier();
+    lastReactionTime.current = Date.now();
 
     setReviewReactions(prev => {
       const current = prev[reviewId] || { userReacted: [] };
@@ -193,7 +198,8 @@ function ProductDetailPage() {
         emoji,
         user_identifier: clientId,
       });
-      syncReviewsData();
+      // Delay sync so the backend has time to commit the reaction
+      setTimeout(() => syncReviewsData(), 3500);
     } catch (e) {
       console.warn("DB reaction toggle error:", e);
     }
@@ -201,6 +207,7 @@ function ProductDetailPage() {
 
   const handleReplyReaction = async (replyId, emoji) => {
     const clientId = getClientIdentifier();
+    lastReactionTime.current = Date.now();
 
     setReplyReactions((prev) => {
       const current = prev[replyId] || { userReacted: [] };
@@ -237,7 +244,8 @@ function ProductDetailPage() {
         emoji,
         user_identifier: clientId,
       });
-      syncReviewsData();
+      // Delay sync so the backend has time to commit the reaction
+      setTimeout(() => syncReviewsData(), 3500);
     } catch (e) {
       console.warn("DB reply reaction toggle error:", e);
     }
@@ -350,40 +358,45 @@ function ProductDetailPage() {
         localStorage.setItem("flame_crust_review_replies", JSON.stringify(repliesMap));
       } catch (e) {}
 
-      // 3. Sync Reactions
-      const clientId = getClientIdentifier();
-      const reactionsMap = {};
-      const repReactionsMap = {};
+      // 3. Sync Reactions — but ONLY if no reaction was toggled in the last 3s.
+      // This prevents the race condition where the backend hasn't committed yet
+      // and the sync response would overwrite the user's optimistic emoji update.
+      const reactionAge = Date.now() - lastReactionTime.current;
+      if (reactionAge > 3000) {
+        const clientId = getClientIdentifier();
+        const reactionsMap = {};
+        const repReactionsMap = {};
 
-      reactions.forEach(react => {
-        const revId = react.reviewId || react.review_id;
-        const repId = react.replyId || react.reply_id;
-        const emoji = react.emoji;
-        const isMe = (react.userIdentifier === clientId || react.user_identifier === clientId);
+        reactions.forEach(react => {
+          const revId = react.reviewId || react.review_id;
+          const repId = react.replyId || react.reply_id;
+          const emoji = react.emoji;
+          const isMe = (react.userIdentifier === clientId || react.user_identifier === clientId);
 
-        if (repId) {
-          const key = String(repId);
-          if (!repReactionsMap[key]) repReactionsMap[key] = { userReacted: [] };
-          repReactionsMap[key][emoji] = (repReactionsMap[key][emoji] || 0) + 1;
-          if (isMe && !repReactionsMap[key].userReacted.includes(emoji)) {
-            repReactionsMap[key].userReacted.push(emoji);
+          if (repId) {
+            const key = String(repId);
+            if (!repReactionsMap[key]) repReactionsMap[key] = { userReacted: [] };
+            repReactionsMap[key][emoji] = (repReactionsMap[key][emoji] || 0) + 1;
+            if (isMe && !repReactionsMap[key].userReacted.includes(emoji)) {
+              repReactionsMap[key].userReacted.push(emoji);
+            }
+          } else if (revId) {
+            const key = String(revId);
+            if (!reactionsMap[key]) reactionsMap[key] = { userReacted: [] };
+            reactionsMap[key][emoji] = (reactionsMap[key][emoji] || 0) + 1;
+            if (isMe && !reactionsMap[key].userReacted.includes(emoji)) {
+              reactionsMap[key].userReacted.push(emoji);
+            }
           }
-        } else if (revId) {
-          const key = String(revId);
-          if (!reactionsMap[key]) reactionsMap[key] = { userReacted: [] };
-          reactionsMap[key][emoji] = (reactionsMap[key][emoji] || 0) + 1;
-          if (isMe && !reactionsMap[key].userReacted.includes(emoji)) {
-            reactionsMap[key].userReacted.push(emoji);
-          }
-        }
-      });
+        });
 
-      setReviewReactions(reactionsMap);
-      setReplyReactions(repReactionsMap);
-      try {
-        localStorage.setItem("flame_crust_review_reactions", JSON.stringify(reactionsMap));
-        localStorage.setItem("flame_crust_reply_reactions", JSON.stringify(repReactionsMap));
-      } catch (e) {}
+        setReviewReactions(reactionsMap);
+        setReplyReactions(repReactionsMap);
+        try {
+          localStorage.setItem("flame_crust_review_reactions", JSON.stringify(reactionsMap));
+          localStorage.setItem("flame_crust_reply_reactions", JSON.stringify(repReactionsMap));
+        } catch (e) {}
+      }
     } catch (e) {
       console.warn("Reviews live sync error:", e);
     }
