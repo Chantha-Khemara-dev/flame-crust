@@ -366,17 +366,13 @@ function Navbar() {
   return (
     <header
       className={cn(
-        "fixed top-0 inset-x-0 z-40 transition-colors duration-200 pt-[env(safe-area-inset-top)]",
+        "fixed top-0 inset-x-0 z-40 transition-colors duration-200 pt-[env(safe-area-inset-top)] transform-gpu will-change-[background-color]",
         mobileOpen
           ? "bg-background border-b border-border/40 shadow-xs"
           : scrolled
             ? "bg-background/95 backdrop-blur-md border-b border-border/40 shadow-xs"
             : "bg-transparent border-transparent shadow-none"
       )}
-      style={{
-        backdropFilter: scrolled ? "blur(12px)" : "none",
-        WebkitBackdropFilter: scrolled ? "blur(12px)" : "none"
-      }}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 sm:h-20 gap-2 sm:gap-4">

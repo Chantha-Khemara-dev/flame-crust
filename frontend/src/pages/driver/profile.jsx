@@ -822,7 +822,7 @@ export default function DriverProfilePage() {
               /* ========================================================================= */
               /* 2. DEDICATED SUB-PAGE VIEWS WITH CLEAN INLINE BACK BUTTON HEADER          */
               /* ========================================================================= */
-              <div className="space-y-4 sm:space-y-6 animate-fade-in">
+              <div className="space-y-4 sm:space-y-6 animate-in fade-in-50 duration-200">
                 
                 {/* Unified Sub-Page Header with Inline Back Arrow */}
                 <div className="flex items-center gap-3 pb-1">

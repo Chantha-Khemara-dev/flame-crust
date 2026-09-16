@@ -807,7 +807,7 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen flex flex-col bg-background selection:bg-primary/20">
       <Navbar />
-      <main className="flex-1 pt-[calc(4.75rem+env(safe-area-inset-top,0px))] sm:pt-20 lg:pt-22 pb-[calc(10.5rem+env(safe-area-inset-bottom,0px))] sm:pb-24">
+      <main className="flex-1 pt-[calc(4.75rem+env(safe-area-inset-top,0px))] sm:pt-20 lg:pt-22 pb-[calc(10.5rem+env(safe-area-inset-bottom,0px))] sm:pb-24 transform-gpu">
         <PageTransition>
           <div className={cn(
             "mx-auto px-3 sm:px-6 lg:px-8 space-y-3.5 sm:space-y-5 transition-all",
@@ -1203,7 +1203,7 @@ export default function ProfilePage() {
               /* ========================================================================= */
               /* 2. DEDICATED SUB-PAGE VIEWS WITH CLEAN INLINE BACK BUTTON HEADER          */
               /* ========================================================================= */
-              <div className="space-y-4 sm:space-y-6 animate-fade-in">
+              <div className="space-y-4 sm:space-y-6 animate-in fade-in-50 duration-200">
                 
                 {/* Unified Sub-Page Header with Inline Back Arrow */}
                 <div className="flex items-center gap-3 pb-1">
@@ -1338,7 +1338,7 @@ export default function ProfilePage() {
                         Update your login password. Leaving these fields blank keeps your current password unchanged.
                       </p>
                       <form onSubmit={handleUpdateSecurity} className="space-y-4 sm:space-y-6" autoComplete="off">
-                        <div className="space-y-3 sm:space-y-4 max-w-md animate-fade-in">
+                        <div className="space-y-3 sm:space-y-4 max-w-md animate-in fade-in-50 duration-200">
                           {hasPassword && (
                             <div className="space-y-1.5">
                               <div className="flex justify-between items-center">
@@ -1612,7 +1612,7 @@ export default function ProfilePage() {
                     </div>
 
                     {showAddForm && (
-                      <form onSubmit={handleCreateAddress} className="bg-card border border-border/70 rounded-2xl sm:rounded-[24px] p-4 sm:p-6 mb-4 shadow-warm space-y-4 animate-fade-in">
+                      <form onSubmit={handleCreateAddress} className="bg-card border border-border/70 rounded-2xl sm:rounded-[24px] p-4 sm:p-6 mb-4 shadow-warm space-y-4 animate-in fade-in-50 duration-200">
                         <div className="flex items-center justify-between pb-3 border-b border-border/60">
                           <h4 className="font-semibold text-foreground text-sm sm:text-base">New Address Location</h4>
                           <button 
@@ -1953,8 +1953,8 @@ export default function ProfilePage() {
                                 {filteredList.map(coupon => {
                                   const isLucky = coupon.isLuckyDraw || String(coupon.code).includes("-");
                                   return (
-                                    <div key={coupon.id || coupon.code} className="bg-card border border-emerald-500/30 rounded-2xl p-3.5 sm:p-4 relative overflow-hidden shadow-warm flex flex-col justify-between group hover:border-emerald-500/50 transition-all">
-                                      <div className="absolute -right-6 -top-6 size-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                                    <div key={coupon.id || coupon.code} className="bg-card border border-emerald-500/30 rounded-2xl p-3.5 sm:p-4 relative overflow-hidden shadow-warm flex flex-col justify-between group hover:border-emerald-500/50 transition-all contain-content transform-gpu">
+                                      <div className="hidden sm:block absolute -right-6 -top-6 size-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
                                       <div>
                                         <div className="flex items-center justify-between gap-2 mb-2">
                                           <div className="flex items-center gap-1.5 flex-wrap">

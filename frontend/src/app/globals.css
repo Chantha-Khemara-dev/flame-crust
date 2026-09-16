@@ -108,10 +108,10 @@
 @layer base {
   html {
     scrollbar-gutter: stable;
-    overflow-y: scroll;
-    overflow-x: hidden;
+    overflow-x: clip;
     -webkit-tap-highlight-color: transparent;
     text-rendering: optimizeSpeed;
+    -webkit-text-size-adjust: 100%;
   }
   * {
     @apply border-border outline-ring/50;
@@ -119,22 +119,39 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-inter), system-ui, sans-serif;
-    overflow-x: hidden;
+    overflow-x: clip;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-overflow-scrolling: touch;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-playfair), Georgia, serif;
   }
 }
 
-/* Mobile GPU & Battery Optimization: soften excessive blur on small devices */
+/* Mobile GPU & Battery Optimization: soften excessive blur on small devices & stabilize layer compositing */
 @media (max-width: 768px) {
+  .backdrop-blur-sm,
+  .backdrop-blur,
   .backdrop-blur-md,
   .backdrop-blur-lg,
-  .backdrop-blur-xl {
+  .backdrop-blur-xl,
+  .backdrop-blur-2xl {
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
+  }
+}
+
+/* Prevent iOS WebKit tile dropping / black voids during fast momentum scrolling */
+@supports (-webkit-touch-callout: none) {
+  body {
+    -webkit-overflow-scrolling: touch;
+  }
+  main {
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
   }
 }
 
