@@ -325,9 +325,12 @@ export function OrderChatModal({
     (navigator.maxTouchPoints > 1 && /Macintosh/i.test(navigator.userAgent || ""))
   );
   const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const [cameraFacingMode, setCameraFacingMode] = useState("environment"); // "environment" (rear) or "user" (front)
+  const [cameraFacingMode, setCameraFacingMode] = useState(isMobile ? "environment" : "user");
+  const [cameraDevices, setCameraDevices] = useState([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const [cameraLoading, setCameraLoading] = useState(false);
   const [cameraError, setCameraError] = useState(null);
+  const [cameraStream, setCameraStream] = useState(null);
   const videoRef = useRef(null);
   const cameraStreamRef = useRef(null);
   const cameraInputRef = useRef(null);
@@ -337,12 +340,13 @@ export function OrderChatModal({
       cameraStreamRef.current.getTracks().forEach(t => t.stop());
       cameraStreamRef.current = null;
     }
+    setCameraStream(null);
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
   };
 
-  const startCamera = async (facing = cameraFacingMode) => {
+  const startCamera = async (facing = cameraFacingMode, overrideDeviceId = selectedDeviceId) => {
     setCameraLoading(true);
     setCameraError(null);
     stopCameraStream();
@@ -352,16 +356,88 @@ export function OrderChatModal({
         throw new Error("Browser does not support direct webcam access");
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: facing },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
-      });
+      // Query available video devices
+      let currentDevices = [];
+      try {
+        const devs = await navigator.mediaDevices.enumerateDevices();
+        currentDevices = devs.filter(d => d.kind === "videoinput");
+        setCameraDevices(currentDevices);
+      } catch (e) {}
+
+      // Pick target device ID
+      let devId = overrideDeviceId;
+      if (!devId && currentDevices.length > 0) {
+        if (!isMobile) {
+          // On laptop/desktop: Prefer Integrated / Built-in / Webcam over virtual cameras like Iriun/OBS
+          const realCam = currentDevices.find(d => {
+            const lbl = (d.label || "").toLowerCase();
+            return (lbl.includes("integrated") || lbl.includes("camera") || lbl.includes("webcam") || lbl.includes("built-in")) 
+              && !lbl.includes("iriun") && !lbl.includes("obs") && !lbl.includes("droid");
+          });
+          devId = realCam ? realCam.deviceId : currentDevices[0].deviceId;
+        } else {
+          devId = currentDevices[0].deviceId;
+        }
+        setSelectedDeviceId(devId);
+      }
+
+      // Build video constraints
+      let constraints;
+      if (devId) {
+        constraints = {
+          video: {
+            deviceId: { exact: devId },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        };
+      } else if (isMobile) {
+        constraints = {
+          video: {
+            facingMode: { ideal: facing },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        };
+      } else {
+        constraints = {
+          video: {
+            facingMode: facing ? { ideal: facing } : undefined,
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        };
+      }
+
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (firstErr) {
+        console.warn("Target constraint failed, falling back to generic video stream:", firstErr);
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      }
+
+      // Update devices list now that permission is granted to get populated labels
+      try {
+        const refreshedDevs = await navigator.mediaDevices.enumerateDevices();
+        const refreshedVDevs = refreshedDevs.filter(d => d.kind === "videoinput");
+        setCameraDevices(refreshedVDevs);
+        
+        const track = stream.getVideoTracks()[0];
+        if (track) {
+          const settings = track.getSettings();
+          if (settings.deviceId) {
+            setSelectedDeviceId(settings.deviceId);
+          }
+        }
+      } catch (e) {}
 
       cameraStreamRef.current = stream;
+      setCameraStream(stream);
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.setAttribute("playsinline", "true");
@@ -378,14 +454,22 @@ export function OrderChatModal({
 
   useEffect(() => {
     if (isCameraOpen) {
-      startCamera(cameraFacingMode);
+      startCamera(cameraFacingMode, selectedDeviceId);
     } else {
       stopCameraStream();
     }
     return () => {
       stopCameraStream();
     };
-  }, [isCameraOpen, cameraFacingMode]);
+  }, [isCameraOpen]);
+
+  // Keep video.srcObject bound whenever cameraStream is active
+  useEffect(() => {
+    if (videoRef.current && cameraStream) {
+      videoRef.current.srcObject = cameraStream;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [cameraStream, isCameraOpen]);
 
   useEffect(() => {
     if (!open && isCameraOpen) {
@@ -438,8 +522,18 @@ export function OrderChatModal({
   };
 
   const handleToggleFacingMode = () => {
-    const nextMode = cameraFacingMode === "environment" ? "user" : "environment";
-    setCameraFacingMode(nextMode);
+    if (cameraDevices.length > 1) {
+      const currentIdx = cameraDevices.findIndex(d => d.deviceId === selectedDeviceId);
+      const nextIdx = (currentIdx + 1) % cameraDevices.length;
+      const nextDevice = cameraDevices[nextIdx];
+      setSelectedDeviceId(nextDevice.deviceId);
+      startCamera(cameraFacingMode, nextDevice.deviceId);
+      toast.info(`ប្តូរទៅ: ${nextDevice.label || `Camera ${nextIdx + 1}`}`);
+    } else {
+      const nextMode = cameraFacingMode === "environment" ? "user" : "environment";
+      setCameraFacingMode(nextMode);
+      startCamera(nextMode, null);
+    }
   };
 
   const handleOpenNativeCamera = () => {
@@ -447,6 +541,9 @@ export function OrderChatModal({
     stopCameraStream();
     cameraInputRef.current?.click();
   };
+
+  const activeDevice = cameraDevices.find(d => d.deviceId === selectedDeviceId);
+  const activeDeviceLabel = activeDevice?.label || (cameraFacingMode === "user" ? "កាមេរ៉ាមុខ (Webcam)" : "កាមេរ៉ាក្រោយ (Rear Camera)");
 
   // Voice Chat / Voice Note ("void chat") states & refs
   const [isRecording, setIsRecording] = useState(false);
@@ -1296,14 +1393,23 @@ export function OrderChatModal({
             className="max-w-md p-0 overflow-hidden bg-zinc-950 border-zinc-800 text-white rounded-3xl z-[130] shadow-2xl"
           >
             <DialogHeader className="p-4 pb-2 flex flex-row items-center justify-between border-b border-white/10">
-              <div className="flex items-center gap-2">
-                <div className="size-8 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="size-8 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center shrink-0">
                   <Camera className="size-4" />
                 </div>
-                <div>
-                  <DialogTitle className="text-sm font-bold text-white">ថតរូប (Take Photo)</DialogTitle>
-                  <DialogDescription className="text-[11px] text-zinc-400">
-                    {cameraFacingMode === "environment" ? "កាមេរ៉ាក្រោយ (Rear Camera)" : "កាមេរ៉ាមុខ (Front Camera)"}
+                <div className="min-w-0">
+                  <DialogTitle className="text-sm font-bold text-white flex items-center gap-1.5 truncate">
+                    <span>ថតរូប (Take Photo)</span>
+                    {activeDeviceLabel && (
+                      <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-white/10 text-zinc-300 max-w-[130px] sm:max-w-[180px] truncate">
+                        {activeDeviceLabel}
+                      </span>
+                    )}
+                  </DialogTitle>
+                  <DialogDescription className="text-[11px] text-zinc-400 truncate">
+                    {cameraDevices.length > 1
+                      ? `កាមេរ៉ា ${Math.max(1, cameraDevices.findIndex(d => d.deviceId === selectedDeviceId) + 1)}/${cameraDevices.length} • ចុច "ប្តូរកាមេរ៉ា" ដើម្បីផ្លាស់ប្តូរ`
+                      : (cameraFacingMode === "user" ? "កាមេរ៉ាមុខ / Webcam" : "កាមេរ៉ាក្រោយ (Rear Camera)")}
                   </DialogDescription>
                 </div>
               </div>
@@ -1313,7 +1419,7 @@ export function OrderChatModal({
                   setIsCameraOpen(false);
                   stopCameraStream();
                 }}
-                className="size-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-zinc-300 hover:text-white transition-colors cursor-pointer"
+                className="size-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-zinc-300 hover:text-white transition-colors cursor-pointer shrink-0 ml-2"
               >
                 <X className="size-4" />
               </button>
@@ -1373,6 +1479,22 @@ export function OrderChatModal({
               )}
             </div>
 
+            {/* Camera Status & Quick Switch Bar */}
+            <div className="px-3.5 py-1.5 bg-zinc-900 border-t border-white/5 flex items-center justify-between text-[11px] text-zinc-400">
+              <span className="truncate">
+                {cameraDevices.length > 1 ? `កំពុងប្រើ: ${activeDeviceLabel}` : "បើអេក្រង់ខ្មៅ សូមពិនិត្យ Privacy Shutter លើ Laptop"}
+              </span>
+              {cameraDevices.length > 1 && (
+                <button
+                  type="button"
+                  onClick={handleToggleFacingMode}
+                  className="text-primary hover:underline text-[11px] font-semibold shrink-0 ml-2 cursor-pointer"
+                >
+                  ប្តូរកាមេរ៉ា ➔
+                </button>
+              )}
+            </div>
+
             {/* Bottom Camera Controls */}
             <div className="p-4 bg-zinc-950 border-t border-white/10 flex items-center justify-around">
               {/* Native device camera fallback */}
@@ -1411,12 +1533,12 @@ export function OrderChatModal({
                 onClick={handleToggleFacingMode}
                 disabled={cameraLoading || Boolean(cameraError)}
                 className="flex flex-col items-center gap-1 text-[10px] text-zinc-400 hover:text-white transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
-                title="ប្តូរកាមេរ៉ាមុខ/ក្រោយ"
+                title="ប្តូរកាមេរ៉ា"
               >
                 <div className="size-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white">
                   <SwitchCamera className="size-4.5" />
                 </div>
-                <span>ប្តូរមុខ/ក្រោយ</span>
+                <span>{cameraDevices.length > 1 ? `ប្តូរកាមេរ៉ា (${cameraDevices.length})` : "ប្តូរមុខ/ក្រោយ"}</span>
               </button>
             </div>
           </DialogContent>
