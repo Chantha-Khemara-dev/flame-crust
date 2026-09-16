@@ -120,7 +120,7 @@ export function Footer({ hideNewsletter = false }) {
           <div className="col-span-2 lg:col-span-2">
             <Link to="/" className="flex items-center">
               <img
-                src="/images/library/logo.jpg"
+                src="/logoPizza.png"
                 alt="Flame & Crust logo"
                 className="h-14 sm:h-16 w-auto object-contain"
               />

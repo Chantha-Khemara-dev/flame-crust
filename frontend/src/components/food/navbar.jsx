@@ -381,7 +381,7 @@ function Navbar() {
 
             <Link to="/" className="flex items-center group" onClick={() => setMobileOpen(false)}>
               <img
-                src="/images/library/logo.jpg"
+                src="/logoPizza.png"
                 alt="Flame & Crust logo"
                 className="h-10 sm:h-16 w-auto object-contain"
               />
