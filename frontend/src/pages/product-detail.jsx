@@ -321,9 +321,10 @@ function ProductDetailPage() {
   // Live synchronization of reviews, review_replies, and reactions across phone and laptop
   const syncReviewsData = useCallback(async () => {
     try {
+      const ts = Date.now();
       const [repliesRes, reactionsRes] = await Promise.allSettled([
-        list("review_replies", {}, { noCache: true }),
-        list("review_reactions", {}, { noCache: true })
+        list("review_replies", { _t: ts }, { noCache: true }),
+        list("review_reactions", { _t: ts }, { noCache: true })
       ]);
 
       if (repliesRes.status === "fulfilled" && Array.isArray(repliesRes.value)) {

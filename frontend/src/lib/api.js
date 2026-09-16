@@ -181,11 +181,18 @@ async function request(path, options = {}) {
     }
 
     try {
-      const response = await globalThis.fetch(fullUrl, {
+      const fetchOptions = {
         ...options,
         signal,
         headers
-      });
+      };
+      
+      // Explicitly tell the browser not to use HTTP caching if requested
+      if (options.noCache) {
+        fetchOptions.cache = "no-store";
+      }
+
+      const response = await globalThis.fetch(fullUrl, fetchOptions);
 
       if (!response.ok) {
         let message = `API request failed: ${response.status} ${response.statusText}`;
@@ -504,7 +511,7 @@ export async function deleteOrderMessage(messageId, senderType = "CUSTOMER") {
 
 export async function toggleReviewReaction(data) {
   try {
-    const res = await globalThis.fetch(`${API_URL}/auth/review-reactions/toggle`, {
+    const res = await globalThis.fetch(`${getApiUrl()}/auth/review-reactions/toggle`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
