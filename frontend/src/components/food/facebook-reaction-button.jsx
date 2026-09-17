@@ -21,7 +21,7 @@ export function FacebookReactionButton({
   FB_REACTIONS = [],
   userReaction = null,
   onSelectReaction,
-  size = "md", // "md" for reviews, "sm" for replies
+  size = "md",
   className = ""
 }) {
   const [isDockOpen, setIsDockOpen] = useState(false);
@@ -58,7 +58,6 @@ export function FacebookReactionButton({
     };
   }, [isDockOpen]);
 
-  // Clean up timers on unmount
   useEffect(() => {
     return () => {
       if (longPressTimer.current) clearTimeout(longPressTimer.current);
@@ -67,7 +66,7 @@ export function FacebookReactionButton({
     };
   }, []);
 
-  // --- MOBILE TOUCH EVENT HANDLERS ---
+  // --- MOBILE TOUCH EVENT HANDLERS (Attached to Main Button) ---
   const handleTouchStart = (e) => {
     isTouchActive.current = true;
     touchStartTime.current = Date.now();
@@ -84,23 +83,25 @@ export function FacebookReactionButton({
   };
 
   const handleTouchMove = (e) => {
+    if (!isTouchActive.current) return;
     const touch = e.touches[0];
     const deltaX = Math.abs(touch.clientX - touchStartPos.current.x);
     const deltaY = Math.abs(touch.clientY - touchStartPos.current.y);
 
     if (!isDockOpen) {
-      // If user scrolls vertically or swipes horizontally before 240ms, cancel long press
+      // If user scrolls before 240ms, cancel long press
       if (deltaY > 10 || deltaX > 12) {
         if (longPressTimer.current) clearTimeout(longPressTimer.current);
       }
       return;
     }
 
-    // Dock is OPEN: User is sliding finger to choose emoji
+    // Dock is OPEN: User is sliding finger
     if (e.cancelable) {
-      e.preventDefault(); // Prevent page scroll while sliding across emoji dock
+      e.preventDefault(); // Prevent scroll while sliding over emojis
     }
 
+    // Find emoji under finger
     const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
     const emojiBtn = targetEl?.closest("[data-reaction-emoji]");
 
@@ -118,47 +119,35 @@ export function FacebookReactionButton({
   };
 
   const handleTouchEnd = (e) => {
+    if (!isTouchActive.current) return;
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    
     const duration = Date.now() - touchStartTime.current;
     const endTouch = e.changedTouches?.[0];
     const deltaX = Math.abs((endTouch?.clientX || touchStartPos.current.x) - touchStartPos.current.x);
     const deltaY = Math.abs((endTouch?.clientY || touchStartPos.current.y) - touchStartPos.current.y);
 
     if (isDockOpen) {
-      // Check if user directly tapped an emoji button without sliding
-      const targetEl = e.target;
-      const emojiBtn = targetEl?.closest("[data-reaction-emoji]");
-      
-      if (emojiBtn && duration < 500 && deltaX < 15 && deltaY < 15) {
-        // Direct tap on an emoji
-        const emoji = emojiBtn.getAttribute("data-reaction-emoji");
-        onSelectReaction(emoji);
-        setIsDockOpen(false);
-        setHighlightedEmoji(null);
-        if (e.cancelable) e.preventDefault();
-        return;
-      }
-
-      // If user was sliding and released on an emoji
+      // If sliding and released on an emoji -> select it
       if (highlightedEmoji) {
         onSelectReaction(highlightedEmoji);
         setIsDockOpen(false);
         setHighlightedEmoji(null);
         if (e.cancelable) e.preventDefault();
       } else {
-        // Released outside emojis, auto-close after 350ms (or allow click to propagate)
-        setTimeout(() => {
+        // If they dragged far away and released -> close dock
+        if (deltaX > 20 || deltaY > 20) {
           setIsDockOpen(false);
-          setHighlightedEmoji(null);
-        }, 350);
+        }
+        // If they just long-pressed and released without moving much -> KEEP dock open
       }
     } else {
-      // Quick tap (< 240ms) without triggering dock -> toggle like
+      // Dock never opened -> it was a short tap
       if (duration < 240 && deltaX < 12 && deltaY < 12) {
-        // Make sure we didn't tap the toggle arrow
         const targetEl = e.target;
         if (!targetEl?.closest(".reaction-dock-toggle")) {
           onSelectReaction(userReaction ? userReaction.emoji : "👍");
+          if (e.cancelable) e.preventDefault();
         }
       }
     }
@@ -201,6 +190,11 @@ export function FacebookReactionButton({
       className={cn("relative inline-flex items-center select-none", className)}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onContextMenu={(e) => {
+        // Prevent native long-press context menu on mobile
+        if (isTouchActive.current) e.preventDefault();
+      }}
+      style={{ WebkitTouchCallout: "none" }}
     >
       {/* Main Reaction Trigger Button */}
       <div
@@ -260,14 +254,12 @@ export function FacebookReactionButton({
             if (closeTimer.current) clearTimeout(closeTimer.current);
           }}
           onMouseLeave={handleMouseLeave}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
         >
           {FB_REACTIONS.map((r) => {
             const isHighlighted = highlightedEmoji === r.emoji;
 
             return (
-              <button
+               <button
                 key={r.id}
                 type="button"
                 data-reaction-emoji={r.emoji}
@@ -277,8 +269,12 @@ export function FacebookReactionButton({
                   setIsDockOpen(false);
                   setHighlightedEmoji(null);
                 }}
-                onMouseEnter={() => setHighlightedEmoji(r.emoji)}
-                onMouseLeave={() => setHighlightedEmoji((prev) => (prev === r.emoji ? null : prev))}
+                onMouseEnter={() => {
+                  if (!isTouchActive.current) setHighlightedEmoji(r.emoji);
+                }}
+                onMouseLeave={() => {
+                  if (!isTouchActive.current) setHighlightedEmoji((prev) => (prev === r.emoji ? null : prev));
+                }}
                 className={cn(
                   "relative rounded-full flex items-center justify-center transition-all duration-150 cursor-pointer touch-manipulation",
                   size === "sm" ? "size-7 sm:size-8 text-lg sm:text-xl" : "size-8 sm:size-9 text-xl sm:text-2xl",
