@@ -247,6 +247,18 @@ export default function ProfilePage() {
           delete merged.password_hash;
           try {
             localStorage.setItem("customerAuth", JSON.stringify(merged));
+            
+            // Sync favorites from database
+            if (data.customer.favorites) {
+              let dbFavs = data.customer.favorites;
+              if (typeof dbFavs === "string") {
+                dbFavs = JSON.parse(dbFavs);
+              }
+              if (Array.isArray(dbFavs)) {
+                localStorage.setItem("customerFavorites", JSON.stringify(dbFavs));
+                window.dispatchEvent(new Event("favoritesChanged"));
+              }
+            }
           } catch (e) {}
           setCustomer(merged);
           setSettingsForm(prev => ({

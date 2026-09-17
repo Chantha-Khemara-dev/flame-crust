@@ -151,14 +151,32 @@ export default function App() {
       }
     };
 
+    const syncFavoritesToDatabase = async () => {
+      try {
+        const authStr = localStorage.getItem("customerAuth");
+        if (!authStr) return;
+        const c = JSON.parse(authStr);
+        if (!c || !c.id) return;
+        
+        const favs = JSON.parse(localStorage.getItem("customerFavorites") || "[]");
+        await fetch(`${API_URL}/auth/customer-update-favorites`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ customerId: c.id, favorites: favs })
+        });
+      } catch (e) {}
+    };
+
     syncLatestCustomerProfile();
     window.addEventListener("focus", syncLatestCustomerProfile);
+    window.addEventListener("favoritesChanged", syncFavoritesToDatabase);
     window.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") syncLatestCustomerProfile();
     });
 
     return () => {
       window.removeEventListener("focus", syncLatestCustomerProfile);
+      window.removeEventListener("favoritesChanged", syncFavoritesToDatabase);
     };
   }, []);
 

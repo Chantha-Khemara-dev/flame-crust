@@ -895,6 +895,33 @@ public class AuthController {
         return ResponseEntity.ok(updated);
     }
 
+    @PostMapping("/customer-update-favorites")
+    public ResponseEntity<?> updateCustomerFavorites(@RequestBody Map<String, Object> body) {
+        Object customerId = body.get("customerId");
+        Object favorites = body.get("favorites"); // Expected to be a JSON string or List
+
+        if (customerId == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Customer ID is required"));
+        }
+
+        try {
+            String favoritesJson = null;
+            if (favorites != null) {
+                if (favorites instanceof String) {
+                    favoritesJson = (String) favorites;
+                } else {
+                    favoritesJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(favorites);
+                }
+            }
+
+            jdbc.update("UPDATE customers SET favorites = ? WHERE id = ?", favoritesJson, customerId);
+            return ResponseEntity.ok(Map.of("success", true, "favorites", favorites));
+        } catch (Exception e) {
+            log.error("Failed to update favorites: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Failed to update favorites"));
+        }
+    }
+
     @PostMapping("/admin-change-password")
     public ResponseEntity<?> adminChangePassword(@RequestBody Map<String, String> body) {
         String email = body.get("email");
@@ -951,17 +978,17 @@ public class AuthController {
             List<Map<String, Object>> customers = List.of();
             if (cIdParsed != null && cIdParsed > 0) {
                 try {
-                    customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, cover_photo, created_at, password_hash IS NOT NULL as has_password FROM customers WHERE id = ? LIMIT 1", cIdParsed);
+                    customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, cover_photo, created_at, password_hash IS NOT NULL as has_password, favorites FROM customers WHERE id = ? LIMIT 1", cIdParsed);
                 } catch (Exception ignored) {}
             }
             if (customers.isEmpty() && phone != null && !phone.isBlank()) {
                 try {
-                    customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, cover_photo, created_at, password_hash IS NOT NULL as has_password FROM customers WHERE phone = ? LIMIT 1", phone.trim());
+                    customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, cover_photo, created_at, password_hash IS NOT NULL as has_password, favorites FROM customers WHERE phone = ? LIMIT 1", phone.trim());
                 } catch (Exception ignored) {}
             }
             if (customers.isEmpty() && email != null && !email.isBlank()) {
                 try {
-                    customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, cover_photo, created_at, password_hash IS NOT NULL as has_password FROM customers WHERE email = ? LIMIT 1", email.trim());
+                    customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, cover_photo, created_at, password_hash IS NOT NULL as has_password, favorites FROM customers WHERE email = ? LIMIT 1", email.trim());
                 } catch (Exception ignored) {}
             }
 
