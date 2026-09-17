@@ -104,6 +104,7 @@ export function triggerFoodRefresh() {
   return fetchFoodItems(true);
 }
 
+let inFlightCategoriesPromise = null;
 async function fetchCategories() {
   if (inFlightCategoriesPromise) return inFlightCategoriesPromise;
 
