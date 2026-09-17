@@ -84,7 +84,7 @@ export function SearchModal({ isOpen, onClose }) {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={() => onClose(false)}
-        className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm p-4 sm:p-6 flex items-start justify-center pt-20 sm:pt-32"
+        className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md p-4 sm:p-6 flex items-start justify-center pt-20 sm:pt-32"
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: -20 }}
