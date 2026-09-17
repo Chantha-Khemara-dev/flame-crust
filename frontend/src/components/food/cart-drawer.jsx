@@ -26,19 +26,19 @@ const DELIVERY_FEE = 3.99;
 export function CartDrawer() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { 
-    isOpen, 
-    closeCart, 
-    lines, 
-    increment, 
-    decrement, 
-    removeItem, 
-    clear, 
-    coupon, 
-    applyCoupon, 
-    clearCoupon 
+  const {
+    isOpen,
+    closeCart,
+    lines,
+    increment,
+    decrement,
+    removeItem,
+    clear,
+    coupon,
+    applyCoupon,
+    clearCoupon
   } = useCart();
-  
+
   const [mounted, setMounted] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [couponCode, setCouponCode] = useState("");
@@ -99,7 +99,7 @@ export function CartDrawer() {
       try {
         const stored = localStorage.getItem("customerAuth");
         if (stored) customer = JSON.parse(stored);
-      } catch (e) {}
+      } catch (e) { }
 
       let customerId = customer?.id;
       if (!customerId) {
@@ -239,7 +239,7 @@ export function CartDrawer() {
           toast.success(`🎉 Lucky Draw voucher "${wonMatch.code}" applied!`);
           return;
         }
-      } catch (e) {}
+      } catch (e) { }
 
       // Reject hyphenated personal vouchers not belonging to this account
       if (targetCode.includes("-")) {
@@ -446,8 +446,8 @@ export function CartDrawer() {
                   {coupon ? (
                     <div className={cn(
                       "mt-3.5 p-3 rounded-2xl border transition-all flex items-center justify-between gap-2.5 shadow-2xs",
-                      isCouponValid 
-                        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-950 dark:text-emerald-100" 
+                      isCouponValid
+                        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-950 dark:text-emerald-100"
                         : "bg-amber-500/10 border-amber-500/30 text-amber-950 dark:text-amber-100"
                     )}>
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">

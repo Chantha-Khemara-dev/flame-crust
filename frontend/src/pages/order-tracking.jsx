@@ -1003,7 +1003,11 @@ export default function OrderTrackingPage() {
                           return (
                             <div 
                               key={item.id || item.order_item_id || `${itemProdId}-${Math.random()}`} 
-                              className="flex justify-between items-center text-xs sm:text-sm gap-2 py-1.5"
+                              onClick={() => itemProdId && navigate(`/product/${itemProdId}`)}
+                              className={cn(
+                                "flex justify-between items-center text-xs sm:text-sm gap-2 py-1.5",
+                                itemProdId && "cursor-pointer hover:bg-background/80 rounded-lg px-2 -mx-2 transition-colors active:scale-[0.98]"
+                              )}
                             >
                               <div className="flex items-center gap-2.5 min-w-0">
                                 <div className="size-8 sm:size-9 rounded-lg bg-secondary overflow-hidden shrink-0 border border-border/50 flex items-center justify-center">
