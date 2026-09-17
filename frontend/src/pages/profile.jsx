@@ -1962,71 +1962,91 @@ export default function ProfilePage() {
                               )}
 
                               <div className="grid sm:grid-cols-2 gap-3">
-                                {filteredList.map(coupon => {
+                                {filteredList.map((coupon, index) => {
                                   const isLucky = coupon.isLuckyDraw || String(coupon.code).includes("-");
+                                  
+                                  const THEMES = [
+                                    { gradient: "from-emerald-500 to-teal-500", border: "border-emerald-500/20", hoverBorder: "hover:border-emerald-500/40", shadow: "hover:shadow-emerald-500/10", text: "text-emerald-400", hex: "rgba(16, 185, 129, 0.3)", icon: Ticket },
+                                    { gradient: "from-rose-500 to-red-600", border: "border-rose-500/20", hoverBorder: "hover:border-rose-500/40", shadow: "hover:shadow-rose-500/10", text: "text-rose-400", hex: "rgba(244, 63, 94, 0.3)", icon: Star },
+                                    { gradient: "from-blue-600 to-indigo-600", border: "border-blue-500/20", hoverBorder: "hover:border-blue-500/40", shadow: "hover:shadow-blue-500/10", text: "text-blue-400", hex: "rgba(37, 99, 235, 0.3)", icon: Ticket },
+                                    { gradient: "from-purple-600 to-fuchsia-600", border: "border-purple-500/20", hoverBorder: "hover:border-purple-500/40", shadow: "hover:shadow-purple-500/10", text: "text-purple-400", hex: "rgba(147, 51, 234, 0.3)", icon: Crown }
+                                  ];
+                                  const luckyTheme = { gradient: "from-amber-500 to-orange-500", border: "border-amber-500/20", hoverBorder: "hover:border-amber-500/40", shadow: "hover:shadow-amber-500/10", text: "text-amber-400", hex: "rgba(245, 158, 11, 0.3)", icon: Sparkles };
+                                  const theme = isLucky ? luckyTheme : THEMES[index % THEMES.length];
+                                  const Icon = theme.icon;
+
                                   return (
                                     <motion.div
                                       key={coupon.id || coupon.code}
                                       initial={{ opacity: 0, y: 8 }}
                                       animate={{ opacity: 1, y: 0 }}
                                       className={cn(
-                                        "relative rounded-2xl border transition-all group overflow-hidden bg-card",
-                                        isLucky
-                                          ? "border-amber-500/30 hover:border-amber-500/50 hover:shadow-warm"
-                                          : "border-emerald-500/30 hover:border-emerald-500/50 hover:shadow-warm"
+                                        "relative rounded-2xl border transition-all group overflow-hidden bg-zinc-900/80",
+                                        theme.border,
+                                        theme.hoverBorder,
+                                        theme.shadow
                                       )}
                                     >
-                                      {/* Soft background glow */}
+                                      {/* Left solid gradient strip */}
                                       <div className={cn(
-                                        "hidden sm:block absolute -right-6 -top-6 size-24 rounded-full blur-2xl pointer-events-none opacity-50",
-                                        isLucky ? "bg-amber-500/10" : "bg-emerald-500/10"
-                                      )}></div>
-
+                                        "absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b",
+                                        theme.gradient
+                                      )} />
+                                      
                                       {/* Ticket Notches */}
-                                      <div className="absolute -left-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-background border border-r-0 border-transparent shadow-inner" style={{ borderColor: isLucky ? 'rgba(245, 158, 11, 0.3)' : 'rgba(16, 185, 129, 0.3)' }} />
-                                      <div className="absolute -right-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-background border border-l-0 border-transparent shadow-inner" style={{ borderColor: isLucky ? 'rgba(245, 158, 11, 0.3)' : 'rgba(16, 185, 129, 0.3)' }} />
+                                      <div className="absolute -left-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-[#181512] border border-r-0 border-transparent" style={{ borderColor: theme.hex }} />
+                                      <div className="absolute -right-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-[#181512] border border-l-0 border-transparent" style={{ borderColor: theme.hex }} />
 
                                       <div className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-2.5 relative z-10">
-                                        <div className="flex flex-col min-w-0 flex-1">
-                                          <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                                            <div className={cn(
-                                              "inline-flex items-center justify-center px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wide font-mono",
-                                              isLucky ? "bg-amber-500/15 text-amber-500" : "bg-emerald-500/15 text-emerald-500"
-                                            )}>
-                                              {coupon.code}
-                                            </div>
-                                            {isLucky && (
-                                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-500/10 text-amber-500 text-[9px] font-bold rounded-full border border-amber-500/20">
-                                                🎰 Lucky Draw
-                                              </span>
-                                            )}
+                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                          {/* Solid colorful icon box */}
+                                          <div className={cn(
+                                            "size-10 md:size-11 rounded-xl flex items-center justify-center shadow-sm shrink-0 bg-gradient-to-br text-white",
+                                            theme.gradient
+                                          )}>
+                                            <Icon className="size-5 md:size-5.5" />
                                           </div>
                                           
-                                          <h5 className="font-bold text-base text-foreground">
-                                            {coupon.discount_type === 'PERCENTAGE' ? `${coupon.discount_value}% OFF` : 
-                                             coupon.discount_type === 'FREE_DELIVERY' ? 'FREE DELIVERY' : 
-                                             `$${coupon.discount_value} OFF`}
-                                          </h5>
-                                          <div className="flex items-center gap-2 text-[11px] md:text-xs text-muted-foreground mt-0.5">
-                                            {coupon.min_order_amount > 0 ? `Min. spend: $${coupon.min_order_amount}` : `Min. spend: $0`}
+                                          <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2 mb-0.5">
+                                              <span className="font-serif text-sm md:text-base font-bold text-white truncate">
+                                                {coupon.discount_type === 'PERCENTAGE' ? `${coupon.discount_value}% OFF` : 
+                                                 coupon.discount_type === 'FREE_DELIVERY' ? 'FREE DELIVERY' : 
+                                                 `$${coupon.discount_value} OFF`}
+                                              </span>
+                                              {isLucky && (
+                                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-500/15 text-amber-400 text-[9px] font-bold rounded-full border border-amber-500/30">
+                                                  🎰 Lucky Draw
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="flex items-center gap-2 text-[11px] md:text-xs text-zinc-400">
+                                              <span className={cn("font-mono font-bold", theme.text)}>{coupon.code}</span>
+                                              {coupon.min_order_amount > 0 && (
+                                                <>
+                                                  <span>•</span>
+                                                  <span>Min. ${coupon.min_order_amount}</span>
+                                                </>
+                                              )}
+                                            </div>
+                                            {coupon.description && (
+                                              <p className="text-[10px] text-zinc-500 mt-0.5 line-clamp-1">{coupon.description}</p>
+                                            )}
                                           </div>
-                                          {coupon.description && (
-                                            <p className="text-[10px] text-muted-foreground/70 mt-1 line-clamp-1">{coupon.description}</p>
-                                          )}
                                         </div>
 
-                                        <div className="flex flex-col items-end gap-2 shrink-0 relative z-10">
+                                        <div className="flex items-center gap-1.5 shrink-0 relative z-10">
                                           <Button
+                                            size="icon"
                                             variant="ghost"
-                                            size="sm"
                                             onClick={() => {
                                               if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(coupon.code);
                                               toast.success(`Copied promo code "${coupon.code}"!`);
                                             }}
-                                            className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1 cursor-pointer"
+                                            className="size-8 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white cursor-pointer"
                                             title="Copy Code"
                                           >
-                                            <Copy className="size-3" /> Copy
+                                            <Copy className="size-3.5" />
                                           </Button>
                                           <Button
                                             size="sm"
@@ -2036,17 +2056,17 @@ export default function ProfilePage() {
                                               toast.success(`Coupon "${coupon.code}" applied to cart!`);
                                               openCart();
                                             }}
-                                            className="h-7 px-3 text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-lg cursor-pointer shadow-xs border-0"
+                                            className="h-8 px-3 rounded-lg text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-sm border-0 cursor-pointer"
                                           >
-                                            Apply to Cart
+                                            Apply
                                           </Button>
                                         </div>
                                       </div>
 
-                                      <div className={cn("mx-4 border-t border-dashed relative z-10", isLucky ? "border-amber-500/20" : "border-border/60")} />
-                                      <div className="px-4 py-2.5 text-[10px] md:text-[11px] font-medium flex items-center justify-between relative z-10">
-                                        <span className={cn("flex items-center gap-1", isLucky ? "text-amber-500/80" : "text-emerald-500/80")}>
-                                          <Clock className="size-3" />
+                                      <div className={cn("mx-4 border-t border-dashed relative z-10", theme.border)} />
+                                      <div className="px-4 py-2 text-[10px] md:text-xs text-zinc-400 flex items-center justify-between relative z-10">
+                                        <span className="flex items-center gap-1">
+                                          <Clock className={cn("size-3.5", theme.text)} />
                                           {coupon.expires_at ? `Valid until ${new Date(coupon.expires_at).toLocaleDateString()}` : "No expiry"}
                                         </span>
                                       </div>
@@ -2071,43 +2091,64 @@ export default function ProfilePage() {
                                   </span>
                                 </div>
                                 <div className="grid sm:grid-cols-2 gap-3 opacity-60 grayscale hover:grayscale-0 transition-all duration-300">
-                                  {coupons.filter(c => !c.active || (c.expires_at && new Date(c.expires_at) <= new Date())).map(coupon => {
+                                  {coupons.filter(c => !c.active || (c.expires_at && new Date(c.expires_at) <= new Date())).map((coupon, index) => {
                                     const isExpired = !coupon.active || (coupon.expires_at && new Date(coupon.expires_at) <= new Date());
                                     const isLucky = coupon.isLuckyDraw || String(coupon.code).includes("-");
                                     
+                                    const THEMES = [
+                                      { gradient: "from-emerald-500 to-teal-500", icon: Ticket },
+                                      { gradient: "from-rose-500 to-red-600", icon: Star },
+                                      { gradient: "from-blue-600 to-indigo-600", icon: Ticket },
+                                      { gradient: "from-purple-600 to-fuchsia-600", icon: Crown }
+                                    ];
+                                    const luckyTheme = { gradient: "from-amber-500 to-orange-500", icon: Sparkles };
+                                    const theme = isLucky ? luckyTheme : THEMES[index % THEMES.length];
+                                    const Icon = theme.icon;
+
                                     return (
                                       <div
                                         key={coupon.id || coupon.code}
                                         className={cn(
-                                          "relative rounded-2xl border transition-all overflow-hidden border-border/50 bg-zinc-900/50 grayscale hover:grayscale-0"
+                                          "relative rounded-2xl border transition-all overflow-hidden border-border/50 bg-zinc-900/50 grayscale hover:grayscale-0 group"
                                         )}
                                       >
+                                        <div className={cn(
+                                          "absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b opacity-80",
+                                          theme.gradient
+                                        )} />
                                         <div className="absolute -left-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-background border border-r-0 border-transparent shadow-inner" style={{ borderColor: 'rgba(113, 113, 122, 0.3)' }} />
                                         <div className="absolute -right-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-background border border-l-0 border-transparent shadow-inner" style={{ borderColor: 'rgba(113, 113, 122, 0.3)' }} />
 
                                         <div className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-2.5 relative z-10">
-                                          <div className="flex flex-col min-w-0 flex-1">
-                                            <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                                              <div className="inline-flex items-center justify-center px-2 py-0.5 bg-zinc-800 text-zinc-400 text-[10px] font-bold rounded-full uppercase tracking-wide font-mono">
-                                                {coupon.code}
-                                              </div>
-                                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20 uppercase">
-                                                {isExpired ? "Expired" : "Used"}
-                                              </span>
+                                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                                            <div className={cn(
+                                              "size-10 md:size-11 rounded-xl flex items-center justify-center shadow-sm shrink-0 bg-gradient-to-br text-white opacity-80",
+                                              theme.gradient
+                                            )}>
+                                              <Icon className="size-5 md:size-5.5" />
                                             </div>
-                                            
-                                            <h5 className="font-bold text-base text-zinc-400">
-                                              {coupon.discount_type === 'PERCENTAGE' ? `${coupon.discount_value}% OFF` : 
-                                               coupon.discount_type === 'FREE_DELIVERY' ? 'FREE DELIVERY' : 
-                                               `$${coupon.discount_value} OFF`}
-                                            </h5>
+                                            <div className="min-w-0 flex-1">
+                                              <div className="flex items-center gap-2 mb-0.5">
+                                                <span className="font-serif text-sm md:text-base font-bold text-zinc-300 truncate group-hover:text-white transition-colors">
+                                                  {coupon.discount_type === 'PERCENTAGE' ? `${coupon.discount_value}% OFF` : 
+                                                   coupon.discount_type === 'FREE_DELIVERY' ? 'FREE DELIVERY' : 
+                                                   `$${coupon.discount_value} OFF`}
+                                                </span>
+                                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20 uppercase">
+                                                  {isExpired ? "Expired" : "Used"}
+                                                </span>
+                                              </div>
+                                              <div className="flex items-center gap-2 text-[11px] md:text-xs text-zinc-500 group-hover:text-zinc-400 transition-colors">
+                                                <span className="font-mono font-bold">{coupon.code}</span>
+                                              </div>
+                                            </div>
                                           </div>
                                           
-                                          <div className="flex flex-col items-end gap-2 shrink-0 relative z-10">
+                                          <div className="flex items-center gap-1.5 shrink-0 relative z-10">
                                             <Button
                                               size="sm"
                                               disabled
-                                              className="h-7 px-3 rounded-lg text-xs font-bold shadow-sm bg-zinc-800 text-zinc-500"
+                                              className="h-8 px-3 rounded-lg text-xs font-bold shadow-sm bg-zinc-800 text-zinc-500"
                                             >
                                               {isExpired ? "Expired" : "Used"}
                                             </Button>
@@ -2115,9 +2156,9 @@ export default function ProfilePage() {
                                         </div>
 
                                         <div className="mx-4 border-t border-dashed border-zinc-700/50 relative z-10" />
-                                        <div className="px-4 py-2 text-[10px] md:text-xs text-zinc-500 flex items-center justify-between relative z-10">
+                                        <div className="px-4 py-2 text-[10px] md:text-xs text-zinc-500 group-hover:text-zinc-400 transition-colors flex items-center justify-between relative z-10">
                                           <span className="flex items-center gap-1">
-                                            <Clock className="size-3" />
+                                            <Clock className="size-3.5" />
                                             {coupon.expires_at ? `Expired ${new Date(coupon.expires_at).toLocaleDateString()}` : "Inactive"}
                                           </span>
                                         </div>
