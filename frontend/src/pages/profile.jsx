@@ -1965,67 +1965,105 @@ export default function ProfilePage() {
                                 {filteredList.map(coupon => {
                                   const isLucky = coupon.isLuckyDraw || String(coupon.code).includes("-");
                                   return (
-                                    <div key={coupon.id || coupon.code} className="bg-card border border-emerald-500/30 rounded-2xl p-3.5 sm:p-4 relative overflow-hidden shadow-warm flex flex-col justify-between group hover:border-emerald-500/50 transition-all contain-content transform-gpu">
-                                      <div className="hidden sm:block absolute -right-6 -top-6 size-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
-                                      <div>
-                                        <div className="flex items-center justify-between gap-2 mb-2">
-                                          <div className="flex items-center gap-1.5 flex-wrap">
-                                            <div className="inline-block px-2.5 py-0.5 bg-emerald-600 text-white text-[10px] font-bold rounded-full uppercase tracking-wide font-mono">
-                                              {coupon.code}
-                                            </div>
-                                            {isLucky && (
-                                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[9px] font-bold rounded-full border border-amber-500/30">
-                                                🎰 Lucky Draw
+                                    <motion.div
+                                      key={coupon.id || coupon.code}
+                                      initial={{ opacity: 0, y: 8 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      className={cn(
+                                        "relative rounded-2xl border transition-all group overflow-hidden",
+                                        isLucky
+                                          ? "border-amber-500/20 bg-zinc-900/80 hover:border-amber-500/40 hover:shadow-md hover:shadow-orange-500/10"
+                                          : "border-emerald-500/20 bg-zinc-900/80 hover:border-emerald-500/40 hover:shadow-md hover:shadow-emerald-500/10"
+                                      )}
+                                    >
+                                      <div className={cn(
+                                        "absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b",
+                                        isLucky ? "from-orange-500 to-amber-500" : "from-emerald-500 to-teal-500"
+                                      )} />
+                                      <div className={cn(
+                                        "absolute -left-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-[#181512] border",
+                                        isLucky ? "border-amber-500/25" : "border-emerald-500/25"
+                                      )} />
+                                      <div className={cn(
+                                        "absolute -right-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-[#181512] border",
+                                        isLucky ? "border-amber-500/25" : "border-emerald-500/25"
+                                      )} />
+
+                                      <div className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-2.5">
+                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                          <div className={cn(
+                                            "size-10 md:size-11 rounded-xl flex items-center justify-center shadow-sm shrink-0",
+                                            isLucky ? "bg-gradient-to-br from-orange-500 to-amber-500 text-white" : "bg-gradient-to-br from-emerald-500 to-teal-500 text-white"
+                                          )}>
+                                            {isLucky ? <Sparkles className="size-5" /> : <Ticket className="size-5" />}
+                                          </div>
+                                          <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2 mb-0.5">
+                                              <span className="font-serif text-sm md:text-base font-bold text-white truncate">
+                                                {coupon.discount_type === 'PERCENTAGE' ? `${coupon.discount_value}% OFF` : 
+                                                 coupon.discount_type === 'FREE_DELIVERY' ? 'FREE DELIVERY' : 
+                                                 `$${coupon.discount_value} OFF`}
                                               </span>
+                                              {isLucky && (
+                                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-500/15 text-amber-400 text-[9px] font-bold rounded-full border border-amber-500/30">
+                                                  🎰 Lucky Draw
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="flex items-center gap-2 text-[11px] md:text-xs text-zinc-400">
+                                              <span className={cn("font-mono font-bold", isLucky ? "text-amber-400" : "text-emerald-400")}>{coupon.code}</span>
+                                              {coupon.min_order_amount > 0 && (
+                                                <>
+                                                  <span>•</span>
+                                                  <span>Min. ${coupon.min_order_amount}</span>
+                                                </>
+                                              )}
+                                            </div>
+                                            {coupon.description && (
+                                              <p className="text-[10px] text-zinc-500 mt-0.5 line-clamp-1">{coupon.description}</p>
                                             )}
                                           </div>
-                                          <div className="flex items-center gap-1 shrink-0">
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => {
-                                                if (navigator.clipboard && navigator.clipboard.writeText) {
-                                                  navigator.clipboard.writeText(coupon.code);
-                                                }
-                                                toast.success(`Copied promo code "${coupon.code}"!`);
-                                              }}
-                                              className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1 cursor-pointer"
-                                              title="Copy Code"
-                                            >
-                                              <Copy className="size-3" /> Copy
-                                            </Button>
-                                          </div>
                                         </div>
-                                        <h5 className="font-bold text-base text-foreground">
-                                          {coupon.discount_type === 'PERCENTAGE' ? `${coupon.discount_value}% OFF` : 
-                                           coupon.discount_type === 'FREE_DELIVERY' ? 'FREE DELIVERY' : 
-                                           `$${coupon.discount_value} OFF`}
-                                        </h5>
-                                        <p className="text-xs text-muted-foreground mt-0.5">Min. spend: ${coupon.min_order_amount || 0}</p>
-                                        {coupon.description && (
-                                          <p className="text-[11px] text-muted-foreground mt-1 line-clamp-1">{coupon.description}</p>
-                                        )}
+
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            onClick={() => {
+                                              if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(coupon.code);
+                                              toast.success(`Copied promo code "${coupon.code}"!`);
+                                            }}
+                                            className="size-8 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white cursor-pointer"
+                                            title="Copy Code"
+                                          >
+                                            <Copy className="size-3.5" />
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            onClick={() => {
+                                              const userKey = `user_${customer?.id || customer?.phone || "guest"}`;
+                                              applyCoupon(coupon, coupon.accountKey || userKey);
+                                              toast.success(`Coupon "${coupon.code}" applied to cart!`);
+                                              openCart();
+                                            }}
+                                            className={cn(
+                                              "h-8 px-3 rounded-lg text-xs font-bold shadow-sm cursor-pointer border-0 text-white",
+                                              isLucky ? "bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600" : "bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
+                                            )}
+                                          >
+                                            Apply
+                                          </Button>
+                                        </div>
                                       </div>
 
-                                      <div className="mt-3 pt-2.5 border-t border-border/60 flex items-center justify-between gap-2">
-                                        <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                                          <Clock className="size-3" />
-                                          {coupon.expires_at ? `Valid until ${new Date(coupon.expires_at).toLocaleDateString()}` : "No expiry"}
-                                        </div>
-                                        <Button
-                                          size="sm"
-                                          onClick={() => {
-                                            const userKey = `user_${customer?.id || customer?.phone || "guest"}`;
-                                            applyCoupon(coupon, coupon.accountKey || userKey);
-                                            toast.success(`Coupon "${coupon.code}" applied to cart!`);
-                                            openCart();
-                                          }}
-                                          className="h-7 px-3 text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-lg cursor-pointer shadow-xs"
-                                        >
-                                          Apply to Cart
-                                        </Button>
+                                      <div className={cn("mx-4 border-t border-dashed", isLucky ? "border-amber-500/20" : "border-emerald-500/20")} />
+                                      <div className="px-4 py-2 text-[10px] md:text-xs text-zinc-400 flex items-center justify-between">
+                                        <span className="flex items-center gap-1">
+                                          <Clock className={cn("size-3.5", isLucky ? "text-amber-400" : "text-emerald-400")} />
+                                          {coupon.expires_at ? `Expires ${new Date(coupon.expires_at).toLocaleDateString()}` : "No expiry"}
+                                        </span>
                                       </div>
-                                    </div>
+                                    </motion.div>
                                   );
                                 })}
                                 {filteredList.length === 0 && (
@@ -2048,30 +2086,63 @@ export default function ProfilePage() {
                                 <div className="grid sm:grid-cols-2 gap-3 opacity-60 grayscale hover:grayscale-0 transition-all duration-300">
                                   {coupons.filter(c => !c.active || (c.expires_at && new Date(c.expires_at) <= new Date())).map(coupon => {
                                     const isExpired = !coupon.active || (coupon.expires_at && new Date(coupon.expires_at) <= new Date());
+                                    const isLucky = coupon.isLuckyDraw || String(coupon.code).includes("-");
+                                    
                                     return (
-                                      <div key={coupon.id || coupon.code} className="bg-card border border-border/60 rounded-2xl p-3.5 sm:p-4 shadow-2xs flex flex-col justify-between">
-                                        <div className="flex items-start justify-between">
-                                          <div>
-                                            <div className="inline-block px-2.5 py-0.5 bg-secondary text-muted-foreground text-[10px] font-bold rounded-full mb-1.5 uppercase tracking-wide">
-                                              {coupon.code}
+                                      <div
+                                        key={coupon.id || coupon.code}
+                                        className={cn(
+                                          "relative rounded-2xl border transition-all overflow-hidden border-border/50 bg-zinc-900/50 grayscale hover:grayscale-0"
+                                        )}
+                                      >
+                                        <div className={cn(
+                                          "absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b",
+                                          isLucky ? "from-orange-500 to-amber-500" : "from-emerald-500 to-teal-500"
+                                        )} />
+                                        <div className="absolute -left-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-[#181512] border border-zinc-700/50" />
+                                        <div className="absolute -right-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-[#181512] border border-zinc-700/50" />
+
+                                        <div className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-2.5">
+                                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                                            <div className={cn(
+                                              "size-10 md:size-11 rounded-xl flex items-center justify-center shadow-sm shrink-0",
+                                              isLucky ? "bg-gradient-to-br from-orange-500 to-amber-500 text-white" : "bg-gradient-to-br from-emerald-500 to-teal-500 text-white"
+                                            )}>
+                                              {isLucky ? <Sparkles className="size-5" /> : <Ticket className="size-5" />}
                                             </div>
-                                            <h5 className="font-bold text-sm text-muted-foreground">
-                                              {coupon.discount_type === 'PERCENTAGE' ? `${coupon.discount_value}% OFF` : 
-                                               coupon.discount_type === 'FREE_DELIVERY' ? 'FREE DELIVERY' : 
-                                               `$${coupon.discount_value} OFF`}
-                                            </h5>
+                                            <div className="min-w-0 flex-1">
+                                              <div className="flex items-center gap-2 mb-0.5">
+                                                <span className="font-serif text-sm md:text-base font-bold text-zinc-300 truncate">
+                                                  {coupon.discount_type === 'PERCENTAGE' ? `${coupon.discount_value}% OFF` : 
+                                                   coupon.discount_type === 'FREE_DELIVERY' ? 'FREE DELIVERY' : 
+                                                   `$${coupon.discount_value} OFF`}
+                                                </span>
+                                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20 uppercase">
+                                                  {isExpired ? "Expired" : "Used"}
+                                                </span>
+                                              </div>
+                                              <div className="flex items-center gap-2 text-[11px] md:text-xs text-zinc-500">
+                                                <span className="font-mono font-bold">{coupon.code}</span>
+                                              </div>
+                                            </div>
                                           </div>
-                                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20">
-                                            {isExpired ? "ផុតកំណត់" : "Used"}
-                                          </span>
+                                          <div className="flex items-center gap-1.5 shrink-0">
+                                            <Button
+                                              size="sm"
+                                              disabled
+                                              className="h-8 px-3 rounded-lg text-xs font-bold shadow-sm bg-zinc-800 text-zinc-500"
+                                            >
+                                              {isExpired ? "Expired" : "Used"}
+                                            </Button>
+                                          </div>
                                         </div>
-                                        <div className="mt-3 pt-2 border-t border-border/60 text-[11px] text-muted-foreground flex items-center justify-between gap-1">
-                                          <span>{isExpired ? "Expired" : "Used or Inactive"}</span>
-                                          {coupon.expires_at && (
-                                            <span className="text-[10px]">
-                                              {new Date(coupon.expires_at).toLocaleDateString()}
-                                            </span>
-                                          )}
+
+                                        <div className="mx-4 border-t border-dashed border-zinc-700/50" />
+                                        <div className="px-4 py-2 text-[10px] md:text-xs text-zinc-500 flex items-center justify-between">
+                                          <span className="flex items-center gap-1">
+                                            <Clock className="size-3.5" />
+                                            {coupon.expires_at ? `Expired ${new Date(coupon.expires_at).toLocaleDateString()}` : "Inactive"}
+                                          </span>
                                         </div>
                                       </div>
                                     );
