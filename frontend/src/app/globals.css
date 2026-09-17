@@ -107,6 +107,7 @@
 
 @layer base {
   html {
+    @apply bg-background text-foreground;
     scrollbar-gutter: stable;
     overflow-x: clip;
     -webkit-tap-highlight-color: transparent;
