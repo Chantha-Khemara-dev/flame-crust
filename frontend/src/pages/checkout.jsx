@@ -1443,7 +1443,13 @@ function CheckoutPage() {
                 {/* 3. Promo Code & Coupons Section - Enhanced & Engaging */}
                 {(() => {
                   const availableCouponsList = allCoupons.filter(c => !c.isUsed && !c.isExpired);
-                  const luckyVouchers = availableCouponsList.filter(c => c.isLuckyDraw || String(c.code).includes("-"));
+                  const luckyVouchers = availableCouponsList.filter(c => c.isLuckyDraw || String(c.code).includes("-")).sort((a, b) => {
+                    const aUsable = grossSubtotal >= Number(a.min_order_amount || 0);
+                    const bUsable = grossSubtotal >= Number(b.min_order_amount || 0);
+                    if (aUsable && !bUsable) return -1;
+                    if (!aUsable && bUsable) return 1;
+                    return 0;
+                  });
                   const bestLucky = luckyVouchers[0];
 
                   return (
@@ -1562,7 +1568,7 @@ function CheckoutPage() {
                                     </span>
                                   </div>
                                   <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
-                                    Code: <strong className="text-amber-600 dark:text-amber-400 font-bold">{bestLucky.code}</strong> {bestLucky.minOrder ? `• Min. $${bestLucky.minOrder}` : ""}
+                                    Code: <strong className="text-amber-600 dark:text-amber-400 font-bold">{bestLucky.code}</strong> {bestLucky.min_order_amount ? `• Min. $${bestLucky.min_order_amount}` : ""}
                                   </p>
                                 </div>
                               </div>
@@ -1570,7 +1576,7 @@ function CheckoutPage() {
                               <Button
                                 type="button"
                                 size="sm"
-                                disabled={grossSubtotal < Number(bestLucky.minOrder || 0)}
+                                disabled={grossSubtotal < Number(bestLucky.min_order_amount || 0)}
                                 onClick={() => {
                                   const acc = getCurrentAccount();
                                   applyCoupon(bestLucky, acc.storageKey);
@@ -1892,7 +1898,20 @@ function CheckoutPage() {
                 <Loader2 className="size-6 animate-spin text-primary" />
               </div>
             ) : allCoupons.length > 0 ? (
-              allCoupons.map((c) => {
+              [...allCoupons].sort((a, b) => {
+                const aMin = Number(a.min_order_amount || 0);
+                const bMin = Number(b.min_order_amount || 0);
+                const aUsable = grossSubtotal >= aMin && !a.isUsed && !a.isExpired;
+                const bUsable = grossSubtotal >= bMin && !b.isUsed && !b.isExpired;
+                
+                if (aUsable && !bUsable) return -1;
+                if (!aUsable && bUsable) return 1;
+                
+                if (a.isLuckyDraw && !b.isLuckyDraw) return -1;
+                if (!a.isLuckyDraw && b.isLuckyDraw) return 1;
+                
+                return 0;
+              }).map((c) => {
                 const isSelected = coupon?.id === c.id;
                 const minOrder = Number(c.min_order_amount || 0);
                 const isMinOrderNotMet = grossSubtotal > 0 && minOrder > 0 && grossSubtotal < minOrder;
