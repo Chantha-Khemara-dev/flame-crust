@@ -520,7 +520,16 @@ function Navbar() {
               <Search className="size-4 sm:size-5" />
             </Button>
 
-
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden sm:inline-flex size-10 sm:size-11 shrink-0 rounded-full text-amber-500 hover:text-amber-600 hover:bg-amber-500/10 transition-colors"
+              onClick={() => window.dispatchEvent(new CustomEvent("openLuckyDraw"))}
+              aria-label="Lucky Draw Spin Wheel"
+              title="Lucky Draw (Spin & Win)"
+            >
+              <Sparkles className="size-4 sm:size-5 animate-pulse" />
+            </Button>
 
             <Button
               variant="ghost"
