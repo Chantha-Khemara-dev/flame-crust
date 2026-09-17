@@ -1972,7 +1972,17 @@ export default function ProfilePage() {
                                     { gradient: "from-purple-600 to-fuchsia-600", border: "border-purple-500/20", hoverBorder: "hover:border-purple-500/40", shadow: "hover:shadow-purple-500/10", text: "text-purple-400", hex: "rgba(147, 51, 234, 0.3)", icon: Crown }
                                   ];
                                   const luckyTheme = { gradient: "from-amber-500 to-orange-500", border: "border-amber-500/20", hoverBorder: "hover:border-amber-500/40", shadow: "hover:shadow-amber-500/10", text: "text-amber-400", hex: "rgba(245, 158, 11, 0.3)", icon: Sparkles };
-                                  const theme = isLucky ? luckyTheme : THEMES[index % THEMES.length];
+                                  
+                                  let theme = THEMES[index % THEMES.length];
+                                  if (isLucky) {
+                                    theme = luckyTheme;
+                                    if (coupon.bgGradient) {
+                                      if (coupon.bgGradient.includes("emerald") || coupon.bgGradient.includes("teal")) theme = THEMES[0];
+                                      else if (coupon.bgGradient.includes("rose") || coupon.bgGradient.includes("red")) theme = THEMES[1];
+                                      else if (coupon.bgGradient.includes("blue") || coupon.bgGradient.includes("indigo")) theme = THEMES[2];
+                                      else if (coupon.bgGradient.includes("purple") || coupon.bgGradient.includes("fuchsia")) theme = THEMES[3];
+                                    }
+                                  }
                                   const Icon = theme.icon;
 
                                   return (
@@ -2102,7 +2112,17 @@ export default function ProfilePage() {
                                       { gradient: "from-purple-600 to-fuchsia-600", icon: Crown }
                                     ];
                                     const luckyTheme = { gradient: "from-amber-500 to-orange-500", icon: Sparkles };
-                                    const theme = isLucky ? luckyTheme : THEMES[index % THEMES.length];
+                                    
+                                    let theme = THEMES[index % THEMES.length];
+                                    if (isLucky) {
+                                      theme = luckyTheme;
+                                      if (coupon.bgGradient) {
+                                        if (coupon.bgGradient.includes("emerald") || coupon.bgGradient.includes("teal")) theme = THEMES[0];
+                                        else if (coupon.bgGradient.includes("rose") || coupon.bgGradient.includes("red")) theme = THEMES[1];
+                                        else if (coupon.bgGradient.includes("blue") || coupon.bgGradient.includes("indigo")) theme = THEMES[2];
+                                        else if (coupon.bgGradient.includes("purple") || coupon.bgGradient.includes("fuchsia")) theme = THEMES[3];
+                                      }
+                                    }
                                     const Icon = theme.icon;
 
                                     return (
