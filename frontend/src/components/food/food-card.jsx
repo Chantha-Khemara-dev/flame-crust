@@ -1,5 +1,5 @@
 "use client";
-import { Fragment, useState, useEffect } from "react";
+import React, { Fragment, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Minus, Star, Flame, Leaf, Check, Heart, TrendingUp } from "lucide-react";
@@ -8,13 +8,15 @@ import { useCart } from "@/lib/cart-store";
 import { cn, formatPrice } from "@/lib/utils";
 import { getOptimizedImageUrl } from "@/lib/cloudinary";
 
-export function FoodCard({ item, index = 0, trendingRank = null }) {
+const FoodCardComponent = ({ item, index = 0, trendingRank = null }) => {
   const addItem = useCart((s) => s.addItem);
   const increment = useCart((s) => s.increment);
   const decrement = useCart((s) => s.decrement);
   const removeItem = useCart((s) => s.removeItem);
-  const lines = useCart((s) => s.lines);
-  const inCart = lines.find((l) => String(l.id) === String(item.id));
+  
+  // Select primitive qty to prevent mass re-renders on low-end devices
+  const inCartQty = useCart((s) => s.lines.find((l) => String(l.id) === String(item.id))?.qty || 0);
+  const inCart = inCartQty > 0 ? { id: item.id, qty: inCartQty } : null;
   const [isFavorite, setIsFavorite] = useState(false);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
 
@@ -224,6 +226,13 @@ export function FoodCard({ item, index = 0, trendingRank = null }) {
       </div>
     </article>
   );
-}
+};
+
+export const FoodCard = React.memo(FoodCardComponent, (prevProps, nextProps) => {
+  return (
+    prevProps.item.id === nextProps.item.id &&
+    prevProps.trendingRank === nextProps.trendingRank
+  );
+});
 
 export default FoodCard;

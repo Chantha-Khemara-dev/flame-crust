@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { categoryMeta, categoryOrder as defaultCategoryOrder } from "@/lib/food-data";
@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { Flame, Sparkles, Filter, Check, Star, Leaf, LayoutGrid, TrendingUp } from "lucide-react";
 import "./menu.css";
 
-const FoodGrid = ({ items, topProducts = [] }) => {
+const FoodGrid = React.memo(({ items, topProducts = [] }) => {
   return (
     <div className="menu-food-grid">
       {items.map((item, idx) => {
@@ -38,13 +38,13 @@ const FoodGrid = ({ items, topProducts = [] }) => {
                 <span>#{topIndex + 1}</span>
               </div>
             )}
-            <FoodCard item={item} index={idx} />
+            <FoodCard item={item} index={idx} trendingRank={isTop ? topIndex + 1 : null} />
           </div>
         );
       })}
     </div>
   );
-};
+});
 
 function MenuPage() {
   const [searchParams, setSearchParams] = useSearchParams();

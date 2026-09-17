@@ -26,13 +26,25 @@ const DriverProfilePage = lazy(() => import("./pages/driver/profile.jsx"));
 const KitchenDashboardPage = lazy(() => import("./pages/kitchen/dashboard.jsx"));
 const ProfilePage = lazy(() => import("./pages/profile.jsx"));
 
-// Pre-fetch primary route chunks in background for instant smooth page transitions
-import("./pages/home.jsx");
-import("./pages/menu.jsx");
-import("./pages/product-detail.jsx");
-import("./pages/cart.jsx");
-import("./pages/profile.jsx");
-import("./pages/admin/layout.jsx");
+// Delay pre-fetching to prevent blocking the main thread on low-end devices
+if (typeof window !== "undefined") {
+  const prefetchPages = () => {
+    setTimeout(() => {
+      import("./pages/home.jsx").catch(() => {});
+      import("./pages/menu.jsx").catch(() => {});
+      import("./pages/product-detail.jsx").catch(() => {});
+      import("./pages/cart.jsx").catch(() => {});
+      import("./pages/profile.jsx").catch(() => {});
+      import("./pages/admin/layout.jsx").catch(() => {});
+    }, 3500); // Delay until initial render is fully settled
+  };
+
+  if (window.requestIdleCallback) {
+    window.requestIdleCallback(prefetchPages);
+  } else {
+    window.addEventListener("load", prefetchPages);
+  }
+}
 
 function PageLoader() {
   return (

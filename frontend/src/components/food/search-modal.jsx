@@ -16,7 +16,6 @@ export function SearchModal({ isOpen, onClose }) {
   const navigate = useNavigate();
 
   const addItem = useCart((s) => s.addItem);
-  const lines = useCart((s) => s.lines);
 
   useEffect(() => {
     if (isOpen) {
@@ -49,23 +48,6 @@ export function SearchModal({ isOpen, onClose }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  const handleAddToCart = (e, item) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const rect = e.currentTarget.getBoundingClientRect();
-
-    window.dispatchEvent(
-      new CustomEvent("fly-to-cart", {
-        detail: {
-          image: item.image,
-          startRect: rect,
-        },
-      })
-    );
-
-    addItem(item);
-  };
 
   if (!isOpen) return null;
 
@@ -138,63 +120,14 @@ export function SearchModal({ isOpen, onClose }) {
               </div>
             ) : (
               <div className="flex flex-col gap-2 w-full overflow-hidden">
-                {filtered.map(product => {
-                  const inCart = lines.find((l) => l.id === product.id);
-                  return (
-                    <div
-                      key={product.id}
-                      onClick={() => {
-                        onClose(false);
-                        navigate(`/product/${product.id}`);
-                      }}
-                      className="search-result-row w-full flex items-center gap-2.5 sm:gap-4 p-2 sm:p-3 rounded-xl hover:bg-secondary/60 transition-colors text-left group cursor-pointer overflow-hidden"
-                    >
-                      <div className="size-14 sm:size-16 rounded-lg overflow-hidden bg-secondary shrink-0 relative">
-                        <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 sm:gap-2">
-                          <h4 className="font-semibold text-sm sm:text-base text-foreground truncate">{product.name}</h4>
-                          {product.spicy && <Flame className="size-3 text-primary shrink-0" />}
-                          {product.vegetarian && <Leaf className="size-3 text-green-600 shrink-0" />}
-                        </div>
-                        <p className="text-[11px] sm:text-sm text-muted-foreground line-clamp-1 mt-0.5">
-                          {product.description}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 sm:gap-3 shrink-0 pl-1 sm:pl-2">
-                        <div className="flex flex-col items-end sm:items-start mr-2 sm:mr-0 hidden sm:flex">
-                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Price</span>
-                          <span className="font-bold text-foreground leading-none">${product.price.toFixed(2)}</span>
-                        </div>
-                        <span className="font-bold text-sm sm:text-base text-foreground sm:hidden shrink-0">${product.price.toFixed(2)}</span>
-
-                        <Button
-                          onClick={(e) => handleAddToCart(e, product)}
-                          size="sm"
-                          className={cn(
-                            "h-8 px-2.5 sm:h-9 sm:px-3 rounded-full font-semibold shadow-sm transition-all group/btn flex items-center gap-1 sm:gap-1.5 shrink-0",
-                            inCart
-                              ? "bg-green-600 hover:bg-green-700 text-white"
-                              : "bg-foreground text-background hover:bg-primary hover:text-primary-foreground"
-                          )}
-                        >
-                          {inCart ? (
-                            <Fragment>
-                              <Check className="size-3.5" />
-                              <span className="ml-0.5 text-xs hidden sm:inline">In cart</span>
-                            </Fragment>
-                          ) : (
-                            <Fragment>
-                              <Plus className="size-3.5 group-hover/btn:rotate-90 transition-transform" />
-                              <span className="ml-0.5 text-xs hidden sm:inline">Add</span>
-                            </Fragment>
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
+                {filtered.map(product => (
+                  <SearchResultRow
+                    key={product.id}
+                    product={product}
+                    onClose={onClose}
+                    navigate={navigate}
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -208,3 +141,80 @@ export function SearchModal({ isOpen, onClose }) {
     </AnimatePresence>
   );
 }
+
+const SearchResultRow = ({ product, onClose, navigate }) => {
+  const addItem = useCart((s) => s.addItem);
+  const inCartQty = useCart((s) => s.lines.find((l) => String(l.id) === String(product.id))?.qty || 0);
+  const inCart = inCartQty > 0;
+
+  const handleAddToCart = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    window.dispatchEvent(
+      new CustomEvent("fly-to-cart", {
+        detail: {
+          image: product.image,
+          startRect: rect,
+        },
+      })
+    );
+
+    addItem(product);
+  };
+
+  return (
+    <div
+      onClick={() => {
+        onClose(false);
+        navigate(`/product/${product.id}`);
+      }}
+      className="search-result-row w-full flex items-center gap-2.5 sm:gap-4 p-2 sm:p-3 rounded-xl hover:bg-secondary/60 transition-colors text-left group cursor-pointer overflow-hidden"
+    >
+      <div className="size-14 sm:size-16 rounded-lg overflow-hidden bg-secondary shrink-0 relative">
+        <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <h4 className="font-semibold text-sm sm:text-base text-foreground truncate">{product.name}</h4>
+          {product.spicy && <Flame className="size-3 text-primary shrink-0" />}
+          {product.vegetarian && <Leaf className="size-3 text-green-600 shrink-0" />}
+        </div>
+        <p className="text-[11px] sm:text-sm text-muted-foreground line-clamp-1 mt-0.5">
+          {product.description}
+        </p>
+      </div>
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0 pl-1 sm:pl-2">
+        <div className="flex flex-col items-end sm:items-start mr-2 sm:mr-0 hidden sm:flex">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Price</span>
+          <span className="font-bold text-foreground leading-none">${product.price.toFixed(2)}</span>
+        </div>
+        <span className="font-bold text-sm sm:text-base text-foreground sm:hidden shrink-0">${product.price.toFixed(2)}</span>
+
+        <Button
+          onClick={handleAddToCart}
+          size="sm"
+          className={cn(
+            "h-8 px-2.5 sm:h-9 sm:px-3 rounded-full font-semibold shadow-sm transition-all group/btn flex items-center gap-1 sm:gap-1.5 shrink-0",
+            inCart
+              ? "bg-green-600 hover:bg-green-700 text-white"
+              : "bg-foreground text-background hover:bg-primary hover:text-primary-foreground"
+          )}
+        >
+          {inCart ? (
+            <Fragment>
+              <Check className="size-3.5" />
+              <span className="ml-0.5 text-xs hidden sm:inline">In cart</span>
+            </Fragment>
+          ) : (
+            <Fragment>
+              <Plus className="size-3.5 group-hover/btn:rotate-90 transition-transform" />
+              <span className="ml-0.5 text-xs hidden sm:inline">Add</span>
+            </Fragment>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+};
