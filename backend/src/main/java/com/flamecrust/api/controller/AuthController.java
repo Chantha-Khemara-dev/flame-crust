@@ -738,7 +738,7 @@ public class AuthController {
         // Build dynamic UPDATE
         java.util.LinkedHashMap<String, Object> updates = new java.util.LinkedHashMap<>();
         java.util.Set<String> allowed = java.util.Set.of(
-                "name", "phone", "profile_photo", "date_of_birth", "national_id",
+                "name", "phone", "profile_photo", "cover_photo", "date_of_birth", "national_id",
                 "address", "emergency_contact", "vehicle_info", "license_plate", "profile_completed");
         body.forEach((key, value) -> {
             if (allowed.contains(key)) {
