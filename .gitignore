@@ -71,4 +71,5 @@ backup.sql
 start.sh
 docs/
 *erd*
-*ERD*.github/
+*ERD*
+.github/
