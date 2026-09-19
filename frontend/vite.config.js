@@ -36,7 +36,7 @@ export default defineConfig({
           }
         ]
       },
-      includeAssets: ['logo.png', 'logo-192.png', 'robots.txt', 'sw-push.js'],
+      includeAssets: ['logo-v2.png', 'logo-192-v2.png', 'robots.txt', 'sw-push.js'],
       manifest: {
         name: 'Flame Crust',
         short_name: 'FlameCrust',
@@ -47,16 +47,16 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
-            src: '/logo-192.png',
+            src: '/logo-192-v2.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any'
+            purpose: 'any maskable'
           },
           {
-            src: '/logo.png',
+            src: '/logo-v2.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any'
+            purpose: 'any maskable'
           }
         ]
       },
