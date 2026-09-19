@@ -73,6 +73,9 @@ jobs:
             chmod +x ./mvnw
             ./mvnw clean package -DskipTests
             
+            echo "🔧 Updating NGINX max body size..."
+            sudo bash -c 'if ! grep -q "client_max_body_size 50M;" /etc/nginx/nginx.conf; then sed -i "/http {/a \    client_max_body_size 50M;" /etc/nginx/nginx.conf; systemctl reload nginx || true; fi'
+            
             echo "🔄 Updating & Restarting Spring Boot service..."
             cd ~/flame-crust
             sudo systemctl restart flame-crust || true
