@@ -13,8 +13,8 @@ spring:
     clean-disabled: false
   
   datasource:
-    url: ${MYSQL_URL:${SPRING_DATASOURCE_URL:jdbc:mysql://spring-mysql-db-flame-crust.k.aivencloud.com:25875/defaultdb?sslMode=REQUIRED&serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8}}
-    username: ${MYSQL_USER:${SPRING_DATASOURCE_USERNAME:avnadmin}}
+    url: ${MYSQL_URL:${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/flame_crust?serverTimezone=UTC}}
+    username: ${MYSQL_USER:${SPRING_DATASOURCE_USERNAME:root}}
     password: ${MYSQL_PASSWORD:${SPRING_DATASOURCE_PASSWORD:}}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
@@ -44,8 +44,8 @@ spring:
   mail:
     host: ${MAIL_HOST:${SPRING_MAIL_HOST:smtp.gmail.com}}
     port: ${MAIL_PORT:${SPRING_MAIL_PORT:587}}
-    username: ${MAIL_USERNAME:${SPRING_MAIL_USERNAME:chanthakhemara12@gmail.com}}
-    password: ${MAIL_PASSWORD:${SPRING_MAIL_PASSWORD:yklkawmryphjodct}}
+    username: ${MAIL_USERNAME:${SPRING_MAIL_USERNAME:}}
+    password: ${MAIL_PASSWORD:${SPRING_MAIL_PASSWORD:}}
     properties:
       mail:
         smtp:
@@ -75,16 +75,17 @@ app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
 
 jwt:
-  secret: ${JWT_SECRET:8f9b4c7d9a1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a}
+  secret: ${JWT_SECRET:}
   expiration: ${JWT_EXPIRATION:86400000}
 
 bakong:
   api:
     url: ${BAKONG_API_URL:https://api-bakong.nbc.gov.kh/v1/check_transaction_by_md5}
-    token: ${BAKONG_API_TOKEN:eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7ImlkIjoiOTYzZjdiMDAxMTZjNDgxNCJ9LCJpYXQiOjE3ODc4MzE2NTcsImV4cCI6MTc5NTYwNzY1N30.WByYtYb4p6zAMEqTKOrRXOx4xPcLK1G2m_30KZOh660}
+    token: ${BAKONG_API_TOKEN:}
 
 vapid:
-  public-key: ${VAPID_PUBLIC_KEY:BL14cYA9vTebqA9HDHOl4o78Bzv7A7DIQfxDqYgPHZSpp8WloY2V8V2qe6Ri4bKsl_KSXr-iJuOzv_AsB_Rl0Qw}
-  private-key: ${VAPID_PRIVATE_KEY:uKyvz2wgF1_FWMkj2u3Hz1lNfUskNFrhtWerK66l33M}
+  public-key: ${VAPID_PUBLIC_KEY:}
+  private-key: ${VAPID_PRIVATE_KEY:}
   subject: ${VAPID_SUBJECT:mailto:support@flamecrust.com}
+
 
