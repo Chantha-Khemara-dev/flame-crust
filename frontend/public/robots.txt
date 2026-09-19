@@ -12,3 +12,4 @@ Allow: /
 
 User-agent: *
 Allow: /
+Sitemap: https://flame-crust-4dw.pages.dev/sitemap.xml
