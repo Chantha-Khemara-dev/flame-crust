@@ -30,5 +30,13 @@ public class DatabaseSchemaUpdater implements CommandLineRunner {
         } catch (Exception e) {
             System.out.println("--> Schema update skipped or already applied: " + e.getMessage());
         }
+        
+        try {
+            jdbcTemplate.execute("CREATE INDEX idx_customers_phone ON customers(phone);");
+            jdbcTemplate.execute("CREATE INDEX idx_orders_created_at ON orders(created_at);");
+            System.out.println("--> Schema updated successfully: Added performance indexes.");
+        } catch (Exception e) {
+            System.out.println("--> Schema update skipped or already applied: " + e.getMessage());
+        }
     }
 }

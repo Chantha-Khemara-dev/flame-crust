@@ -85,7 +85,7 @@ jobs:
               echo "⚠️ systemd service not running, starting via background nohup..."
               pkill -f "java.*flame-crust" || true
               cd ~/flame-crust/backend
-              nohup java -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -XX:CICompilerCount=1 -Xss256k -Xms48m -Xmx220m -XX:MaxMetaspaceSize=140m -jar target/flame-crust-api-1.0.0.jar > backend.log 2>&1 &
+              nohup java -XX:+UseG1GC -Xms128m -Xmx512m -XX:MaxMetaspaceSize=256m -jar target/flame-crust-api-1.0.0.jar > backend.log 2>&1 &
             fi
             
             echo "🩺 Waiting for backend health check..."
