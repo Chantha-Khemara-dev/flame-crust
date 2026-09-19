@@ -37,6 +37,7 @@ export default defineConfig({
         ]
       },
       includeAssets: ['logo-v2.png', 'logo-192-v2.png', 'robots.txt', 'sw-push.js'],
+      manifestFilename: 'manifest-v2.webmanifest',
       manifest: {
         name: 'Flame Crust',
         short_name: 'FlameCrust',
