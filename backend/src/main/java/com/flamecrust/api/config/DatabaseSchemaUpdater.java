@@ -23,5 +23,12 @@ public class DatabaseSchemaUpdater implements CommandLineRunner {
         } catch (Exception e) {
             System.out.println("--> Schema update skipped or already applied: " + e.getMessage());
         }
+        
+        try {
+            jdbcTemplate.execute("ALTER TABLE customers ADD COLUMN favorites JSON NULL;");
+            System.out.println("--> Schema updated successfully: Added favorites column to customers.");
+        } catch (Exception e) {
+            System.out.println("--> Schema update skipped or already applied: " + e.getMessage());
+        }
     }
 }
