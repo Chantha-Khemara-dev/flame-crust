@@ -473,7 +473,7 @@ export default function DriverProfilePage() {
                     <img
                       src={coverPhoto}
                       alt="Driver Profile Cover"
-                      className="w-full h-full object-cover object-center group-hover:scale-102 transition-transform duration-700 ease-out"
+                      className="w-full h-full object-contain object-center group-hover:scale-102 transition-transform duration-700 ease-out bg-black/5 dark:bg-black/20"
                     />
 
                     {/* Dark Gradient Overlay for Maximum Text Contrast */}
