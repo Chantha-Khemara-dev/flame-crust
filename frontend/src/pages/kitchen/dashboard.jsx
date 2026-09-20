@@ -108,6 +108,7 @@ export default function KitchenDashboard() {
   const [stageFilter, setStageFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   const searchRef = useRef(null);
   const knownTickets = useRef(null);
@@ -585,8 +586,41 @@ export default function KitchenDashboard() {
           </div>
         </header>
 
+        {mobileSearchOpen && (
+          <div className="flex shrink-0 items-center gap-2 border-b border-border/70 bg-card px-3 py-2 md:hidden">
+            <Search className="size-4 shrink-0 text-muted-foreground" />
+            <Input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search tickets, items, guests…"
+              className="h-9 flex-1 rounded-full border-border/70 bg-secondary/40 text-xs"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                className="p-1 text-muted-foreground hover:text-foreground"
+              >
+                <X className="size-4" />
+              </button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setQuery("");
+                setMobileSearchOpen(false);
+              }}
+              className="h-8 rounded-full px-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
+
         {isBoard && (
-          <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-border/50 bg-secondary/25 px-3 py-2 text-[11px] font-semibold text-muted-foreground no-scrollbar sm:overflow-visible sm:px-4 md:px-4">
+          <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-border/50 bg-secondary/25 px-3 py-2 text-[11px] font-semibold text-muted-foreground no-scrollbar sm:overflow-visible sm:px-4 md:px-4 lg:px-4">
             <span className="hidden shrink-0 truncate sm:inline">{meta.subtitle}</span>
             <span className="flex items-center gap-2.5 tabular-nums sm:ml-auto sm:gap-3">
               <span className="flex shrink-0 items-center gap-1.5">
@@ -607,7 +641,7 @@ export default function KitchenDashboard() {
           </div>
         )}
 
-        <main className="relative flex-1 overflow-hidden p-2 sm:p-2.5 md:p-3 lg:p-3.5 lg:pl-0 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] lg:pb-3">
+        <main className="relative flex-1 overflow-hidden p-2 sm:p-2.5 md:p-3 lg:py-3 lg:pr-3.5 lg:pl-0 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] lg:pb-3">
           {loading ? (
             <KdsBoardSkeleton />
           ) : error && activeOrders.length === 0 ? (
@@ -645,7 +679,7 @@ export default function KitchenDashboard() {
               onStageFilterChange={setStageFilter}
               query={query}
               onClearQuery={() => setQuery("")}
-              onSearchMobile={() => searchRef.current?.focus()}
+              onSearchMobile={() => setMobileSearchOpen((prev) => !prev)}
               targetPrepMinutes={prefs.targetPrepMinutes}
               density={prefs.density}
               showImages={prefs.showImages}

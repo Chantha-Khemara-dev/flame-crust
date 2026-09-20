@@ -253,8 +253,8 @@ export function DashboardView({
                 )}
               >
                 <filter.icon className={cn("size-3.5 shrink-0", isActive && "text-white/90")} />
-                <span className="hidden sm:inline lg:hidden 2xl:inline truncate">{filter.label}</span>
-                <span className="hidden lg:inline 2xl:hidden truncate">{filter.shortLabel}</span>
+                <span className="inline sm:hidden lg:inline 2xl:hidden truncate text-[11px] font-semibold">{filter.shortLabel}</span>
+                <span className="hidden sm:inline lg:hidden 2xl:inline truncate text-xs font-semibold">{filter.label}</span>
                 <span
                   className={cn(
                     "rounded-full px-1.5 py-0.5 font-sans text-[10px] font-bold tabular-nums sm:px-2",
@@ -270,7 +270,7 @@ export function DashboardView({
           })}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex w-full shrink-0 items-center justify-between gap-2 sm:w-auto sm:justify-start">
           <div className="flex items-center rounded-full border border-border/70 bg-card/85 p-1 shadow-warm ring-1 ring-black/[0.03] backdrop-blur-xl dark:bg-zinc-900/85">
             <button
               type="button"
