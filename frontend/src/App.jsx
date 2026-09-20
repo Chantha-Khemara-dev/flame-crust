@@ -75,6 +75,12 @@ function RoleRedirectGuard({ children }) {
     return <Navigate to="/admin/dashboard" replace />;
   }
 
+  // If kitchen staff is logged in and visits /login, redirect to kitchen dashboard
+  if (kitchenAuth && location.pathname === "/login") {
+    sessionStorage.removeItem("kitchen_store_preview");
+    return <Navigate to="/kitchen/dashboard" replace />;
+  }
+
   // If kitchen staff is logged in, strictly enforce kitchen dashboard unless previewing store
   if (kitchenAuth) {
     const isPreviewing = sessionStorage.getItem("kitchen_store_preview") === "true";

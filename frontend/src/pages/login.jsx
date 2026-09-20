@@ -85,6 +85,12 @@ export default function LoginPage() {
           return;
         }
       }
+      const kitchenAuth = localStorage.getItem("kitchenAuth");
+      if (kitchenAuth) {
+        sessionStorage.removeItem("kitchen_store_preview");
+        navigate(redirectPath || "/kitchen/dashboard", { replace: true });
+        return;
+      }
       const customerAuth = localStorage.getItem("customerAuth");
       if (customerAuth) {
         if (redirectPath && redirectPath.startsWith("/admin")) {

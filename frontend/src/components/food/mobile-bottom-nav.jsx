@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { UtensilsCrossed, Store, Search, ShoppingBag, User, ShieldCheck } from "lucide-react";
+import { UtensilsCrossed, Store, Search, ShoppingBag, User, ShieldCheck, ChefHat } from "lucide-react";
 import { useCart } from "@/lib/cart-store";
 import { SearchModal } from "./search-modal";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,14 @@ export function MobileBottomNav() {
     }
   });
 
+  const [hasKitchenAuth, setHasKitchenAuth] = useState(() => {
+    try {
+      return Boolean(localStorage.getItem("kitchenAuth"));
+    } catch (e) {
+      return false;
+    }
+  });
+
   const count = useCart((s) => s.lines.reduce((acc, l) => acc + l.qty, 0));
   const closeCart = useCart((s) => s.closeCart);
 
@@ -35,11 +43,14 @@ export function MobileBottomNav() {
       try {
         const auth = localStorage.getItem("customerAuth");
         const adminAuth = localStorage.getItem("adminAuth");
+        const kitchenAuth = localStorage.getItem("kitchenAuth");
         setCustomer(auth ? JSON.parse(auth) : null);
         setAdminUser(adminAuth ? JSON.parse(adminAuth) : null);
+        setHasKitchenAuth(Boolean(kitchenAuth));
       } catch (e) {
         setCustomer(null);
         setAdminUser(null);
+        setHasKitchenAuth(false);
       }
     };
     window.addEventListener("storage", handleAuthChange);
@@ -104,12 +115,20 @@ export function MobileBottomNav() {
     },
     {
       id: "account",
-      label: customer ? "Account" : (adminUser ? "Admin" : "Account"),
-      to: customer ? "/profile" : (adminUser ? "/admin/dashboard" : "/login"),
+      label: hasKitchenAuth && !customer ? "Kitchen" : (customer ? "Account" : (adminUser ? "Admin" : "Account")),
+      to: hasKitchenAuth && !customer ? "/kitchen/dashboard" : (customer ? "/profile" : (adminUser ? "/admin/dashboard" : "/login")),
       replace: true,
-      isActive: isProfile || (Boolean(adminUser) && location.pathname.startsWith("/admin")),
-      icon: adminUser && !customer ? ShieldCheck : User,
+      isActive:
+        isProfile ||
+        (hasKitchenAuth && location.pathname.startsWith("/kitchen")) ||
+        (Boolean(adminUser) && location.pathname.startsWith("/admin")),
+      icon: hasKitchenAuth && !customer ? ChefHat : (adminUser && !customer ? ShieldCheck : User),
       avatar: customer?.avatar,
+      onClick: () => {
+        if (hasKitchenAuth) {
+          sessionStorage.removeItem("kitchen_store_preview");
+        }
+      },
     },
   ];
 
@@ -198,7 +217,10 @@ export function MobileBottomNav() {
                   key={item.id}
                   to={item.to}
                   replace={item.replace || false}
-                  onClick={handleTabClick}
+                  onClick={() => {
+                    if (item.onClick) item.onClick();
+                    handleTabClick();
+                  }}
                   className="w-full flex items-center justify-center focus:outline-none touch-manipulation cursor-pointer active:scale-95 transition-transform duration-100"
                 >
                   {content}

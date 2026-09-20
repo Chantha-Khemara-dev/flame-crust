@@ -596,16 +596,18 @@ function Navbar() {
               </button>
             ) : hasKitchenAuth ? (
               <Button
-                className="hidden sm:flex rounded-full bg-gradient-to-r from-primary via-orange-500 to-amber-500 text-white hover:brightness-105 h-9 sm:h-11 px-4 sm:px-5 font-serif font-bold text-xs sm:text-sm transition-all shadow-warm active:scale-95 items-center gap-2 shrink-0"
+                className="flex rounded-full bg-gradient-to-r from-primary via-orange-500 to-amber-500 text-white hover:brightness-105 h-9 sm:h-11 px-3 sm:px-5 font-serif font-bold text-xs sm:text-sm transition-all shadow-warm active:scale-95 items-center gap-1.5 sm:gap-2 shrink-0 cursor-pointer"
                 onClick={() => {
                   setMobileOpen(false);
                   sessionStorage.removeItem("kitchen_store_preview");
                   navigate("/kitchen/dashboard");
                 }}
                 title="Return to Kitchen Board (Chef Portal)"
+                aria-label="Return to Kitchen Board"
               >
-                <ChefHat className="size-4" />
-                <span>Kitchen Board</span>
+                <ChefHat className="size-4 shrink-0" />
+                <span className="hidden xs:inline sm:inline">Kitchen</span>
+                <span className="hidden sm:inline">Board</span>
               </Button>
             ) : location.pathname !== "/login" ? (
               <Button
