@@ -231,7 +231,7 @@ export function ChefProfileView({ user, stats = {}, revenueText, onRefresh, onSi
       </div>
 
       <div className="flex-1 overflow-y-auto pb-8 custom-scrollbar">
-        <div className="max-w-5xl space-y-6">
+        <div className="w-full space-y-5 sm:space-y-6">
           {/* Hero Profile Card */}
           <section className="relative overflow-hidden rounded-3xl border border-border/70 bg-card shadow-warm transition-all">
             {/* Top decorative banner gradient */}
