@@ -918,23 +918,25 @@ function CheckoutPage() {
         <PageTransition>
           <div className="mx-auto max-w-6xl px-3 sm:px-6 lg:px-8 py-2 sm:py-6">
             {/* Top Navigation & Step Indicator */}
-            <div className="flex flex-col gap-3 mb-5 sm:mb-8">
-              <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3.5 mb-4 sm:mb-8">
+              <div className="flex items-center justify-between gap-3">
                 <button
                   type="button"
                   onClick={() => navigate("/cart")}
-                  className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-1 px-2.5 -ml-2.5 rounded-full hover:bg-secondary/60"
+                  className="group inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl bg-card border border-border/80 hover:border-primary/50 text-foreground font-bold text-xs sm:text-sm shadow-xs transition-all active:scale-95 cursor-pointer"
                 >
-                  <ArrowLeft className="size-4" />
-                  <span>Back to Cart</span>
+                  <div className="size-6 sm:size-7 rounded-lg bg-primary/15 text-primary group-hover:bg-primary group-hover:text-white flex items-center justify-center transition-colors shadow-2xs">
+                    <ArrowLeft className="size-3.5 sm:size-4 transition-transform group-hover:-translate-x-0.5" />
+                  </div>
+                  <span className="text-foreground group-hover:text-primary transition-colors">Back to Cart</span>
                 </button>
 
                 <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold text-muted-foreground">
-                  <span className="text-muted-foreground">Cart</span>
-                  <span>→</span>
-                  <span className="text-primary bg-primary/10 px-2 py-0.5 rounded-full">Checkout</span>
-                  <span>→</span>
-                  <span className="text-muted-foreground/60">Payment</span>
+                  <span className="text-muted-foreground/80 hover:text-foreground cursor-pointer" onClick={() => navigate("/cart")}>Cart</span>
+                  <span className="text-muted-foreground/40">→</span>
+                  <span className="text-primary bg-primary/15 border border-primary/30 px-2.5 py-0.5 rounded-full font-bold">Checkout</span>
+                  <span className="text-muted-foreground/40">→</span>
+                  <span className="text-muted-foreground/50">Payment</span>
                 </div>
               </div>
 
