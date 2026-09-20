@@ -105,7 +105,9 @@ export default function KitchenDashboard() {
 
   const { theme, setTheme } = useTheme();
   const [activeView, setActiveView] = useState("dashboard");
-  const [stageFilter, setStageFilter] = useState("all");
+  const [stageFilter, setStageFilter] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth < 640 ? "pending" : "all"
+  );
   const [query, setQuery] = useState("");
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);

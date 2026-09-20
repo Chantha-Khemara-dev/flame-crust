@@ -113,28 +113,8 @@ export function DashboardView({
     return { list, oldest, late };
   };
 
-  const [showMobileStats, setShowMobileStats] = useState(() => {
-    try {
-      const saved = localStorage.getItem("kitchen_mobile_stats_open");
-      return saved !== null ? JSON.parse(saved) : false;
-    } catch {
-      return false;
-    }
-  });
-
-  const toggleMobileStats = () => {
-    playChime("tap");
-    setShowMobileStats((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem("kitchen_mobile_stats_open", JSON.stringify(next));
-      } catch {}
-      return next;
-    });
-  };
-
   const filters = [
-    { id: "all", label: "All Stages", shortLabel: "All", count: totalActive, icon: ChefHat },
+    { id: "all", label: "All Stages", shortLabel: "All", count: totalActive, icon: ChefHat, desktopOnly: true },
     { id: "pending", label: "To Prepare", shortLabel: "Prepare", count: buckets.pending.length, icon: Clock3 },
     { id: "preparing", label: "Cooking", shortLabel: "Cooking", count: buckets.preparing.length, icon: Flame },
     { id: "ready", label: "Ready", shortLabel: "Ready", count: buckets.ready.length, icon: CheckCircle2 },
@@ -142,48 +122,14 @@ export function DashboardView({
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {/* Mobile Stats Toggle (Hidden on sm+, visible on phone) */}
-      <div className="mb-2 shrink-0 sm:hidden">
-        <button
-          type="button"
-          onClick={toggleMobileStats}
-          aria-expanded={showMobileStats}
-          className="flex w-full items-center justify-between rounded-xl border border-border/70 bg-card/85 px-3 py-2 text-xs font-semibold shadow-xs backdrop-blur-xl transition-colors hover:bg-secondary/60 active:opacity-75"
-        >
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-500">
-              <ShoppingBag className="size-3.5" />
-            </span>
-            <span className="truncate font-serif font-bold text-foreground">Summary & Stats</span>
-            <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold tabular-nums text-muted-foreground">
-              {totalOrdersToday} tickets
-            </span>
-          </div>
-          <div className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-muted-foreground">
-            <span>{showMobileStats ? "Hide" : "Show"}</span>
-            {showMobileStats ? (
-              <ChevronUp className="size-3.5 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="size-3.5 text-muted-foreground" />
-            )}
-          </div>
-        </button>
-      </div>
-
-      {/* Stats Cards Row - 2 rows of 3 on tablets/laptops for ample room, 6 on extra-wide screens */}
-      <div
-        className={cn(
-          "relative mb-3 shrink-0 sm:mb-4 sm:block",
-          showMobileStats ? "block" : "hidden sm:block"
-        )}
-      >
-        <div className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-1 no-scrollbar sm:grid sm:grid-cols-2 md:grid-cols-3 2xl:grid-cols-6 sm:snap-none sm:overflow-visible sm:pb-0">
+      {/* Stats Cards Row - Hidden on phone, visible on sm+ screens */}
+      <div className="relative mb-3 shrink-0 hidden sm:block sm:mb-4">
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 2xl:grid-cols-6 gap-2.5">
           <StatTile
             label="Today's Tickets"
             value={totalOrdersToday}
             icon={ShoppingBag}
             tone="amber"
-            className="min-w-[130px] shrink-0 snap-start sm:min-w-0 sm:shrink"
             hint={`${stats.completedToday || 0} completed`}
           />
           <StatTile
@@ -191,7 +137,6 @@ export function DashboardView({
             value={buckets.preparing.length}
             icon={Flame}
             tone="flame"
-            className="min-w-[130px] shrink-0 snap-start sm:min-w-0 sm:shrink"
             hint={buckets.preparing.length ? "Fire in progress" : "Oven clear"}
           />
           <StatTile
@@ -199,7 +144,6 @@ export function DashboardView({
             value={buckets.ready.length}
             icon={CheckCircle2}
             tone="emerald"
-            className="min-w-[130px] shrink-0 snap-start sm:min-w-0 sm:shrink"
             hint={buckets.ready.length ? "Expediter has work" : "Pass is clear"}
           />
           <StatTile
@@ -208,7 +152,6 @@ export function DashboardView({
             icon={AlertTriangle}
             tone={stats.delayed > 0 ? "destructive" : "muted"}
             className={cn(
-              "min-w-[130px] shrink-0 snap-start sm:min-w-0 sm:shrink",
               stats.delayed > 0 && "border-destructive/40 ring-1 ring-destructive/20"
             )}
             hint={`Target ${targetPrepMinutes} min`}
@@ -218,7 +161,6 @@ export function DashboardView({
             value={avgPrep}
             icon={Utensils}
             tone="sky"
-            className="min-w-[130px] shrink-0 snap-start sm:min-w-0 sm:shrink"
             hint="Ticket → ready"
           />
           <StatTile
@@ -226,15 +168,14 @@ export function DashboardView({
             value={formatMoney(revenue)}
             icon={DollarSign}
             tone="amber"
-            className="min-w-[130px] shrink-0 snap-start sm:min-w-0 sm:shrink"
             hint="Completed tickets"
           />
         </div>
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background via-background/70 to-transparent sm:hidden" />
       </div>
 
+      {/* Top Filter and Controls Bar */}
       <div className="mb-3 flex shrink-0 flex-col gap-2 sm:mb-4 sm:flex-row sm:items-center sm:justify-between sm:gap-2.5">
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 sm:grid sm:flex-1 sm:min-w-[280px] sm:grid-cols-4 sm:gap-1 sm:rounded-full sm:border sm:border-border/70 sm:bg-card/85 sm:p-1.5 sm:shadow-warm sm:ring-1 sm:ring-black/[0.03] sm:backdrop-blur-xl dark:sm:bg-zinc-900/85 dark:sm:ring-white/[0.05]">
+        <div className="grid grid-cols-3 gap-1.5 rounded-2xl border border-border/70 bg-card/85 p-1 shadow-warm backdrop-blur-xl dark:bg-zinc-900/85 sm:flex sm:flex-1 sm:min-w-[280px] sm:grid-cols-none sm:gap-1 sm:rounded-full sm:p-1.5 dark:sm:ring-white/[0.05]">
           {filters.map((filter) => {
             const isActive = stageFilter === filter.id;
             return (
@@ -246,14 +187,15 @@ export function DashboardView({
                   onStageFilterChange?.(filter.id);
                 }}
                 className={cn(
-                  "flex shrink-0 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-center text-xs font-semibold whitespace-nowrap transition-colors duration-150 sm:shrink sm:px-2.5 sm:py-2",
+                  "flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-center text-xs font-semibold transition-all duration-150 sm:shrink sm:rounded-full sm:px-2.5 sm:py-2",
+                  filter.desktopOnly && "hidden sm:flex",
                   isActive
                     ? "bg-gradient-to-r from-primary via-orange-600 to-amber-600 font-serif font-bold text-white shadow-warm"
-                    : "border border-border/70 bg-card/90 text-muted-foreground hover:bg-secondary/70 hover:text-foreground sm:border-transparent sm:bg-transparent"
+                    : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
                 )}
               >
                 <filter.icon className={cn("size-3.5 shrink-0", isActive && "text-white/90")} />
-                <span className="text-xs font-semibold">{filter.label}</span>
+                <span className="truncate text-xs font-semibold">{filter.label}</span>
                 <span
                   className={cn(
                     "rounded-full px-1.5 py-0.5 font-sans text-[10px] font-bold tabular-nums",
