@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingBag, Search, Menu as MenuIcon, X, Moon, Sun, User, MapPin, Ticket, LogOut, ShieldCheck, LayoutDashboard, Clock, Package, Bike, ArrowLeft, MessageSquare, Sparkles } from "lucide-react";
+import { ShoppingBag, Search, Menu as MenuIcon, X, Moon, Sun, User, MapPin, Ticket, LogOut, ShieldCheck, LayoutDashboard, Clock, Package, Bike, ArrowLeft, MessageSquare, Sparkles, ChefHat, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { OrderChatModal } from "@/components/food/order-chat-modal";
@@ -54,6 +54,13 @@ function Navbar() {
       if (!adminAuth) return false;
       const a = JSON.parse(adminAuth);
       return (a.role || "").toUpperCase() === "ADMIN";
+    } catch (e) {
+      return false;
+    }
+  });
+  const [hasKitchenAuth, setHasKitchenAuth] = useState(() => {
+    try {
+      return !!localStorage.getItem("kitchenAuth") || sessionStorage.getItem("kitchen_store_preview") === "true";
     } catch (e) {
       return false;
     }
@@ -284,10 +291,16 @@ function Navbar() {
         } else {
           setIsAdmin(false);
         }
+        setHasKitchenAuth(
+          !!localStorage.getItem("kitchenAuth") ||
+          sessionStorage.getItem("kitchen_store_preview") === "true" ||
+          (a && (a.role || "").toUpperCase() === "ADMIN")
+        );
       } catch (e) {
         setCustomer(null);
         setAdminUser(null);
         setIsAdmin(false);
+        setHasKitchenAuth(false);
       }
     };
     window.addEventListener("storage", handleAuthChange);
@@ -593,6 +606,23 @@ function Navbar() {
               </Button>
             ) : null}
 
+            {/* Return to Kitchen Board / Chef Portal Button */}
+            {hasKitchenAuth && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  sessionStorage.removeItem("kitchen_store_preview");
+                  navigate("/kitchen/dashboard");
+                }}
+                className="hidden sm:flex h-9 sm:h-11 rounded-full border-amber-500/50 bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-primary/15 text-foreground hover:border-primary hover:bg-primary hover:text-white transition-all font-serif text-xs font-bold shadow-xs active:scale-95 items-center gap-2 px-4 shrink-0"
+                title="Return to Kitchen Board / Chef Portal"
+              >
+                <ChefHat className="size-4 text-amber-500" />
+                <span>Kitchen Board</span>
+              </Button>
+            )}
+
             {/* Compact Chat Button for Active Ongoing Orders */}
             {activeOrders.length > 0 && (
               <div className="relative flex items-center justify-center size-10 sm:size-11 shrink-0">
@@ -745,6 +775,26 @@ function Navbar() {
                       Backend
                     </span>
                   </Link>
+                )}
+
+                {hasKitchenAuth && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileOpen(false);
+                      sessionStorage.removeItem("kitchen_store_preview");
+                      navigate("/kitchen/dashboard");
+                    }}
+                    className="w-full px-4 py-2.5 text-sm font-semibold rounded-xl transition-colors bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-primary/15 text-primary hover:bg-primary/20 flex items-center justify-between border border-primary/25 active:scale-98"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <ChefHat className="size-4.5 text-amber-500" />
+                      <span className="font-serif font-bold">Kitchen Board (Chef Portal)</span>
+                    </div>
+                    <span className="text-[10px] bg-primary text-primary-foreground px-2 py-0.5 rounded-full font-bold">
+                      Return
+                    </span>
+                  </button>
                 )}
 
                 <div className="space-y-0.5">
@@ -960,6 +1010,44 @@ function Navbar() {
 
       {/* Global Available Coupons Modal */}
       <AvailableCoupons trigger={<span className="hidden" />} />
+
+      {/* Floating Return to Kitchen Board Banner for Chef / Kitchen Staff */}
+      {hasKitchenAuth && !location.pathname.startsWith("/kitchen") && (
+        <aside
+          aria-label="Chef store preview banner"
+          className="fixed bottom-20 inset-x-3 sm:bottom-6 sm:right-6 sm:left-auto z-[80] animate-in fade-in slide-in-from-bottom-3 duration-200"
+        >
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-500/40 bg-card/95 p-2.5 sm:px-4 sm:py-3 shadow-warm-lg ring-1 ring-black/[0.05] backdrop-blur-2xl dark:bg-zinc-900/95 dark:ring-white/[0.08]">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-xs">
+                <ChefHat className="size-4.5 animate-bounce" />
+              </span>
+              <div className="min-w-0 pr-1">
+                <p className="truncate text-xs font-serif font-bold text-foreground">
+                  Kitchen Portal Active
+                </p>
+                <p className="truncate text-[10px] font-medium text-muted-foreground hidden sm:block">
+                  Viewing store preview. Tap to return to kitchen station.
+                </p>
+                <p className="truncate text-[10px] font-medium text-muted-foreground sm:hidden">
+                  Store Preview Mode
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => {
+                sessionStorage.removeItem("kitchen_store_preview");
+                navigate("/kitchen/dashboard");
+              }}
+              className="shrink-0 rounded-full bg-gradient-to-r from-primary via-orange-500 to-amber-500 text-white font-serif font-bold text-xs shadow-warm hover:brightness-105 active:scale-95 px-3.5 h-9"
+            >
+              <span>Kitchen Board</span>
+              <ArrowRight className="size-3.5 ml-1" />
+            </Button>
+          </div>
+        </aside>
+      )}
     </header>
   );
 }

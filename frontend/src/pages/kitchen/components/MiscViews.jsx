@@ -16,7 +16,6 @@ import {
   Image as ImageIcon,
   Wallet,
   AlertTriangle,
-  Keyboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -33,17 +32,6 @@ import {
   setKitchenPref,
   useKitchenPrefs,
 } from "./kitchen-ui";
-
-const SHORTCUTS = [
-  { keys: ["1", "2", "3"], label: "Focus a station column" },
-  { keys: ["0"], label: "Show all stages" },
-  { keys: ["B", "G", "P", "C"], label: "Jump between views" },
-  { keys: ["R"], label: "Sync the board" },
-  { keys: ["/"], label: "Search tickets" },
-  { keys: ["M"], label: "Mute / unmute alerts" },
-  { keys: ["T"], label: "Toggle light / dark" },
-  { keys: ["Esc"], label: "Close panel or clear search" },
-];
 
 export function ChefProfileView({ user, stats = {}, revenueText, onRefresh, onSignOut }) {
   const prefs = useKitchenPrefs();
@@ -336,44 +324,6 @@ export function ChefProfileView({ user, stats = {}, revenueText, onRefresh, onSi
                     </Button>
                   )}
                 </div>
-              </section>
-
-              <section className="rounded-3xl border border-border/70 bg-card p-4 shadow-warm sm:p-5">
-                <div className="mb-3.5 flex items-center gap-2.5">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-2xl border border-border/70 bg-secondary text-foreground">
-                    <Keyboard className="size-4" />
-                  </span>
-                  <div>
-                    <h4 className="font-serif text-base font-bold text-foreground sm:text-lg">
-                      Keyboard shortcuts
-                    </h4>
-                    <p className="text-xs font-medium text-muted-foreground">
-                      Run the board without leaving the keyboard
-                    </p>
-                  </div>
-                </div>
-                <ul className="space-y-2">
-                  {SHORTCUTS.map((shortcut) => (
-                    <li
-                      key={shortcut.label}
-                      className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-secondary/25 px-3 py-2"
-                    >
-                      <span className="truncate text-xs font-semibold text-muted-foreground">
-                        {shortcut.label}
-                      </span>
-                      <span className="flex shrink-0 items-center gap-1">
-                        {shortcut.keys.map((key) => (
-                          <kbd
-                            key={key}
-                            className="min-w-6 rounded-lg border border-border/70 bg-card px-1.5 py-0.5 text-center font-mono text-[10px] font-bold text-foreground shadow-2xs"
-                          >
-                            {key}
-                          </kbd>
-                        ))}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
               </section>
             </div>
           </div>

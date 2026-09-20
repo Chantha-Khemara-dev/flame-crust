@@ -46,7 +46,7 @@ export const STAGES = {
     columnTint: "from-primary/[0.09] via-card to-card",
     hoverBorder: "hover:border-primary/60",
     action: "from-emerald-600 via-emerald-500 to-teal-500",
-    actionLabel: "Mark as Ready",
+    actionLabel: "Mark Ready",
     nextStatus: "READY",
   },
   ready: {
@@ -62,7 +62,7 @@ export const STAGES = {
     columnTint: "from-emerald-500/[0.07] via-card to-card",
     hoverBorder: "hover:border-emerald-500/50",
     action: "from-teal-600 via-emerald-600 to-green-600",
-    actionLabel: "Hand to Driver / Done",
+    actionLabel: "Complete Order",
     nextStatus: "DELIVERED",
   },
 };
@@ -606,27 +606,29 @@ export function StatTile({ label, value, icon: Icon, tone = "amber", hint, class
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-3xl border border-border/70 bg-card p-3.5 shadow-warm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-warm-lg sm:p-4",
+        "group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card p-3 shadow-warm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-warm-lg sm:rounded-3xl sm:p-3.5 xl:p-4",
         className
       )}
     >
-      <div className="mb-2 flex items-start justify-between gap-2">
-        <span className="truncate text-[10px] font-bold uppercase tracking-wider text-muted-foreground sm:text-[11px]">
-          {label}
-        </span>
-        {Icon && (
-          <span
-            className={cn(
-              "flex size-7 shrink-0 items-center justify-center rounded-xl border transition-transform duration-200 group-hover:scale-110 sm:size-8",
-              tones[tone]
-            )}
-          >
-            <Icon className="size-3.5 sm:size-4" />
+      <div>
+        <div className="mb-2 flex items-start justify-between gap-1.5">
+          <span className="line-clamp-2 min-h-[2.4em] flex-1 text-[10px] font-bold uppercase leading-tight tracking-wider text-muted-foreground sm:text-[11px]">
+            {label}
           </span>
-        )}
-      </div>
-      <div className="truncate font-serif text-xl font-bold tracking-tight text-foreground sm:text-2xl lg:text-[1.75rem]">
-        {value}
+          {Icon && (
+            <span
+              className={cn(
+                "flex size-6.5 shrink-0 items-center justify-center rounded-xl border transition-transform duration-200 group-hover:scale-110 sm:size-7.5",
+                tones[tone]
+              )}
+            >
+              <Icon className="size-3 sm:size-3.5" />
+            </span>
+          )}
+        </div>
+        <div className="font-serif text-lg font-bold tracking-tight text-foreground tabular-nums sm:text-xl xl:text-2xl">
+          {value}
+        </div>
       </div>
       {hint && <div className="mt-1 truncate text-[10px] font-semibold text-muted-foreground">{hint}</div>}
     </div>

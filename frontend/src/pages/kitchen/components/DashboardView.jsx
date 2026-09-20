@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Clock3,
   Flame,
@@ -17,6 +17,8 @@ import {
   Trash2,
   Calendar,
   SlidersHorizontal,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getImageUrl } from "@/lib/food-api";
@@ -111,68 +113,122 @@ export function DashboardView({
     return { list, oldest, late };
   };
 
+  const [showMobileStats, setShowMobileStats] = useState(() => {
+    try {
+      const saved = localStorage.getItem("kitchen_mobile_stats_open");
+      return saved !== null ? JSON.parse(saved) : false;
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleMobileStats = () => {
+    playChime("tap");
+    setShowMobileStats((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("kitchen_mobile_stats_open", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
   const filters = [
-    { id: "all", label: "All Stages", count: totalActive, icon: ChefHat },
-    { id: "pending", label: "To Prepare", count: buckets.pending.length, icon: Clock3 },
-    { id: "preparing", label: "Cooking", count: buckets.preparing.length, icon: Flame },
-    { id: "ready", label: "Ready", count: buckets.ready.length, icon: CheckCircle2 },
+    { id: "all", label: "All Stages", shortLabel: "All", count: totalActive, icon: ChefHat },
+    { id: "pending", label: "To Prepare", shortLabel: "Prepare", count: buckets.pending.length, icon: Clock3 },
+    { id: "preparing", label: "Cooking", shortLabel: "Cooking", count: buckets.preparing.length, icon: Flame },
+    { id: "ready", label: "Ready", shortLabel: "Ready", count: buckets.ready.length, icon: CheckCircle2 },
   ];
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="relative mb-3 shrink-0 sm:mb-4">
-        <div className="flex snap-x snap-mandatory grid-cols-2 gap-2.5 overflow-x-auto pb-1 no-scrollbar sm:grid sm:grid-cols-3 sm:snap-none sm:overflow-visible sm:pb-0 lg:grid-cols-6">
-        <StatTile
-          label="Today's Tickets"
-          value={totalOrdersToday}
-          icon={ShoppingBag}
-          tone="amber"
-          className="min-w-[124px] shrink-0 snap-start sm:min-w-0 sm:shrink"
-          hint={`${stats.completedToday || 0} completed`}
-        />
-        <StatTile
-          label="In the Oven"
-          value={buckets.preparing.length}
-          icon={Flame}
-          tone="flame"
-          className="min-w-[124px] shrink-0 snap-start sm:min-w-0 sm:shrink"
-          hint={buckets.preparing.length ? "Fire in progress" : "Oven clear"}
-        />
-        <StatTile
-          label="Ready for Pickup"
-          value={buckets.ready.length}
-          icon={CheckCircle2}
-          tone="emerald"
-          className="min-w-[124px] shrink-0 snap-start sm:min-w-0 sm:shrink"
-          hint={buckets.ready.length ? "Expediter has work" : "Pass is clear"}
-        />
-        <StatTile
-          label="Running Late"
-          value={stats.delayed || 0}
-          icon={AlertTriangle}
-          tone={stats.delayed > 0 ? "destructive" : "muted"}
-          className={cn(
-            "min-w-[124px] shrink-0 snap-start sm:min-w-0 sm:shrink",
-            stats.delayed > 0 && "border-destructive/40 ring-1 ring-destructive/20"
-          )}
-          hint={`Target ${targetPrepMinutes} min`}
-        />
-        <StatTile
-          label="Avg Prep Time"
-          value={avgPrep}
-          icon={Utensils}
-          tone="sky"
-          className="min-w-[124px] shrink-0 snap-start sm:min-w-0 sm:shrink"
-          hint="Ticket → ready"
-        />
-        <StatTile
-          label="Today's Revenue"
-          value={formatMoney(revenue)}
-          icon={DollarSign}
-          tone="amber"
-          className="min-w-[124px] shrink-0 snap-start sm:min-w-0 sm:shrink"
-          hint="Completed tickets"
-        />
+      {/* Mobile Stats Toggle (Hidden on sm+, visible on phone) */}
+      <div className="mb-2 shrink-0 sm:hidden">
+        <button
+          type="button"
+          onClick={toggleMobileStats}
+          aria-expanded={showMobileStats}
+          className="flex w-full items-center justify-between rounded-xl border border-border/70 bg-card/85 px-3 py-2 text-xs font-semibold shadow-xs backdrop-blur-xl transition-all hover:bg-secondary/60 active:scale-[0.99]"
+        >
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-500">
+              <ShoppingBag className="size-3.5" />
+            </span>
+            <span className="truncate font-serif font-bold text-foreground">Summary & Stats</span>
+            <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold tabular-nums text-muted-foreground">
+              {totalOrdersToday} tickets
+            </span>
+          </div>
+          <div className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-muted-foreground">
+            <span>{showMobileStats ? "Hide" : "Show"}</span>
+            {showMobileStats ? (
+              <ChevronUp className="size-3.5 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="size-3.5 text-muted-foreground" />
+            )}
+          </div>
+        </button>
+      </div>
+
+      {/* Stats Cards Row - 2 rows of 3 on tablets/laptops for ample room, 6 on extra-wide screens */}
+      <div
+        className={cn(
+          "relative mb-3 shrink-0 sm:mb-4 sm:block",
+          showMobileStats ? "block" : "hidden sm:block"
+        )}
+      >
+        <div className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-1 no-scrollbar sm:grid sm:grid-cols-2 md:grid-cols-3 2xl:grid-cols-6 sm:snap-none sm:overflow-visible sm:pb-0">
+          <StatTile
+            label="Today's Tickets"
+            value={totalOrdersToday}
+            icon={ShoppingBag}
+            tone="amber"
+            className="min-w-[130px] shrink-0 snap-start sm:min-w-0 sm:shrink"
+            hint={`${stats.completedToday || 0} completed`}
+          />
+          <StatTile
+            label="In the Oven"
+            value={buckets.preparing.length}
+            icon={Flame}
+            tone="flame"
+            className="min-w-[130px] shrink-0 snap-start sm:min-w-0 sm:shrink"
+            hint={buckets.preparing.length ? "Fire in progress" : "Oven clear"}
+          />
+          <StatTile
+            label="Ready for Pickup"
+            value={buckets.ready.length}
+            icon={CheckCircle2}
+            tone="emerald"
+            className="min-w-[130px] shrink-0 snap-start sm:min-w-0 sm:shrink"
+            hint={buckets.ready.length ? "Expediter has work" : "Pass is clear"}
+          />
+          <StatTile
+            label="Running Late"
+            value={stats.delayed || 0}
+            icon={AlertTriangle}
+            tone={stats.delayed > 0 ? "destructive" : "muted"}
+            className={cn(
+              "min-w-[130px] shrink-0 snap-start sm:min-w-0 sm:shrink",
+              stats.delayed > 0 && "border-destructive/40 ring-1 ring-destructive/20"
+            )}
+            hint={`Target ${targetPrepMinutes} min`}
+          />
+          <StatTile
+            label="Avg Prep Time"
+            value={avgPrep}
+            icon={Utensils}
+            tone="sky"
+            className="min-w-[130px] shrink-0 snap-start sm:min-w-0 sm:shrink"
+            hint="Ticket → ready"
+          />
+          <StatTile
+            label="Today's Revenue"
+            value={formatMoney(revenue)}
+            icon={DollarSign}
+            tone="amber"
+            className="min-w-[130px] shrink-0 snap-start sm:min-w-0 sm:shrink"
+            hint="Completed tickets"
+          />
         </div>
         <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background via-background/70 to-transparent sm:hidden" />
       </div>
@@ -190,17 +246,18 @@ export function DashboardView({
                   onStageFilterChange?.(filter.id);
                 }}
                 className={cn(
-                  "flex items-center justify-center gap-1.5 rounded-full px-1 py-2 text-center text-xs transition-all active:scale-95 sm:gap-2 sm:px-3 sm:py-2.5",
+                  "flex items-center justify-center gap-1.5 rounded-full px-1 py-2 text-center text-xs transition-all active:scale-95 sm:gap-2 sm:px-2.5 sm:py-2.5",
                   isActive
                     ? "bg-gradient-to-r from-primary via-orange-600 to-amber-600 font-serif font-bold text-white shadow-warm"
                     : "font-semibold text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
                 )}
               >
-                <filter.icon className={cn("size-4 sm:size-3.5", isActive && "text-white/90")} />
-                <span className="hidden truncate sm:inline">{filter.label}</span>
+                <filter.icon className={cn("size-3.5 shrink-0", isActive && "text-white/90")} />
+                <span className="hidden sm:inline lg:hidden 2xl:inline truncate">{filter.label}</span>
+                <span className="hidden lg:inline 2xl:hidden truncate">{filter.shortLabel}</span>
                 <span
                   className={cn(
-                    "rounded-full px-2 py-0.5 font-sans text-[10px] font-bold tabular-nums",
+                    "rounded-full px-1.5 py-0.5 font-sans text-[10px] font-bold tabular-nums sm:px-2",
                     isActive
                       ? "bg-white/25 text-white backdrop-blur-sm"
                       : "border border-border/60 bg-secondary text-muted-foreground"
@@ -354,7 +411,7 @@ export function DashboardView({
             })}
           </div>
 
-          <div className="hidden min-h-0 flex-1 gap-5 overflow-hidden md:grid md:grid-cols-3">
+          <div className="hidden min-h-0 flex-1 gap-4 overflow-x-auto overflow-y-hidden pb-1 custom-scrollbar md:grid md:grid-cols-[repeat(3,minmax(285px,1fr))] xl:gap-5">
             {STAGE_ORDER.map((stage) => {
               const { list, oldest, late } = stageMeta(stage);
               return (
@@ -417,40 +474,40 @@ function StationColumn({
   return (
     <section
       className={cn(
-        "flex min-h-0 flex-col overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-b shadow-warm ring-1 ring-black/[0.03] transition-colors dark:ring-white/[0.04]",
+        "flex min-h-0 min-w-[280px] sm:min-w-[285px] flex-col overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-b shadow-warm ring-1 ring-black/[0.03] transition-colors dark:ring-white/[0.04]",
         config.columnTint,
         stacked ? "h-full min-h-0" : "h-full min-h-[320px]"
       )}
     >
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border/60 bg-card/70 px-4 py-3.5 backdrop-blur-xl sm:px-5 dark:bg-card/40">
-        <div className="flex min-w-0 items-center gap-2.5">
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border/60 bg-card/70 px-3.5 py-3 backdrop-blur-xl sm:px-4 dark:bg-card/40">
+        <div className="flex min-w-0 items-center gap-2">
           <span
             className={cn(
-              "flex size-9 shrink-0 items-center justify-center rounded-2xl border sm:size-10",
+              "flex size-8 shrink-0 items-center justify-center rounded-xl border sm:size-9",
               config.iconBox
             )}
           >
-            <Icon className={cn("size-4.5", stage === "preparing" && "animate-flicker")} />
+            <Icon className={cn("size-4", stage === "preparing" && "animate-flicker")} />
           </span>
           <div className="min-w-0">
             <h2 className="truncate font-serif text-sm font-bold leading-tight tracking-tight text-foreground sm:text-base">
               {config.label}
             </h2>
             <p className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {config.station} • {config.note}
+              {config.station}
             </p>
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5">
           {late > 0 && (
-            <span className="hidden items-center gap-1 rounded-full border border-destructive/30 bg-destructive/12 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-destructive sm:inline-flex">
-              <AlertTriangle className="size-3" /> {late} late
+            <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/12 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-destructive">
+              <AlertTriangle className="size-2.5" /> {late} late
             </span>
           )}
           {oldest !== null && (
-            <span className="hidden items-center gap-1 rounded-full border border-border/60 bg-secondary/70 px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums text-muted-foreground lg:inline-flex">
-              <Timer className="size-3" /> {formatDuration(oldest)}
+            <span className="hidden items-center gap-1 rounded-full border border-border/60 bg-secondary/70 px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums text-muted-foreground 2xl:inline-flex">
+              <Timer className="size-2.5" /> {formatDuration(oldest)}
             </span>
           )}
           <span className="rounded-full border border-border/70 bg-secondary/90 px-2.5 py-0.5 font-serif text-xs font-bold tabular-nums text-foreground shadow-2xs sm:text-sm">
@@ -463,7 +520,7 @@ function StationColumn({
         className={cn(
           "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 custom-scrollbar sm:gap-3.5 sm:p-4",
           stacked ? "max-h-[460px] md:max-h-none" : "",
-          expanded && "md:grid md:grid-cols-2 md:content-start md:gap-4 xl:grid-cols-3"
+          expanded && "md:grid md:grid-cols-2 md:content-start md:auto-rows-auto md:items-stretch md:gap-4 xl:grid-cols-3"
         )}
       >
         {list.length === 0 ? (
@@ -588,9 +645,9 @@ function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOp
         }
       }}
       className={cn(
-        "group relative flex shrink-0 cursor-pointer flex-col overflow-hidden rounded-3xl border bg-card shadow-warm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-warm-lg focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none dark:bg-zinc-900/90",
+        "group relative flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-3xl border bg-card shadow-warm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-warm-lg focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none dark:bg-zinc-900/90",
         tone.border,
-        compact ? "min-h-[170px] p-3.5" : "min-h-[220px] p-4 sm:p-4.5",
+        compact ? "min-h-[180px] p-3.5" : "min-h-[270px] p-4 sm:p-5",
         urgency.level >= 3 && "ring-1 ring-destructive/25"
       )}
     >
@@ -599,7 +656,7 @@ function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOp
         <div className="pointer-events-none absolute inset-x-0 top-0 h-full bg-gradient-to-b from-destructive/[0.06] to-transparent" />
       )}
 
-      <header className="mb-3 flex items-start justify-between gap-2 border-b border-border/60 pb-3 pt-1">
+      <header className="mb-3 flex shrink-0 items-start justify-between gap-2 border-b border-border/60 pb-3 pt-1">
         <div className="min-w-0">
           <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
             <span className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">
@@ -653,22 +710,23 @@ function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOp
       </header>
 
       {stage !== "ready" && (
-        <TicketProgress
-          startTime={stage === "preparing" ? order.updated_at || order.created_at : order.created_at}
-          stage={stage}
-          targetPrepMinutes={targetPrepMinutes}
-          className="mb-3"
-        />
+        <div className="mb-3 shrink-0">
+          <TicketProgress
+            startTime={stage === "preparing" ? order.updated_at || order.created_at : order.created_at}
+            stage={stage}
+            targetPrepMinutes={targetPrepMinutes}
+          />
+        </div>
       )}
 
       {order.notes && (
-        <div className="mb-3 flex items-start gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
+        <div className="mb-3 shrink-0 flex items-start gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
           <span className={cn("line-clamp-2", compact && "line-clamp-1")}>{order.notes}</span>
         </div>
       )}
 
-      <ul className={cn("mb-3.5 flex-1 space-y-2", compact && "space-y-1.5")}>
+      <ul className={cn("mb-3 flex-auto max-h-[260px] overflow-y-auto custom-scrollbar space-y-2 pr-1", compact && "space-y-1.5")}>
         {items.length === 0 && (
           <li className="rounded-2xl border border-dashed border-border/60 px-3 py-2.5 text-center text-[11px] font-semibold text-muted-foreground">
             No items on this ticket
@@ -683,14 +741,14 @@ function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOp
                 loading="lazy"
                 className={cn(
                   "shrink-0 rounded-xl border border-border/60 object-cover shadow-2xs",
-                  compact ? "size-8" : "size-9 sm:size-10"
+                  compact ? "size-7 sm:size-8" : "size-8 sm:size-9"
                 )}
               />
             )}
             <span
               className={cn(
                 "flex shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 font-serif font-bold text-primary shadow-2xs",
-                compact ? "size-6 text-[11px]" : "size-6.5 text-xs"
+                compact ? "size-5.5 text-[10px]" : "size-6 text-xs"
               )}
             >
               {item.quantity}×
@@ -698,8 +756,8 @@ function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOp
             <span className="min-w-0 flex-1">
               <span
                 className={cn(
-                  "block truncate font-semibold text-foreground",
-                  compact ? "text-[11.5px]" : "text-xs sm:text-[13px]"
+                  "block font-semibold text-foreground line-clamp-2 leading-snug",
+                  compact ? "text-[11px]" : "text-xs sm:text-[12.5px]"
                 )}
               >
                 {item.product_name || "Item"}
@@ -735,14 +793,14 @@ function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOp
       </ul>
 
       {options.length > 0 && !compact && (
-        <p className="mb-3 truncate text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="mb-2.5 shrink-0 truncate text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           {options.length} modification{options.length > 1 ? "s" : ""} on this ticket
         </p>
       )}
 
-      <footer className="mt-auto flex items-center gap-2 pt-1">
-        <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-border/60 bg-secondary/60 px-2.5 py-1 text-[10px] font-bold text-muted-foreground sm:inline-flex">
-          <ShoppingBag className="size-3" /> {itemCount} item{itemCount === 1 ? "" : "s"}
+      <footer className="mt-auto flex shrink-0 items-center gap-2 pt-2">
+        <span className="hidden shrink-0 items-center gap-1 rounded-full border border-border/60 bg-secondary/60 px-2 py-1 text-[10px] font-bold text-muted-foreground sm:inline-flex">
+          <ShoppingBag className="size-3" /> {itemCount}
         </span>
         {config.nextStatus ? (
           <Button
@@ -751,18 +809,20 @@ function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOp
               onAdvance?.();
             }}
             className={cn(
-              "group/btn flex-1 rounded-full bg-gradient-to-r text-white font-serif font-bold shadow-warm transition-all hover:brightness-105 active:scale-[0.98]",
+              "group/btn flex-1 shrink-0 rounded-full bg-gradient-to-r px-3 text-white font-serif font-bold shadow-warm transition-all hover:brightness-105 active:scale-[0.98]",
               config.action,
-              compact ? "h-10 text-xs" : "h-11 text-xs sm:h-12 sm:text-sm"
+              compact ? "h-9 text-xs" : "h-10 text-xs sm:h-11 sm:text-sm"
             )}
           >
-            <config.icon className="mr-2 size-4 transition-transform group-hover/btn:scale-125" />
-            {config.actionLabel || (stage === "pending" ? "Start Cooking" : stage === "preparing" ? "Mark as Ready" : "Hand to Driver / Done")}
+            <config.icon className="mr-1.5 size-3.5 shrink-0 transition-transform group-hover/btn:scale-125" />
+            <span className="truncate">
+              {config.actionLabel || (stage === "pending" ? "Start Cooking" : stage === "preparing" ? "Mark Ready" : "Complete Order")}
+            </span>
           </Button>
         ) : (
           <div
             className={cn(
-              "flex flex-1 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 font-serif font-bold text-emerald-700 shadow-2xs dark:bg-emerald-500/18 dark:text-emerald-300",
+              "flex flex-1 shrink-0 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 font-serif font-bold text-emerald-700 shadow-2xs dark:bg-emerald-500/18 dark:text-emerald-300",
               compact ? "h-10 text-[11px]" : "h-11 text-xs sm:h-12 sm:text-sm"
             )}
           >

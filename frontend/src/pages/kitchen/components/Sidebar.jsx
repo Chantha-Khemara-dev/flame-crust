@@ -12,10 +12,10 @@ import { cn } from "@/lib/utils";
 import { PersonAvatar, STAGES, StatusDot } from "./kitchen-ui";
 
 const menuItems = [
-  { id: "dashboard", label: "Kitchen Board", icon: LayoutDashboard, badgeKey: "orders", hint: "B" },
-  { id: "customers", label: "Guests", icon: Users, hint: "G" },
-  { id: "performance", label: "Performance", icon: LineChart, hint: "P" },
-  { id: "chef-profile", label: "Chef Profile", icon: ChefHat, hint: "C" },
+  { id: "dashboard", label: "Kitchen Board", icon: LayoutDashboard, badgeKey: "orders" },
+  { id: "customers", label: "Guests", icon: Users },
+  { id: "performance", label: "Performance", icon: LineChart },
+  { id: "chef-profile", label: "Chef Profile", icon: ChefHat },
 ];
 
 const STATION_ROWS = [
@@ -86,18 +86,6 @@ function SidebarContent({ activeView, onSelectView, user, activeOrdersCount = 0,
                         {badge}
                       </span>
                     )}
-                    {item.hint && (
-                      <kbd
-                        className={cn(
-                          "hidden size-5 shrink-0 items-center justify-center rounded-md border text-[10px] font-mono sm:flex",
-                          active
-                            ? "border-primary-foreground/30 bg-primary-foreground/15 text-primary-foreground"
-                            : "border-border/80 bg-secondary/50 text-muted-foreground"
-                        )}
-                      >
-                        {item.hint}
-                      </kbd>
-                    )}
                   </span>
                 </button>
               );
@@ -167,10 +155,10 @@ function SidebarContent({ activeView, onSelectView, user, activeOrdersCount = 0,
             <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-card bg-emerald-500 ring-1 ring-emerald-500/40" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate font-serif text-xs font-bold text-foreground">
+            <span className="block truncate font-serif text-xs font-bold leading-snug text-foreground">
               {user?.name || "Staff"}
             </span>
-            <span className="flex items-center gap-1.5 truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="mt-0.5 flex items-center gap-1.5 truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               <span className="truncate">{user?.role_title || user?.role || "Chef"}</span>
               <span className="flex shrink-0 items-center gap-1 font-extrabold text-emerald-600 dark:text-emerald-400">
                 <StatusDot tone="emerald" /> Active

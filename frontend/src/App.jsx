@@ -75,9 +75,10 @@ function RoleRedirectGuard({ children }) {
     return <Navigate to="/admin/dashboard" replace />;
   }
 
-  // If kitchen staff is logged in, strictly enforce kitchen dashboard
+  // If kitchen staff is logged in, strictly enforce kitchen dashboard unless previewing store
   if (kitchenAuth) {
-    if (!location.pathname.startsWith("/kitchen") && !location.pathname.startsWith("/admin/kitchen-dashboard")) {
+    const isPreviewing = sessionStorage.getItem("kitchen_store_preview") === "true";
+    if (!isPreviewing && !location.pathname.startsWith("/kitchen") && !location.pathname.startsWith("/admin/kitchen-dashboard")) {
       return <Navigate to="/kitchen/dashboard" replace />;
     }
   }

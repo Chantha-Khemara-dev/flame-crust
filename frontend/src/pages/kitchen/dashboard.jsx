@@ -120,6 +120,7 @@ export default function KitchenDashboard() {
   );
 
   useEffect(() => {
+    sessionStorage.removeItem("kitchen_store_preview");
     const auth = localStorage.getItem("kitchenAuth") || localStorage.getItem("adminAuth");
     if (!auth) {
       navigate("/login?redirect=/kitchen/dashboard", { replace: true });
@@ -214,9 +215,11 @@ export default function KitchenDashboard() {
   };
 
   const handleExitToStore = () => {
-    localStorage.removeItem("kitchenAuth");
+    sessionStorage.setItem("kitchen_store_preview", "true");
     window.dispatchEvent(new Event("authChanged"));
-    toast.info("Returned to customer storefront");
+    toast.info("Viewing customer storefront", {
+      description: "Tap 'Kitchen Board' to return anytime.",
+    });
     navigate("/", { replace: true });
   };
 
@@ -411,57 +414,7 @@ export default function KitchenDashboard() {
     setQuery("");
   }, []);
 
-  useEffect(() => {
-    const onKey = (event) => {
-      const target = event.target;
-      const typing =
-        target instanceof HTMLElement &&
-        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
 
-      if (event.key === "Escape") {
-        if (typing) target?.blur?.();
-        else if (query) setQuery("");
-        return;
-      }
-      if (typing || event.metaKey || event.ctrlKey || event.altKey) return;
-
-      const key = event.key.toLowerCase();
-      if (key === "r") {
-        event.preventDefault();
-        handleRefresh();
-      } else if (key === "t") {
-        event.preventDefault();
-        toggleTheme();
-      } else if (key === "m") {
-        event.preventDefault();
-        setKitchenPref("sound", !prefs.sound);
-      } else if (key === "/" || key === "f") {
-        event.preventDefault();
-        searchRef.current?.focus();
-      } else if (key === "0") {
-        setStageFilter("all");
-      } else if (key === "1") {
-        setActiveView("dashboard");
-        setStageFilter("pending");
-      } else if (key === "2") {
-        setActiveView("dashboard");
-        setStageFilter("preparing");
-      } else if (key === "3") {
-        setActiveView("dashboard");
-        setStageFilter("ready");
-      } else if (key === "b") {
-        selectView("dashboard");
-      } else if (key === "g") {
-        selectView("customers");
-      } else if (key === "p") {
-        selectView("performance");
-      } else if (key === "c") {
-        selectView("chef-profile");
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [handleRefresh, toggleTheme, prefs.sound, query, selectView]);
 
   if (!user) return null;
 
@@ -492,17 +445,17 @@ export default function KitchenDashboard() {
       />
 
       <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="z-20 flex shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-card/85 px-3.5 pt-[env(safe-area-inset-top,0px)] shadow-2xs backdrop-blur-2xl transition-colors dark:bg-zinc-950/85 sm:px-6 md:px-8">
-          <div className="flex min-w-0 items-center gap-3 py-3 sm:gap-4">
-            <div className="relative flex size-9 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-orange-500 to-amber-500 text-white shadow-warm ring-2 ring-primary/20 sm:size-11">
+        <header className="z-20 flex shrink-0 items-center justify-between gap-2.5 border-b border-border/70 bg-card/85 px-3.5 pt-[env(safe-area-inset-top,0px)] shadow-2xs backdrop-blur-2xl transition-colors dark:bg-zinc-950/85 sm:px-5 lg:px-6">
+          <div className="flex min-w-0 shrink-0 items-center gap-2.5 py-3 sm:gap-3.5">
+            <div className="relative flex size-9 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-orange-500 to-amber-500 text-white shadow-warm ring-2 ring-primary/20 sm:size-10">
               <Flame className="size-5 animate-flicker fill-white/20" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="truncate font-serif text-base font-bold capitalize leading-tight tracking-tight text-foreground sm:text-xl">
+                <h1 className="truncate font-serif text-base font-bold capitalize leading-tight tracking-tight text-foreground sm:text-lg">
                   {meta.title}
                 </h1>
-                <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 shadow-2xs sm:inline-flex dark:text-emerald-400">
+                <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 shadow-2xs lg:inline-flex dark:text-emerald-400">
                   <StatusDot tone="emerald" />
                   Live Station
                 </span>
@@ -522,15 +475,15 @@ export default function KitchenDashboard() {
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1.5 py-3 sm:gap-2.5">
+          <div className="flex shrink-0 items-center gap-1.5 py-3 sm:gap-2">
             <div className="relative hidden md:block">
               <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/70" />
               <Input
                 ref={searchRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search tickets…  ( / )"
-                className="h-10 w-56 rounded-full border-border/70 bg-background/60 pl-10 pr-9 text-sm shadow-xs transition-all focus-visible:border-primary/50 focus-visible:ring-primary/25 lg:w-72"
+                placeholder="Search tickets…"
+                className="h-9 w-32 rounded-full border-border/70 bg-background/60 pl-9 pr-8 text-xs shadow-xs transition-all focus-visible:border-primary/50 focus-visible:ring-primary/25 sm:h-10 sm:w-36 lg:w-44 xl:w-52"
               />
               {query && (
                 <button
@@ -557,7 +510,7 @@ export default function KitchenDashboard() {
               size="icon"
               onClick={() => setKitchenPref("sound", !prefs.sound)}
               className="size-9 rounded-full border border-border/70 bg-card text-foreground shadow-xs transition-all hover:border-primary/40 hover:bg-secondary hover:text-primary active:scale-95 sm:size-10"
-              title={prefs.sound ? "Mute station alerts (M)" : "Enable station alerts (M)"}
+              title={prefs.sound ? "Mute station alerts" : "Enable station alerts"}
             >
               {prefs.sound ? <Volume2 className="size-4" /> : <VolumeX className="size-4 text-muted-foreground" />}
             </Button>
@@ -567,7 +520,7 @@ export default function KitchenDashboard() {
               size="icon"
               onClick={() => toggleTheme()}
               className="size-9 rounded-full text-foreground/80 hover:text-foreground hover:bg-secondary transition-colors cursor-pointer sm:size-10"
-              title="Toggle theme (T)"
+              title="Toggle theme"
             >
               {theme === "dark" ? (
                 <Sun className="size-4 sm:size-5 text-amber-500" />
@@ -580,8 +533,8 @@ export default function KitchenDashboard() {
               variant="outline"
               onClick={handleRefresh}
               disabled={refreshing}
-              className="hidden h-10 rounded-full border-border/70 bg-card px-4.5 font-serif text-xs font-bold text-foreground shadow-xs transition-all hover:border-primary/40 hover:bg-secondary hover:shadow-warm active:scale-95 sm:inline-flex"
-              title="Sync now (R)"
+              className="hidden h-10 rounded-full border-border/70 bg-card px-3.5 font-serif text-xs font-bold text-foreground shadow-xs transition-all hover:border-primary/40 hover:bg-secondary hover:shadow-warm active:scale-95 sm:inline-flex"
+              title="Sync now"
             >
               <RefreshCw className={cn("size-3.5 mr-1.5", refreshing && "animate-spin text-primary")} />
               <span className="font-serif text-xs font-bold">Sync</span>
@@ -590,21 +543,22 @@ export default function KitchenDashboard() {
             <Button
               variant="outline"
               onClick={handleExitToStore}
-              className="hidden h-10 rounded-full border-border/70 bg-card px-4 font-serif text-xs font-bold text-muted-foreground shadow-xs transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary active:scale-95 md:inline-flex"
+              className="hidden h-10 rounded-full border-border/70 bg-card px-3 font-serif text-xs font-bold text-muted-foreground shadow-xs transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary active:scale-95 lg:inline-flex"
               title="Exit to customer storefront"
             >
               <Store className="size-3.5 mr-1.5" />
-              <span>Customer Store</span>
+              <span className="hidden xl:inline">Customer Store</span>
+              <span className="xl:hidden">Store</span>
             </Button>
 
             <Button
               variant="outline"
               onClick={handleSignOut}
-              className="hidden h-10 rounded-full border-border/70 bg-card px-4.5 font-serif text-xs font-bold text-muted-foreground shadow-xs transition-all hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive active:scale-95 sm:inline-flex"
+              className="hidden h-10 rounded-full border-border/70 bg-card px-3 font-serif text-xs font-bold text-muted-foreground shadow-xs transition-all hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive active:scale-95 lg:inline-flex"
               title="Sign out"
             >
-              <LogOut className="size-3.5 mr-1.5" />
-              <span className="font-serif text-xs font-bold">Sign Out</span>
+              <LogOut className="size-3.5 xl:mr-1.5" />
+              <span className="hidden xl:inline font-serif text-xs font-bold">Sign Out</span>
             </Button>
 
             <DropdownMenu>
