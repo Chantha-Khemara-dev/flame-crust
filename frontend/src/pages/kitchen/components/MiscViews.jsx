@@ -209,8 +209,8 @@ export function ChefProfileView({ user, stats = {}, revenueText, onRefresh, onSi
             </div>
 
             {/* Profile Avatar & Info row */}
-            <div className="px-6 pb-6 pt-0 relative">
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-12 sm:-mt-14 mb-4">
+            <div className="px-4 pb-5 pt-0 sm:px-6 sm:pb-6 relative">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 -mt-10 sm:-mt-14 mb-4">
                 {/* Avatar with Camera upload trigger */}
                 <div className="relative group inline-block">
                   <input
@@ -223,14 +223,14 @@ export function ChefProfileView({ user, stats = {}, revenueText, onRefresh, onSi
                   />
                   <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="relative size-24 sm:size-28 cursor-pointer rounded-3xl p-1 bg-card shadow-warm ring-4 ring-card transition-all hover:scale-105 active:scale-95"
+                    className="relative size-20 sm:size-28 cursor-pointer rounded-2xl sm:rounded-3xl p-1 bg-card shadow-warm ring-4 ring-card transition-all hover:scale-105 active:scale-95"
                     title="Click to change profile photo"
                   >
                     <PersonAvatar
                       name={staffName}
                       src={user?.avatar || user?.profile_photo}
-                      className="size-full rounded-[22px] border border-border/50 object-cover shadow-inner"
-                      fallbackClass="from-primary via-orange-500 to-amber-500 text-3xl sm:text-4xl text-white"
+                      className="size-full rounded-[18px] sm:rounded-[22px] border border-border/50 object-cover shadow-inner"
+                      fallbackClass="from-primary via-orange-500 to-amber-500 text-2xl sm:text-4xl text-white"
                     />
 
                     {/* Overlay on hover */}
