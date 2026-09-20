@@ -586,7 +586,7 @@ export default function KitchenDashboard() {
         </header>
 
         {isBoard && (
-          <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-border/50 bg-secondary/25 px-3.5 py-2 text-[11px] font-semibold text-muted-foreground no-scrollbar sm:overflow-visible sm:px-6 md:px-8">
+          <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-border/50 bg-secondary/25 px-3 py-2 text-[11px] font-semibold text-muted-foreground no-scrollbar sm:overflow-visible sm:px-4 md:px-4">
             <span className="hidden shrink-0 truncate sm:inline">{meta.subtitle}</span>
             <span className="flex items-center gap-2.5 tabular-nums sm:ml-auto sm:gap-3">
               <span className="flex shrink-0 items-center gap-1.5">
@@ -607,7 +607,7 @@ export default function KitchenDashboard() {
           </div>
         )}
 
-        <main className="relative flex-1 overflow-hidden p-3 pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))] sm:p-5 md:p-6 lg:pb-6">
+        <main className="relative flex-1 overflow-hidden p-2 pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))] sm:p-3 md:p-3.5 lg:p-4 lg:pb-4">
           {loading ? (
             <KdsBoardSkeleton />
           ) : error && activeOrders.length === 0 ? (
