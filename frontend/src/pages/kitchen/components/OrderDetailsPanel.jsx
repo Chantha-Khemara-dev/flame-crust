@@ -14,6 +14,7 @@ import {
   Wallet,
   Tag,
   Ban,
+  Loader2,
 } from "lucide-react";
 import {
   Sheet,
@@ -61,8 +62,10 @@ export function OrderDetailsPanel({
   customers = [],
   history = [],
   updateOrderStatus,
+  updatingOrders = new Set(),
   targetPrepMinutes = 12,
 }) {
+  const isUpdating = order ? updatingOrders.has(String(order.id)) : false;
   const [chatOpen, setChatOpen] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
   const now = useNow();
@@ -511,18 +514,34 @@ export function OrderDetailsPanel({
             <footer className="flex shrink-0 items-center gap-2.5 border-t border-border/60 bg-card/90 p-3.5 backdrop-blur-xl sm:gap-3 sm:p-5">
               {!isCancelled && (order.status === "PENDING" || order.status === "CONFIRMED") && (
                 <Button
-                  onClick={() => updateOrderStatus(order.id, "PREPARING")}
-                  className="h-11 flex-1 truncate rounded-full bg-gradient-to-r from-primary via-orange-500 to-amber-500 font-serif text-xs font-bold text-white shadow-warm transition-all hover:brightness-105 active:scale-[0.98] sm:h-12 sm:text-base"
+                  disabled={isUpdating}
+                  onClick={() => !isUpdating && updateOrderStatus(order.id, "PREPARING")}
+                  className={cn(
+                    "h-11 flex-1 truncate rounded-full bg-gradient-to-r from-primary via-orange-500 to-amber-500 font-serif text-xs font-bold text-white shadow-warm transition-all hover:brightness-105 active:scale-[0.98] sm:h-12 sm:text-base",
+                    isUpdating && "opacity-80 cursor-wait"
+                  )}
                 >
-                  <Flame className="mr-2 size-4 shrink-0 sm:size-5" /> Start Preparing
+                  {isUpdating ? (
+                    <><Loader2 className="mr-2 size-4 shrink-0 animate-spin sm:size-5" /> Updating…</>
+                  ) : (
+                    <><Flame className="mr-2 size-4 shrink-0 sm:size-5" /> Start Preparing</>
+                  )}
                 </Button>
               )}
               {!isCancelled && order.status === "PREPARING" && (
                 <Button
-                  onClick={() => updateOrderStatus(order.id, "READY")}
-                  className="h-11 flex-1 truncate rounded-full bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 font-serif text-xs font-bold text-white shadow-warm transition-all hover:brightness-105 active:scale-[0.98] sm:h-12 sm:text-base"
+                  disabled={isUpdating}
+                  onClick={() => !isUpdating && updateOrderStatus(order.id, "READY")}
+                  className={cn(
+                    "h-11 flex-1 truncate rounded-full bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 font-serif text-xs font-bold text-white shadow-warm transition-all hover:brightness-105 active:scale-[0.98] sm:h-12 sm:text-base",
+                    isUpdating && "opacity-80 cursor-wait"
+                  )}
                 >
-                  <CheckCircle2 className="mr-2 size-4 shrink-0 sm:size-5" /> Mark as Ready
+                  {isUpdating ? (
+                    <><Loader2 className="mr-2 size-4 shrink-0 animate-spin sm:size-5" /> Updating…</>
+                  ) : (
+                    <><CheckCircle2 className="mr-2 size-4 shrink-0 sm:size-5" /> Mark as Ready</>
+                  )}
                 </Button>
               )}
               {!isCancelled && order.status === "READY" && (

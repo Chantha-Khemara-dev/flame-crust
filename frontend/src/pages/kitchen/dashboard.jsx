@@ -111,6 +111,7 @@ export default function KitchenDashboard() {
   const [query, setQuery] = useState("");
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [updatingOrders, setUpdatingOrders] = useState(new Set());
 
   const searchRef = useRef(null);
   const initialSeeded = useRef(false);
@@ -227,7 +228,10 @@ export default function KitchenDashboard() {
   };
 
   const updateOrderStatus = async (orderId, newStatus) => {
-    const known = toArray(orders).find((o) => String(o.id) === String(orderId));
+    const key = String(orderId);
+    if (updatingOrders.has(key)) return; // prevent duplicate calls
+    setUpdatingOrders((prev) => new Set(prev).add(key));
+    const known = toArray(orders).find((o) => String(o.id) === key);
     try {
       await update("orders", orderId, { status: newStatus });
       playChime(newStatus === "READY" ? "ready" : "ticket");
@@ -236,11 +240,17 @@ export default function KitchenDashboard() {
         { description: STATUS_LABEL[newStatus] ? "Board updated for every station." : undefined }
       );
       setSelectedOrder((prev) =>
-        prev && String(prev.id) === String(orderId) ? { ...prev, status: newStatus } : prev
+        prev && String(prev.id) === key ? { ...prev, status: newStatus } : prev
       );
       fetchData(false);
     } catch (err) {
       toast.error("Failed to update status");
+    } finally {
+      setUpdatingOrders((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
     }
   };
 
@@ -663,6 +673,7 @@ export default function KitchenDashboard() {
               preparingOrders={preparingOrders}
               readyOrders={readyOrders}
               updateOrderStatus={updateOrderStatus}
+              updatingOrders={updatingOrders}
               onOrderClick={setSelectedOrder}
               stats={stats}
               revenue={stats.revenue}
@@ -744,6 +755,7 @@ export default function KitchenDashboard() {
         customers={safeCustomers}
         history={selectedOrder ? historyByOrder.get(String(selectedOrder.id)) || [] : []}
         updateOrderStatus={updateOrderStatus}
+        updatingOrders={updatingOrders}
         targetPrepMinutes={prefs.targetPrepMinutes}
       />
     </div>

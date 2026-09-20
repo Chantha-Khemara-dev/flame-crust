@@ -19,6 +19,7 @@ import {
   SlidersHorizontal,
   ChevronDown,
   ChevronUp,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getImageUrl } from "@/lib/food-api";
@@ -49,6 +50,7 @@ export function DashboardView({
   preparingOrders = [],
   readyOrders = [],
   updateOrderStatus,
+  updatingOrders = new Set(),
   onOrderClick,
   stats = {},
   revenue = 0,
@@ -343,6 +345,7 @@ export function DashboardView({
                           targetPrepMinutes={targetPrepMinutes}
                           onOpen={() => onOrderClick?.(order)}
                           onAdvance={() => updateOrderStatus?.(order.id, config.nextStatus)}
+                          isUpdating={updatingOrders.has(String(order.id))}
                         />
                       ))
                     )}
@@ -366,6 +369,7 @@ export function DashboardView({
                   compact={compact}
                   showImages={showImages}
                   updateOrderStatus={updateOrderStatus}
+                  updatingOrders={updatingOrders}
                   onOrderClick={onOrderClick}
                   stacked
                 />
@@ -386,6 +390,7 @@ export function DashboardView({
               compact={compact}
               showImages={showImages}
               updateOrderStatus={updateOrderStatus}
+              updatingOrders={updatingOrders}
               onOrderClick={onOrderClick}
               expanded
             />
@@ -405,6 +410,7 @@ function StationColumn({
   compact,
   showImages,
   updateOrderStatus,
+  updatingOrders = new Set(),
   onOrderClick,
   stacked = false,
   expanded = false,
@@ -477,6 +483,7 @@ function StationColumn({
               targetPrepMinutes={targetPrepMinutes}
               onOpen={() => onOrderClick?.(order)}
               onAdvance={() => updateOrderStatus?.(order.id, config.nextStatus)}
+              isUpdating={updatingOrders.has(String(order.id))}
             />
           ))
         )}
@@ -553,7 +560,7 @@ function ColumnEmpty({ stage, expanded }) {
   );
 }
 
-function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOpen, onAdvance }) {
+function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOpen, onAdvance, isUpdating = false }) {
   const now = useNow();
   const config = STAGES[stage];
   const items = Array.isArray(order.items) ? order.items : [];
@@ -745,20 +752,31 @@ function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOp
         </span>
         {config.nextStatus ? (
           <Button
+            disabled={isUpdating}
             onClick={(event) => {
               event.stopPropagation();
-              onAdvance?.();
+              if (!isUpdating) onAdvance?.();
             }}
             className={cn(
               "group/btn flex-1 shrink-0 rounded-full bg-gradient-to-r px-3 text-white font-serif font-bold shadow-warm transition-all hover:brightness-105 active:scale-[0.98]",
               config.action,
-              compact ? "h-9 text-xs" : "h-10 text-xs sm:h-11 sm:text-sm"
+              compact ? "h-9 text-xs" : "h-10 text-xs sm:h-11 sm:text-sm",
+              isUpdating && "opacity-80 cursor-wait"
             )}
           >
-            <config.icon className="mr-1.5 size-3.5 shrink-0 transition-transform group-hover/btn:scale-125" />
-            <span className="truncate">
-              {config.actionLabel || (stage === "pending" ? "Start Cooking" : stage === "preparing" ? "Mark Ready" : "Complete Order")}
-            </span>
+            {isUpdating ? (
+              <>
+                <Loader2 className="mr-1.5 size-3.5 shrink-0 animate-spin" />
+                <span className="truncate">Updating…</span>
+              </>
+            ) : (
+              <>
+                <config.icon className="mr-1.5 size-3.5 shrink-0 transition-transform group-hover/btn:scale-125" />
+                <span className="truncate">
+                  {config.actionLabel || (stage === "pending" ? "Start Cooking" : stage === "preparing" ? "Mark Ready" : "Complete Order")}
+                </span>
+              </>
+            )}
           </Button>
         ) : (
           <div
