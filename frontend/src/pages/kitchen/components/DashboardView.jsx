@@ -371,7 +371,7 @@ export function DashboardView({
         </div>
       ) : stageFilter === "all" ? (
         <>
-          <div className="flex flex-1 flex-col gap-5 overflow-y-auto overscroll-contain touch-pan-y pb-2 custom-scrollbar md:hidden">
+          <div className="flex flex-1 flex-col gap-5 overflow-y-auto overscroll-contain touch-pan-y pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] custom-scrollbar md:hidden">
             {STAGE_ORDER.map((stage) => {
               const { list, oldest, late } = stageMeta(stage);
               const config = STAGES[stage];
@@ -517,7 +517,7 @@ function StationColumn({
 
       <div
         className={cn(
-          "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain touch-pan-y p-3 custom-scrollbar sm:gap-3.5 sm:p-4",
+          "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain touch-pan-y p-3 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:pb-4 custom-scrollbar sm:gap-3.5 sm:p-4",
           stacked ? "max-h-[460px] md:max-h-none" : "",
           expanded && "md:grid md:grid-cols-2 md:content-start md:auto-rows-auto md:items-stretch md:gap-4 xl:grid-cols-3"
         )}

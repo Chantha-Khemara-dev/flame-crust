@@ -236,7 +236,7 @@ export function CustomersView({ customers = [], orders = [], orderItems = [] }) 
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto pb-4 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto overscroll-contain touch-pan-y pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:pb-4 custom-scrollbar">
         {enriched.length === 0 ? (
           <div className="flex h-full min-h-[280px] items-center justify-center rounded-3xl border border-dashed border-border/70 bg-card/50">
             <EmptyState

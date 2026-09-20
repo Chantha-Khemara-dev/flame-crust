@@ -619,7 +619,7 @@ export default function KitchenDashboard() {
           </div>
         )}
 
-        <main className="relative flex-1 overflow-hidden p-2.5 sm:p-3 lg:py-3 lg:pr-3.5 lg:pl-0 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] lg:pb-3.5 overscroll-contain">
+        <main className="relative flex-1 overflow-hidden p-2.5 sm:p-3 lg:py-3 lg:pr-3.5 lg:pl-0 pb-0 lg:pb-3.5 overscroll-contain">
           {loading ? (
             <KdsBoardSkeleton />
           ) : error && activeOrders.length === 0 ? (
@@ -671,9 +671,9 @@ export default function KitchenDashboard() {
           )}
         </main>
 
-        <div className="pointer-events-none fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] z-[70] select-none touch-none sm:inset-x-6 lg:hidden">
+        <div className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] z-[70] select-none sm:inset-x-6 lg:hidden">
           <nav
-            className="pointer-events-auto mx-auto max-w-md rounded-full border border-black/[0.08] bg-card/85 p-1.5 shadow-warm-lg ring-1 ring-white/30 backdrop-blur-2xl backdrop-saturate-150 transition-all duration-200 dark:border-white/[0.12] dark:bg-zinc-900/85 dark:ring-white/5"
+            className="mx-auto max-w-md rounded-full border border-black/[0.08] bg-card/85 p-1.5 shadow-warm-lg ring-1 ring-white/30 backdrop-blur-2xl backdrop-saturate-150 transition-all duration-200 dark:border-white/[0.12] dark:bg-zinc-900/85 dark:ring-white/5"
             aria-label="Kitchen Navigation Dock"
           >
             <div className="grid grid-cols-4 items-center gap-1">
@@ -705,15 +705,12 @@ export default function KitchenDashboard() {
                           )}
                         />
                         {badgeCount > 0 && (
-                          <span className="absolute -top-1.5 -right-2.5 flex h-[17px] min-w-[17px] animate-in items-center justify-center rounded-full bg-gradient-to-r from-primary to-orange-500 px-1 text-[9px] font-extrabold text-white shadow-xs ring-2 ring-card zoom-in-75 duration-150">
+                          <span className="absolute -top-1 -right-2 flex h-4 min-w-4 animate-in items-center justify-center rounded-full bg-gradient-to-r from-primary to-orange-500 px-1 text-[9px] font-extrabold text-white shadow-xs ring-2 ring-card zoom-in-75 duration-150">
                             {badgeCount}
                           </span>
                         )}
                       </div>
                       <span className="text-[10px] leading-none tracking-tight">{item.label}</span>
-                      {isActive && (
-                        <span className="absolute bottom-1 left-1/2 h-0.5 w-2.5 -translate-x-1/2 rounded-full bg-primary shadow-[0_0_8px_oklch(0.55_0.22_28/0.8)]" />
-                      )}
                     </div>
                   </button>
                 );

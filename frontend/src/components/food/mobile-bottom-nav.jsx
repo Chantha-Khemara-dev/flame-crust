@@ -135,7 +135,7 @@ export function MobileBottomNav() {
   return (
     <>
       {/* Authentic iOS Frosted Glass Mobile Bottom Capsule */}
-      <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] inset-x-3 sm:inset-x-6 z-[70] md:hidden select-none touch-none">
+      <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] inset-x-3 sm:inset-x-6 z-[70] md:hidden select-none">
         <nav
           className="mx-auto max-w-md bg-background/80 dark:bg-zinc-900/80 backdrop-blur-2xl backdrop-saturate-150 border border-black/[0.08] dark:border-white/[0.12] ring-1 ring-white/30 dark:ring-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-full p-1.5 transition-all duration-200"
           aria-label="Mobile Navigation Dock"
@@ -191,11 +191,6 @@ export function MobileBottomNav() {
                   >
                     {item.label}
                   </span>
-
-                  {/* Subtle Active Pill Indicator Glow */}
-                  {item.isActive && (
-                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-0.5 rounded-full bg-primary shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
-                  )}
                 </div>
               );
 

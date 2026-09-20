@@ -185,7 +185,7 @@ export function PerformanceView({ orders = [], reviews = [], targetPrepMinutes =
         </Badge>
       </SectionHeading>
 
-      <div className="flex-1 space-y-4 overflow-y-auto pb-6 custom-scrollbar sm:space-y-5">
+      <div className="flex-1 space-y-4 overflow-y-auto overscroll-contain touch-pan-y pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:pb-6 custom-scrollbar sm:space-y-5">
         <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
           <StatTile
             label="Completed Today"
