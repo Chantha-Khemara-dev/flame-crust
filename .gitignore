@@ -72,3 +72,5 @@ start.sh
 docs/
 *erd*
 *ERD*
+payload.json
+test-cloudinary.js
