@@ -5,7 +5,6 @@ import { unsubscribeFromPushNotifications } from "@/lib/push-notifications";
 import { toast } from "sonner";
 import {
   RefreshCw,
-  LogOut,
   Sun,
   Moon,
   LayoutDashboard,
@@ -551,16 +550,6 @@ export default function KitchenDashboard() {
               <span className="xl:hidden">Store</span>
             </Button>
 
-            <Button
-              variant="outline"
-              onClick={handleSignOut}
-              className="hidden h-10 rounded-full border-border/70 bg-card px-3 font-serif text-xs font-bold text-muted-foreground shadow-xs transition-all hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive active:scale-95 lg:inline-flex"
-              title="Sign out"
-            >
-              <LogOut className="size-3.5 xl:mr-1.5" />
-              <span className="hidden xl:inline font-serif text-xs font-bold">Sign Out</span>
-            </Button>
-
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -590,14 +579,6 @@ export default function KitchenDashboard() {
                 >
                   <RefreshCw className={cn("size-4 text-primary", refreshing && "animate-spin")} />
                   Sync now
-                </DropdownMenuItem>
-                <DropdownMenuSeparator className="my-1 bg-border/60" />
-                <DropdownMenuItem
-                  onClick={handleSignOut}
-                  className="rounded-xl font-semibold text-destructive focus:bg-destructive/10 focus:text-destructive"
-                >
-                  <LogOut className="size-4" />
-                  Sign out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
