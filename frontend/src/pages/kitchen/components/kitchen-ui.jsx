@@ -606,19 +606,19 @@ export function StatTile({ label, value, icon: Icon, tone = "amber", hint, class
   return (
     <div
       className={cn(
-        "group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card p-3 shadow-warm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-warm-lg sm:rounded-3xl sm:p-3.5 xl:p-4",
+        "group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card p-2.5 shadow-warm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-warm-lg sm:rounded-3xl sm:p-3 xl:p-3.5",
         className
       )}
     >
       <div>
-        <div className="mb-2 flex items-start justify-between gap-1.5">
-          <span className="line-clamp-2 min-h-[2.4em] flex-1 text-[10px] font-bold uppercase leading-tight tracking-wider text-muted-foreground sm:text-[11px]">
+        <div className="mb-1.5 flex items-start justify-between gap-1.5">
+          <span className="line-clamp-2 min-h-[2.2em] flex-1 text-[10px] font-bold uppercase leading-tight tracking-wider text-muted-foreground sm:text-[11px]">
             {label}
           </span>
           {Icon && (
             <span
               className={cn(
-                "flex size-6.5 shrink-0 items-center justify-center rounded-xl border transition-transform duration-200 group-hover:scale-110 sm:size-7.5",
+                "flex size-6 shrink-0 items-center justify-center rounded-xl border transition-transform duration-200 group-hover:scale-110 sm:size-7",
                 tones[tone]
               )}
             >
@@ -626,7 +626,7 @@ export function StatTile({ label, value, icon: Icon, tone = "amber", hint, class
             </span>
           )}
         </div>
-        <div className="font-serif text-lg font-bold tracking-tight text-foreground tabular-nums sm:text-xl xl:text-2xl">
+        <div className="font-serif text-base font-bold tracking-tight text-foreground tabular-nums sm:text-lg xl:text-xl">
           {value}
         </div>
       </div>

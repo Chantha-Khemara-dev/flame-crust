@@ -619,29 +619,7 @@ export default function KitchenDashboard() {
           </div>
         )}
 
-        {isBoard && (
-          <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-border/50 bg-secondary/25 px-3 py-2 text-[11px] font-semibold text-muted-foreground no-scrollbar sm:overflow-visible sm:px-4 md:px-4 lg:px-4">
-            <span className="hidden shrink-0 truncate sm:inline">{meta.subtitle}</span>
-            <span className="flex items-center gap-2.5 tabular-nums sm:ml-auto sm:gap-3">
-              <span className="flex shrink-0 items-center gap-1.5">
-                <StatusDot tone="amber" pulse={false} /> {pendingOrders.length} to prep
-              </span>
-              <span className="flex shrink-0 items-center gap-1.5">
-                <StatusDot tone="flame" pulse={preparingOrders.length > 0} /> {preparingOrders.length} cooking
-              </span>
-              <span className="flex shrink-0 items-center gap-1.5">
-                <StatusDot tone="emerald" pulse={false} /> {readyOrders.length} ready
-              </span>
-              {stats.delayed > 0 && (
-                <span className="flex shrink-0 items-center gap-1.5 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 font-bold text-destructive">
-                  {stats.delayed} late
-                </span>
-              )}
-            </span>
-          </div>
-        )}
-
-        <main className="relative flex-1 overflow-hidden p-2 sm:p-2.5 md:p-3 lg:py-3 lg:pr-3.5 lg:pl-0 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] lg:pb-3">
+        <main className="relative flex-1 overflow-hidden p-2.5 sm:p-3 lg:p-3.5 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] lg:pb-3.5">
           {loading ? (
             <KdsBoardSkeleton />
           ) : error && activeOrders.length === 0 ? (

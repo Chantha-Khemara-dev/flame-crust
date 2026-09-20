@@ -596,16 +596,16 @@ function ColumnEmpty({ stage, expanded }) {
   return (
     <div
       className={cn(
-        "my-auto flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-border/60 bg-secondary/20 p-6 text-center",
-        expanded ? "min-h-[240px] md:col-span-2 xl:col-span-3" : "min-h-[180px] flex-1"
+        "flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 bg-card/50 p-6 text-center shadow-xs backdrop-blur-sm transition-all",
+        expanded ? "min-h-[180px] md:col-span-2 xl:col-span-3" : "my-auto py-8"
       )}
     >
-      <span className="mb-3 flex size-13 items-center justify-center rounded-3xl border border-border/70 bg-card text-primary/80 shadow-xs">
-        <Icon className="size-6 opacity-80" />
+      <span className="mb-3 flex size-11 items-center justify-center rounded-2xl border border-border/70 bg-secondary/80 text-primary shadow-2xs">
+        <Icon className="size-5" />
       </span>
       <p className="font-serif text-sm font-bold text-foreground sm:text-base">{copy.title}</p>
       <p className="mt-1 max-w-xs text-xs font-medium text-muted-foreground">{copy.text}</p>
-      <span className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+      <span className="mt-3.5 inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
         <Inbox className="size-3" /> Station clear
       </span>
     </div>
