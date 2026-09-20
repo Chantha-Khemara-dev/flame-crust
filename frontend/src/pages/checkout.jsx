@@ -1040,7 +1040,7 @@ function CheckoutPage() {
             </div>
 
             {/* Main Form & Desktop Grid */}
-            <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="grid lg:grid-cols-[1fr_390px] gap-4 sm:gap-6 lg:gap-8">
+            <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="grid lg:grid-cols-[1fr_390px] gap-4 sm:gap-6 lg:gap-8 pb-24 lg:pb-0">
               <div className="space-y-3.5 sm:space-y-6">
                 {/* 1. Contact & Delivery Section */}
                 <div className="rounded-2xl sm:rounded-3xl border border-border/70 bg-card/60 backdrop-blur-xl shadow-sm p-3.5 sm:p-6 lg:p-7 space-y-3">
@@ -1744,14 +1744,14 @@ function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Mobile Fixed Sticky Bottom Action Bar */}
-              <div className="lg:hidden fixed bottom-0 inset-x-0 bg-background border-t border-border/80 p-3.5 pb-[max(1.15rem,env(safe-area-inset-bottom))] z-40 shadow-2xl">
-                <div className="max-w-md mx-auto flex items-center justify-between gap-3">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+              {/* Mobile Floating Bottom Action Capsule (matching MobileBottomNav dock style) */}
+              <div className="lg:hidden fixed bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] inset-x-3 sm:inset-x-6 z-40 select-none">
+                <div className="mx-auto max-w-md bg-background/80 dark:bg-zinc-900/80 backdrop-blur-2xl backdrop-saturate-150 border border-black/[0.08] dark:border-white/[0.12] ring-1 ring-white/30 dark:ring-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.18)] rounded-full p-2 pl-4 sm:pl-5 flex items-center justify-between gap-3 transition-all duration-300">
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider truncate">
                       Total ({itemCount} {itemCount === 1 ? "item" : "items"})
                     </span>
-                    <span className="font-serif text-xl font-bold text-primary leading-none">
+                    <span className="font-serif text-lg sm:text-xl font-bold text-primary leading-tight">
                       ${total.toFixed(2)}
                     </span>
                   </div>
@@ -1760,7 +1760,7 @@ function CheckoutPage() {
                     type="submit"
                     disabled={submitting}
                     className={cn(
-                      "flex-1 max-w-[220px] h-12 rounded-full font-bold text-sm shadow-md active:scale-95 transition-all",
+                      "h-11 sm:h-12 px-5 sm:px-6 rounded-full font-bold text-xs sm:text-sm shadow-md active:scale-95 transition-all shrink-0 cursor-pointer",
                       isPaymentVerified
                         ? "bg-green-600 text-white hover:bg-green-700 shadow-green-600/25"
                         : "bg-gradient-to-r from-primary to-orange-500 text-white shadow-primary/25 hover:shadow-primary/40"
