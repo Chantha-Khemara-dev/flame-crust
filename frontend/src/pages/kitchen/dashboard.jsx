@@ -466,10 +466,10 @@ export default function KitchenDashboard() {
               </div>
               <p className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                 <span className="truncate">{meta.subtitle}</span>
-                {totalActive > 0 && isBoard && (
+                {stats.queue > 0 && isBoard && (
                   <span className="inline-flex items-center gap-1 font-bold text-primary">
                     <span className="size-1.5 rounded-full bg-primary animate-pulse" />
-                    {totalActive} live
+                    {stats.queue} live
                   </span>
                 )}
               </p>
