@@ -135,9 +135,9 @@ export function MobileBottomNav() {
   return (
     <>
       {/* Authentic iOS Frosted Glass Mobile Bottom Capsule */}
-      <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] inset-x-3 sm:inset-x-6 z-[70] md:hidden select-none">
+      <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] inset-x-3 sm:inset-x-6 z-[70] md:hidden select-none touch-none">
         <nav
-          className="mx-auto max-w-md bg-background/70 dark:bg-zinc-900/70 backdrop-blur-2xl backdrop-saturate-150 border border-black/[0.08] dark:border-white/[0.12] ring-1 ring-white/30 dark:ring-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-full p-1.5 transition-all duration-300"
+          className="mx-auto max-w-md bg-background/80 dark:bg-zinc-900/80 backdrop-blur-2xl backdrop-saturate-150 border border-black/[0.08] dark:border-white/[0.12] ring-1 ring-white/30 dark:ring-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-full p-1.5 transition-all duration-200"
           aria-label="Mobile Navigation Dock"
         >
           <div className="grid grid-cols-5 items-center gap-1">
@@ -146,10 +146,10 @@ export function MobileBottomNav() {
               const content = (
                 <div
                   className={cn(
-                    "relative flex flex-col items-center justify-center py-1.5 px-1 rounded-full transition-all duration-150 cursor-pointer touch-manipulation select-none w-full",
+                    "relative flex flex-col items-center justify-center py-1.5 px-1 rounded-full transition-colors duration-150 cursor-pointer touch-manipulation select-none w-full",
                     item.isActive
-                      ? "bg-primary/12 text-primary shadow-2xs"
-                      : "text-muted-foreground/75 hover:text-foreground hover:bg-foreground/5 active:scale-90"
+                      ? "bg-primary/12 text-primary shadow-2xs font-bold"
+                      : "text-muted-foreground/75 hover:text-foreground hover:bg-foreground/5"
                   )}
                 >
                   {/* Icon Wrapper */}
@@ -205,7 +205,7 @@ export function MobileBottomNav() {
                     key={item.id}
                     type="button"
                     onClick={item.onClick}
-                    className="w-full flex items-center justify-center focus:outline-none touch-manipulation cursor-pointer active:scale-95 transition-transform duration-100"
+                    className="w-full flex items-center justify-center focus:outline-none touch-manipulation cursor-pointer active:opacity-75 transition-opacity duration-100"
                   >
                     {content}
                   </button>
@@ -221,7 +221,7 @@ export function MobileBottomNav() {
                     if (item.onClick) item.onClick();
                     handleTabClick();
                   }}
-                  className="w-full flex items-center justify-center focus:outline-none touch-manipulation cursor-pointer active:scale-95 transition-transform duration-100"
+                  className="w-full flex items-center justify-center focus:outline-none touch-manipulation cursor-pointer active:opacity-75 transition-opacity duration-100"
                 >
                   {content}
                 </Link>

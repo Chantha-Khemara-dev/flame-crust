@@ -619,7 +619,7 @@ export default function KitchenDashboard() {
           </div>
         )}
 
-        <main className="relative flex-1 overflow-hidden p-2.5 sm:p-3 lg:py-3 lg:pr-3.5 lg:pl-0 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] lg:pb-3.5">
+        <main className="relative flex-1 overflow-hidden p-2.5 sm:p-3 lg:py-3 lg:pr-3.5 lg:pl-0 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] lg:pb-3.5 overscroll-contain">
           {loading ? (
             <KdsBoardSkeleton />
           ) : error && activeOrders.length === 0 ? (
@@ -671,9 +671,9 @@ export default function KitchenDashboard() {
           )}
         </main>
 
-        <div className="pointer-events-none fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] z-[70] select-none sm:inset-x-6 lg:hidden">
+        <div className="pointer-events-none fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] z-[70] select-none touch-none sm:inset-x-6 lg:hidden">
           <nav
-            className="pointer-events-auto mx-auto max-w-md rounded-full border border-black/[0.08] bg-card/85 p-1.5 shadow-warm-lg ring-1 ring-white/30 backdrop-blur-2xl backdrop-saturate-150 transition-all duration-300 dark:border-white/[0.12] dark:bg-zinc-900/85 dark:ring-white/5"
+            className="pointer-events-auto mx-auto max-w-md rounded-full border border-black/[0.08] bg-card/85 p-1.5 shadow-warm-lg ring-1 ring-white/30 backdrop-blur-2xl backdrop-saturate-150 transition-all duration-200 dark:border-white/[0.12] dark:bg-zinc-900/85 dark:ring-white/5"
             aria-label="Kitchen Navigation Dock"
           >
             <div className="grid grid-cols-4 items-center gap-1">
@@ -687,14 +687,14 @@ export default function KitchenDashboard() {
                     type="button"
                     onClick={() => selectView(item.id)}
                     aria-current={isActive ? "page" : undefined}
-                    className="flex w-full cursor-pointer items-center justify-center touch-manipulation transition-transform duration-100 focus:outline-none active:scale-95"
+                    className="flex w-full cursor-pointer items-center justify-center touch-manipulation transition-opacity duration-100 focus:outline-none active:opacity-75"
                   >
                     <div
                       className={cn(
-                        "relative flex w-full cursor-pointer flex-col items-center justify-center rounded-full px-1 py-1.5 transition-all duration-150 select-none touch-manipulation",
+                        "relative flex w-full cursor-pointer flex-col items-center justify-center rounded-full px-1 py-1.5 transition-colors duration-150 select-none touch-manipulation",
                         isActive
                           ? "bg-primary/12 font-bold text-primary shadow-2xs"
-                          : "text-muted-foreground/80 hover:bg-foreground/5 hover:text-foreground active:scale-90"
+                          : "text-muted-foreground/80 hover:bg-foreground/5 hover:text-foreground"
                       )}
                     >
                       <div className="relative mb-0.5 flex size-6 items-center justify-center">

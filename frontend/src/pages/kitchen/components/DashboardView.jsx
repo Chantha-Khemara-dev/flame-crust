@@ -148,7 +148,7 @@ export function DashboardView({
           type="button"
           onClick={toggleMobileStats}
           aria-expanded={showMobileStats}
-          className="flex w-full items-center justify-between rounded-xl border border-border/70 bg-card/85 px-3 py-2 text-xs font-semibold shadow-xs backdrop-blur-xl transition-all hover:bg-secondary/60 active:scale-[0.99]"
+          className="flex w-full items-center justify-between rounded-xl border border-border/70 bg-card/85 px-3 py-2 text-xs font-semibold shadow-xs backdrop-blur-xl transition-colors hover:bg-secondary/60 active:opacity-75"
         >
           <div className="flex min-w-0 items-center gap-2">
             <span className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-500">
@@ -233,8 +233,8 @@ export function DashboardView({
         <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background via-background/70 to-transparent sm:hidden" />
       </div>
 
-      <div className="mb-3.5 flex shrink-0 flex-wrap items-center justify-between gap-2.5 sm:mb-4">
-        <div className="grid flex-1 min-w-[280px] grid-cols-4 gap-1 rounded-full border border-border/70 bg-card/85 p-1.5 shadow-warm ring-1 ring-black/[0.03] backdrop-blur-xl dark:bg-zinc-900/85 dark:ring-white/[0.05]">
+      <div className="mb-3 flex shrink-0 flex-col gap-2 sm:mb-4 sm:flex-row sm:items-center sm:justify-between sm:gap-2.5">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 sm:grid sm:flex-1 sm:min-w-[280px] sm:grid-cols-4 sm:gap-1 sm:rounded-full sm:border sm:border-border/70 sm:bg-card/85 sm:p-1.5 sm:shadow-warm sm:ring-1 sm:ring-black/[0.03] sm:backdrop-blur-xl dark:sm:bg-zinc-900/85 dark:sm:ring-white/[0.05]">
           {filters.map((filter) => {
             const isActive = stageFilter === filter.id;
             return (
@@ -246,18 +246,17 @@ export function DashboardView({
                   onStageFilterChange?.(filter.id);
                 }}
                 className={cn(
-                  "flex items-center justify-center gap-1.5 rounded-full px-1 py-2 text-center text-xs transition-all active:scale-95 sm:gap-2 sm:px-2.5 sm:py-2.5",
+                  "flex shrink-0 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-center text-xs font-semibold whitespace-nowrap transition-colors duration-150 sm:shrink sm:px-2.5 sm:py-2",
                   isActive
                     ? "bg-gradient-to-r from-primary via-orange-600 to-amber-600 font-serif font-bold text-white shadow-warm"
-                    : "font-semibold text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
+                    : "border border-border/70 bg-card/90 text-muted-foreground hover:bg-secondary/70 hover:text-foreground sm:border-transparent sm:bg-transparent"
                 )}
               >
                 <filter.icon className={cn("size-3.5 shrink-0", isActive && "text-white/90")} />
-                <span className="inline sm:hidden lg:inline 2xl:hidden truncate text-[11px] font-semibold">{filter.shortLabel}</span>
-                <span className="hidden sm:inline lg:hidden 2xl:inline truncate text-xs font-semibold">{filter.label}</span>
+                <span className="text-xs font-semibold">{filter.label}</span>
                 <span
                   className={cn(
-                    "rounded-full px-1.5 py-0.5 font-sans text-[10px] font-bold tabular-nums sm:px-2",
+                    "rounded-full px-1.5 py-0.5 font-sans text-[10px] font-bold tabular-nums",
                     isActive
                       ? "bg-white/25 text-white backdrop-blur-sm"
                       : "border border-border/60 bg-secondary text-muted-foreground"
@@ -270,7 +269,7 @@ export function DashboardView({
           })}
         </div>
 
-        <div className="flex w-full shrink-0 items-center justify-between gap-2 sm:w-auto sm:justify-start">
+        <div className="flex shrink-0 items-center justify-between gap-2 sm:justify-start">
           <div className="flex items-center rounded-full border border-border/70 bg-card/85 p-1 shadow-warm ring-1 ring-black/[0.03] backdrop-blur-xl dark:bg-zinc-900/85">
             <button
               type="button"
@@ -279,7 +278,7 @@ export function DashboardView({
                 onTimeScopeChange?.("all");
               }}
               className={cn(
-                "flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold transition-all active:scale-95",
+                "flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold transition-colors duration-150",
                 timeScope === "all"
                   ? "bg-primary font-bold text-white shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
@@ -294,7 +293,7 @@ export function DashboardView({
                 onTimeScopeChange?.("today");
               }}
               className={cn(
-                "flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold transition-all active:scale-95",
+                "flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold transition-colors duration-150",
                 timeScope === "today"
                   ? "bg-primary font-bold text-white shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
@@ -319,7 +318,7 @@ export function DashboardView({
                   onClearStaleOrders?.();
                 }
               }}
-              className="flex h-9 items-center gap-1.5 rounded-full border-destructive/30 bg-destructive/10 px-3 text-xs font-bold text-destructive hover:bg-destructive/20 active:scale-95"
+              className="flex h-9 items-center gap-1.5 rounded-full border-destructive/30 bg-destructive/10 px-3 text-xs font-bold text-destructive hover:bg-destructive/20 active:opacity-75"
               title="Archive tickets older than 24 hours"
             >
               <Trash2 className="size-3.5" />
@@ -334,7 +333,7 @@ export function DashboardView({
             variant="outline"
             size="icon"
             onClick={onSearchMobile}
-            className="size-9 shrink-0 rounded-full border-border/70 bg-card text-muted-foreground shadow-xs transition-all hover:border-primary/40 hover:text-primary active:scale-95 md:hidden"
+            className="size-9 shrink-0 rounded-full border-border/70 bg-card text-muted-foreground shadow-xs transition-colors hover:border-primary/40 hover:text-primary active:opacity-75 md:hidden"
             title="Search tickets"
           >
             <Search className="size-4" />
@@ -372,7 +371,7 @@ export function DashboardView({
         </div>
       ) : stageFilter === "all" ? (
         <>
-          <div className="flex flex-1 flex-col gap-5 overflow-y-auto pb-2 custom-scrollbar md:hidden">
+          <div className="flex flex-1 flex-col gap-5 overflow-y-auto overscroll-contain touch-pan-y pb-2 custom-scrollbar md:hidden">
             {STAGE_ORDER.map((stage) => {
               const { list, oldest, late } = stageMeta(stage);
               const config = STAGES[stage];
@@ -518,7 +517,7 @@ function StationColumn({
 
       <div
         className={cn(
-          "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 custom-scrollbar sm:gap-3.5 sm:p-4",
+          "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain touch-pan-y p-3 custom-scrollbar sm:gap-3.5 sm:p-4",
           stacked ? "max-h-[460px] md:max-h-none" : "",
           expanded && "md:grid md:grid-cols-2 md:content-start md:auto-rows-auto md:items-stretch md:gap-4 xl:grid-cols-3"
         )}
@@ -645,7 +644,7 @@ function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOp
         }
       }}
       className={cn(
-        "group relative flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-3xl border bg-card shadow-warm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-warm-lg focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none dark:bg-zinc-900/90",
+        "group relative flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-3xl border bg-card shadow-warm transition-all duration-150 sm:hover:-translate-y-0.5 sm:hover:shadow-warm-lg focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none dark:bg-zinc-900/90 touch-pan-y",
         tone.border,
         compact ? "min-h-[180px] p-3.5" : "min-h-[270px] p-4 sm:p-5",
         urgency.level >= 3 && "ring-1 ring-destructive/25"
@@ -726,7 +725,7 @@ function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOp
         </div>
       )}
 
-      <ul className={cn("mb-3 flex-auto max-h-[260px] overflow-y-auto custom-scrollbar space-y-2 pr-1", compact && "space-y-1.5")}>
+      <ul className={cn("mb-3 flex-auto max-h-[260px] overflow-y-auto overscroll-contain touch-pan-y custom-scrollbar space-y-2 pr-1", compact && "space-y-1.5")}>
         {items.length === 0 && (
           <li className="rounded-2xl border border-dashed border-border/60 px-3 py-2.5 text-center text-[11px] font-semibold text-muted-foreground">
             No items on this ticket
