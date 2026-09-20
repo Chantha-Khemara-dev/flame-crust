@@ -414,6 +414,7 @@ export default function KitchenDashboard() {
   const selectView = useCallback((view) => {
     setActiveView(view);
     setQuery("");
+    setMobileSearchOpen(false);
   }, []);
 
 
@@ -440,7 +441,7 @@ export default function KitchenDashboard() {
           ready: readyOrders.length,
         }}
         onStageSelect={(stage) => {
-          setActiveView("dashboard");
+          selectView("dashboard");
           setStageFilter(stage);
         }}
         onSignOut={handleSignOut}
@@ -457,20 +458,18 @@ export default function KitchenDashboard() {
                 <h1 className="truncate font-serif text-base font-bold capitalize leading-tight tracking-tight text-foreground sm:text-lg">
                   {meta.title}
                 </h1>
-                <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 shadow-2xs lg:inline-flex dark:text-emerald-400">
-                  <StatusDot tone="emerald" />
-                  Live Station
-                </span>
+                {meta.pill && (
+                  <span className="hidden rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary sm:inline-flex">
+                    {meta.pill}
+                  </span>
+                )}
               </div>
-              <p className="mt-0.5 flex items-center gap-1.5 truncate text-[11px] font-medium text-muted-foreground">
-                <span className="font-bold text-foreground">{stats.queue}</span>
-                <span className="hidden sm:inline">{stats.queue === 1 ? "ticket" : "tickets"} in queue</span>
-                <span className="sm:hidden">in queue</span>
-                <span className="text-border">•</span>
-                <LiveClock className="text-[11px] font-bold text-foreground/80" showSeconds={false} />
-                {!online && (
-                  <span className="flex shrink-0 items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-1.5 py-px text-[9px] font-extrabold uppercase tracking-wide text-destructive sm:hidden">
-                    <WifiOff className="size-2.5" /> offline
+              <p className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                <span className="truncate">{meta.subtitle}</span>
+                {totalActive > 0 && isBoard && (
+                  <span className="inline-flex items-center gap-1 font-bold text-primary">
+                    <span className="size-1.5 rounded-full bg-primary animate-pulse" />
+                    {totalActive} live
                   </span>
                 )}
               </p>
@@ -478,26 +477,28 @@ export default function KitchenDashboard() {
           </div>
 
           <div className="flex shrink-0 items-center gap-1.5 py-3 sm:gap-2">
-            <div className="relative hidden md:block">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/70" />
-              <Input
-                ref={searchRef}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search tickets…"
-                className="h-9 w-32 rounded-full border-border/70 bg-background/60 pl-9 pr-8 text-xs shadow-xs transition-all focus-visible:border-primary/50 focus-visible:ring-primary/25 sm:h-10 sm:w-36 lg:w-44 xl:w-52"
-              />
-              {query && (
-                <button
-                  type="button"
-                  onClick={() => setQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                  aria-label="Clear search"
-                >
-                  <X className="size-3.5" />
-                </button>
-              )}
-            </div>
+            {isBoard && (
+              <div className="relative hidden md:block">
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/70" />
+                <Input
+                  ref={searchRef}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search tickets…"
+                  className="h-9 w-32 rounded-full border-border/70 bg-background/60 pl-9 pr-8 text-xs shadow-xs transition-all focus-visible:border-primary/50 focus-visible:ring-primary/25 sm:h-10 sm:w-36 lg:w-44 xl:w-52"
+                />
+                {query && (
+                  <button
+                    type="button"
+                    onClick={() => setQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                    aria-label="Clear search"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
 
             <CountdownRing progress={syncProgress} className="hidden sm:flex" title="Auto-sync countdown">
               {online ? (
@@ -588,14 +589,14 @@ export default function KitchenDashboard() {
           </div>
         </header>
 
-        {mobileSearchOpen && (
-          <div className="flex shrink-0 items-center gap-2 border-b border-border/70 bg-card px-3 py-2 md:hidden">
+        {mobileSearchOpen && isBoard && (
+          <div className="flex shrink-0 items-center gap-2 border-b border-border/70 bg-card px-3 py-2 md:hidden animate-in fade-in-50 slide-in-from-top-1 duration-150">
             <Search className="size-4 shrink-0 text-muted-foreground" />
             <Input
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search tickets, items, guests…"
+              placeholder="Search tickets, items, table…"
               className="h-9 flex-1 rounded-full border-border/70 bg-secondary/40 text-xs"
             />
             {query && (
