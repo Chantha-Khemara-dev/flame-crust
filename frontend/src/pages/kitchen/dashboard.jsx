@@ -113,7 +113,8 @@ export default function KitchenDashboard() {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   const searchRef = useRef(null);
-  const knownTickets = useRef(null);
+  const initialSeeded = useRef(false);
+  const knownTickets = useRef(new Set());
   const alertedDelays = useRef(new Set());
 
   const toggleTheme = useCallback(
@@ -378,23 +379,33 @@ export default function KitchenDashboard() {
   }, [safeOrders, activeOrders, pendingOrders.length, preparingOrders.length, readyOrders.length, now, prefs.targetPrepMinutes]);
 
   useEffect(() => {
-    if (loading || knownTickets.current === null) {
+    if (loading) return;
+
+    // On first successful load, seed known tickets and already-delayed tickets silently
+    if (!initialSeeded.current) {
+      initialSeeded.current = true;
       knownTickets.current = new Set(activeOrders.map((o) => String(o.id)));
+      const threshold = prefs.targetPrepMinutes * 60000;
+      alertedDelays.current = new Set(
+        activeOrders
+          .filter((o) => o.created_at && now - new Date(o.created_at).getTime() > threshold)
+          .map((o) => String(o.id))
+      );
       return;
     }
+
+    // 1. Audio and toast notifications for NEW tickets arriving in real-time
     const fresh = activeOrders.filter((o) => !knownTickets.current.has(String(o.id)));
     if (fresh.length > 0) {
       fresh.forEach((o) => knownTickets.current.add(String(o.id)));
-      playChime("ticket");
+      if (prefs.sound) playChime("ticket");
       const latest = fresh[fresh.length - 1];
       toast.info(`New ticket #${shortOrderNo(latest)} on the rail`, {
         description: `${latest.items?.length || 0} item(s) • ${latest.order_type || "DELIVERY"}`,
       });
     }
-  }, [activeOrders, loading]);
 
-  useEffect(() => {
-    if (loading) return;
+    // 2. Delayed tickets alerting when crossing threshold in real-time
     const threshold = prefs.targetPrepMinutes * 60000;
     activeOrders.forEach((order) => {
       if (order.status === "READY" || !order.created_at) return;
@@ -402,14 +413,14 @@ export default function KitchenDashboard() {
       const key = String(order.id);
       if (waited > threshold && !alertedDelays.current.has(key)) {
         alertedDelays.current.add(key);
-        playChime("alert");
+        if (prefs.sound) playChime("alert");
         toast.warning(`Ticket #${shortOrderNo(order)} is running late`, {
           description: `Waiting ${Math.round(waited / 60000)} min — target is ${prefs.targetPrepMinutes} min.`,
         });
       }
       if (waited <= threshold) alertedDelays.current.delete(key);
     });
-  }, [activeOrders, now, loading, prefs.targetPrepMinutes]);
+  }, [activeOrders, loading, now, prefs.targetPrepMinutes, prefs.sound]);
 
   const selectView = useCallback((view) => {
     setActiveView(view);
