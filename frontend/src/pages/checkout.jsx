@@ -1040,7 +1040,7 @@ function CheckoutPage() {
             </div>
 
             {/* Main Form & Desktop Grid */}
-            <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="grid lg:grid-cols-[1fr_390px] gap-4 sm:gap-6 lg:gap-8 pb-24 lg:pb-0">
+            <form id="checkout-form" onSubmit={handleSubmit(onSubmit, onInvalid)} className="grid lg:grid-cols-[1fr_390px] gap-4 sm:gap-6 lg:gap-8 pb-28 lg:pb-0">
               <div className="space-y-3.5 sm:space-y-6">
                 {/* 1. Contact & Delivery Section */}
                 <div className="rounded-2xl sm:rounded-3xl border border-border/70 bg-card/60 backdrop-blur-xl shadow-sm p-3.5 sm:p-6 lg:p-7 space-y-3">
@@ -1743,63 +1743,64 @@ function CheckoutPage() {
                   </p>
                 </div>
               </div>
-
-              {/* Mobile Floating Bottom Action Capsule (matching MobileBottomNav dock style) */}
-              <div className="lg:hidden fixed bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] inset-x-3 sm:inset-x-6 z-40 select-none">
-                <div className="mx-auto max-w-md bg-background/80 dark:bg-zinc-900/80 backdrop-blur-2xl backdrop-saturate-150 border border-black/[0.08] dark:border-white/[0.12] ring-1 ring-white/30 dark:ring-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.18)] rounded-full p-2 pl-4 sm:pl-5 flex items-center justify-between gap-3 transition-all duration-300">
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider truncate">
-                      Total ({itemCount} {itemCount === 1 ? "item" : "items"})
-                    </span>
-                    <span className="font-serif text-lg sm:text-xl font-bold text-primary leading-tight">
-                      ${total.toFixed(2)}
-                    </span>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    disabled={submitting}
-                    className={cn(
-                      "h-11 sm:h-12 px-5 sm:px-6 rounded-full font-bold text-xs sm:text-sm shadow-md active:scale-95 transition-all shrink-0 cursor-pointer",
-                      isPaymentVerified
-                        ? "bg-green-600 text-white hover:bg-green-700 shadow-green-600/25"
-                        : "bg-gradient-to-r from-primary to-orange-500 text-white shadow-primary/25 hover:shadow-primary/40"
-                    )}
-                  >
-                    {submitting ? (
-                      <span className="flex items-center gap-1.5">
-                        <Loader2 className="size-4 animate-spin" />
-                        Processing...
-                      </span>
-                    ) : isPaymentVerified ? (
-                      <span className="flex items-center gap-1">
-                        <CheckCircle2 className="size-4" />
-                        Order (Paid ✓)
-                        <ArrowRight className="size-4 ml-1" />
-                      </span>
-                    ) : paymentMethod === "CASH" ? (
-                      <span className="flex items-center gap-1">
-                        បញ្ជាទិញ (COD)
-                        <ArrowRight className="size-4 ml-1" />
-                      </span>
-                    ) : (paymentMethod === "KHQR" || paymentMethod === "ABA_PAY") ? (
-                      <span className="flex items-center gap-1">
-                        ស្កេនទូទាត់ QR
-                        <ArrowRight className="size-4 ml-1" />
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1">
-                        Verify & Order
-                        <ArrowRight className="size-4 ml-1" />
-                      </span>
-                    )}
-                  </Button>
-                </div>
-              </div>
             </form>
           </div>
         </PageTransition>
       </main>
+
+      {/* Sticky Bottom Floating Checkout Card for Mobile (Always visible across viewport, outside PageTransition) */}
+      {lines.length > 0 && (
+        <div className="lg:hidden fixed bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] inset-x-3 z-40 pointer-events-none select-none">
+          <div className="pointer-events-auto max-w-md mx-auto bg-card/90 dark:bg-card/95 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.12] ring-1 ring-white/30 dark:ring-white/5 shadow-[0_10px_35px_rgba(0,0,0,0.15)] rounded-2xl p-2.5 px-4 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
+                Total ({itemCount} {itemCount === 1 ? "item" : "items"})
+              </p>
+              <p className="font-serif text-2xl font-bold text-foreground leading-tight">
+                ${total.toFixed(2)}
+              </p>
+            </div>
+
+            <Button
+              form="checkout-form"
+              type="submit"
+              disabled={submitting}
+              className={cn(
+                "h-11 px-6 rounded-xl bg-gradient-to-r from-primary to-orange-500 text-white font-bold text-sm shadow-md shadow-primary/30 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shrink-0",
+                isPaymentVerified && "bg-green-600 hover:bg-green-700 text-white shadow-green-600/30"
+              )}
+            >
+              {submitting ? (
+                <span className="flex items-center gap-1.5">
+                  <Loader2 className="size-4 animate-spin" />
+                  Processing...
+                </span>
+              ) : isPaymentVerified ? (
+                <span className="flex items-center gap-1">
+                  <CheckCircle2 className="size-4" />
+                  Order (Paid ✓)
+                  <ArrowRight className="size-4 ml-1" />
+                </span>
+              ) : paymentMethod === "CASH" ? (
+                <span className="flex items-center gap-1">
+                  បញ្ជាទិញ (COD)
+                  <ArrowRight className="size-4 ml-1" />
+                </span>
+              ) : (paymentMethod === "KHQR" || paymentMethod === "ABA_PAY") ? (
+                <span className="flex items-center gap-1">
+                  ស្កេនទូទាត់ QR
+                  <ArrowRight className="size-4 ml-1" />
+                </span>
+              ) : (
+                <span className="flex items-center gap-1">
+                  Verify & Order
+                  <ArrowRight className="size-4 ml-1" />
+                </span>
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Saved Addresses Selection Modal */}
       <Dialog open={showAddressPickerModal} onOpenChange={setShowAddressPickerModal}>
