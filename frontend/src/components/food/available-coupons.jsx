@@ -149,11 +149,12 @@ export function AvailableCoupons({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {trigger ? (
+      {trigger && (
         <DialogTrigger asChild>
           {trigger}
         </DialogTrigger>
-      ) : (
+      )}
+      {!trigger && trigger !== null && !isControlled && (
         <DialogTrigger asChild>
           <button type="button" className="text-[12px] font-medium text-primary hover:underline flex items-center gap-1.5 cursor-pointer">
             <Ticket className="size-3.5" /> View Available Coupons
@@ -270,7 +271,7 @@ export function AvailableCoupons({
                       <div className="absolute -right-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-background border border-border/60" />
 
                       {/* Ticket Body Header */}
-                      <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3 pl-5 sm:pl-6">
+                      <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3 pl-5 sm:pl-6 relative z-10">
                         <div className="flex items-center gap-3 min-w-0 flex-1">
                           {/* Prize Icon in Gradient Box */}
                           <div className={cn("size-10 sm:size-11 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-xs shrink-0 text-white", bgGradient)}>
@@ -278,29 +279,39 @@ export function AvailableCoupons({
                           </div>
 
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-mono font-bold text-foreground text-sm sm:text-base tracking-wider">{coupon.code}</span>
+                            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                              <span className="font-serif text-sm sm:text-base font-bold text-foreground truncate">
+                                {coupon.discount_type === 'PERCENTAGE' ? `${coupon.discount_value}% OFF` : 
+                                 coupon.discount_type === 'FREE_DELIVERY' ? 'FREE DELIVERY' : 
+                                 `$${coupon.discount_value} OFF`}
+                              </span>
                               {isLucky && (
-                                <span className="text-[9px] sm:text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded-full font-bold uppercase shrink-0">
-                                  ✨ Lucky Prize
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[9px] font-bold rounded-full border border-amber-500/30 shrink-0">
+                                  🎰 Lucky Draw
                                 </span>
                               )}
                               <TierBadge tier={tier} />
                             </div>
 
-                            <p className="text-xs sm:text-sm font-semibold text-muted-foreground mt-0.5 leading-tight">
-                              {coupon.description || (
-                                coupon.discount_type === "FREE_DELIVERY" 
-                                  ? "Free Delivery on your order!" 
-                                  : coupon.discount_type === "PERCENTAGE" 
-                                    ? `${coupon.discount_value}% OFF total`
-                                    : `$${coupon.discount_value} OFF total`
+                            <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-muted-foreground">
+                              <span className="font-mono font-bold text-amber-500 dark:text-amber-400">{coupon.code}</span>
+                              {minOrder > 0 && (
+                                <>
+                                  <span>•</span>
+                                  <span>Min. ${minOrder.toFixed(2)}</span>
+                                </>
                               )}
-                            </p>
+                            </div>
 
-                            {minOrder > 0 && (
-                              <p className={cn("text-[10px] sm:text-[11px] mt-0.5", isMinOrderNotMet ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-muted-foreground/70")}>
-                                Min order: ${minOrder.toFixed(2)} {isMinOrderNotMet && `(Need $${(minOrder - subtotal).toFixed(2)} more)`}
+                            {coupon.description && (
+                              <p className="text-[10px] sm:text-[11px] text-muted-foreground/80 mt-0.5 truncate">
+                                {coupon.description}
+                              </p>
+                            )}
+
+                            {isMinOrderNotMet && (
+                              <p className="text-[10px] sm:text-[11px] mt-0.5 text-amber-600 dark:text-amber-400 font-semibold">
+                                Need ${(minOrder - subtotal).toFixed(2)} more to apply
                               </p>
                             )}
                           </div>

@@ -1895,122 +1895,18 @@ function CheckoutPage() {
       </Dialog>
 
       {/* Available Coupons Selection Modal */}
-      <Dialog open={showCouponModal} onOpenChange={setShowCouponModal}>
-        <DialogContent className="max-w-md w-[92vw] rounded-3xl p-5 border-border/60">
-          <DialogHeader className="pb-3 border-b border-border/60">
-            <DialogTitle className="font-serif text-lg font-bold flex items-center gap-2">
-              <Ticket className="size-5 text-primary" /> Select Available Coupon
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              Select a coupon code to apply to your order.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-2.5 py-2 max-h-[55vh] overflow-y-auto no-scrollbar">
-            {loadingCoupons ? (
-              <div className="py-8 flex justify-center">
-                <Loader2 className="size-6 animate-spin text-primary" />
-              </div>
-            ) : allCoupons.length > 0 ? (
-              [...allCoupons].sort((a, b) => {
-                const aMin = Number(a.min_order_amount || 0);
-                const bMin = Number(b.min_order_amount || 0);
-                const aUsable = grossSubtotal >= aMin && !a.isUsed && !a.isExpired;
-                const bUsable = grossSubtotal >= bMin && !b.isUsed && !b.isExpired;
-                
-                if (aUsable && !bUsable) return -1;
-                if (!aUsable && bUsable) return 1;
-                
-                if (a.isLuckyDraw && !b.isLuckyDraw) return -1;
-                if (!a.isLuckyDraw && b.isLuckyDraw) return 1;
-                
-                return 0;
-              }).map((c) => {
-                const isSelected = coupon?.id === c.id;
-                const minOrder = Number(c.min_order_amount || 0);
-                const isMinOrderNotMet = grossSubtotal > 0 && minOrder > 0 && grossSubtotal < minOrder;
-                const isUsed = c.isUsed;
-
-                return (
-                  <div
-                    key={c.id}
-                    className={cn(
-                      "rounded-2xl p-3.5 border transition-all flex items-center justify-between gap-3",
-                      isSelected
-                        ? "border-primary bg-primary/10 ring-2 ring-primary/30"
-                        : (isMinOrderNotMet || isUsed)
-                          ? "border-border/40 bg-muted/20 opacity-70"
-                          : "border-border/60 bg-secondary/30 hover:border-primary/50 hover:bg-secondary/60 cursor-pointer"
-                    )}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-sm text-foreground">{c.code}</span>
-                        {c.isLuckyDraw && (
-                          <span className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold uppercase flex items-center gap-1">
-                            <Sparkles className="size-2.5 text-amber-500" />
-                            Lucky Prize
-                          </span>
-                        )}
-                        <span className="text-[10px] bg-primary/15 text-primary px-2 py-0.5 rounded-full font-bold uppercase">
-                          {c.discount_type === "FREE_DELIVERY"
-                            ? "Free Delivery"
-                            : c.discount_type === "PERCENTAGE"
-                              ? `${c.discount_value}% OFF`
-                              : `$${c.discount_value} OFF`}
-                        </span>
-                        {c.isLuckyDraw && c.tier && (
-                          <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.2 rounded-full border border-border/50 text-muted-foreground font-semibold">
-                            {c.tier}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {c.description || (c.discount_type === "FREE_DELIVERY" ? "Free delivery on your order" : `Get discount on your pizza order`)}
-                      </p>
-                      {c.isLuckyDraw && c.expiresAt && !c.isUsed && (
-                        <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
-                          Expires: {new Date(c.expiresAt).toLocaleDateString()}
-                        </p>
-                      )}
-                      {minOrder > 0 && (
-                        <p className={cn("text-[10px] mt-0.5", isMinOrderNotMet ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-muted-foreground")}>
-                          Min order: ${minOrder.toFixed(2)} {isMinOrderNotMet && `(Need $${(minOrder - grossSubtotal).toFixed(2)} more)`}
-                        </p>
-                      )}
-                    </div>
-
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={isMinOrderNotMet || isSelected || isUsed}
-                      onClick={() => {
-                        const acc = getCurrentAccount();
-                        applyCoupon(c, acc.storageKey);
-                        setShowCouponModal(false);
-                        toast.success(`Coupon "${c.code}" applied!`);
-                      }}
-                      className={cn(
-                        "rounded-full text-xs h-8 px-3 font-semibold shrink-0",
-                        isSelected
-                          ? "bg-[#6BCF8E] text-white hover:bg-[#5bb87a]"
-                          : (isUsed || isMinOrderNotMet)
-                            ? "bg-muted-foreground/20 text-muted-foreground"
-                            : "bg-primary text-white hover:bg-primary/90"
-                      )}
-                    >
-                      {isSelected ? "Applied ✓" : isUsed ? "Used" : "Apply"}
-                    </Button>
-                  </div>
-                );
-              })
-            ) : (
-              <p className="text-center py-6 text-sm text-muted-foreground">
-                No active coupons available right now.
-              </p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AvailableCoupons
+        open={showCouponModal}
+        onOpenChange={setShowCouponModal}
+        currentCoupon={coupon}
+        subtotal={grossSubtotal}
+        onSelectCoupon={(selectedCoupon) => {
+          const acc = getCurrentAccount();
+          applyCoupon(selectedCoupon, acc.storageKey);
+          setShowCouponModal(false);
+          toast.success(`Coupon "${selectedCoupon.code}" applied!`);
+        }}
+      />
 
       {/* Payment is now handled in dedicated /payment page */}
     </div>
