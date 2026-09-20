@@ -607,7 +607,7 @@ export default function KitchenDashboard() {
           </div>
         )}
 
-        <main className="relative flex-1 overflow-hidden p-2 pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))] sm:p-3 md:p-3.5 lg:p-4 lg:pb-4">
+        <main className="relative flex-1 overflow-hidden p-2 pl-0 sm:p-3 sm:pl-1 md:p-3 md:pl-2 lg:p-3 lg:pl-2.5 pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))] lg:pb-3">
           {loading ? (
             <KdsBoardSkeleton />
           ) : error && activeOrders.length === 0 ? (
