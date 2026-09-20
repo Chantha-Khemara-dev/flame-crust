@@ -895,6 +895,73 @@ public class AuthController {
         return ResponseEntity.ok(updated);
     }
 
+    @PostMapping("/kitchen-update-profile")
+    public ResponseEntity<?> kitchenUpdateProfile(@RequestBody Map<String, Object> body) {
+        Object idObj = body.get("id");
+        String email = (String) body.get("email");
+        String phone = (String) body.get("phone");
+        String name = (String) body.get("name");
+        String avatar = (String) body.get("avatar");
+        String profilePhoto = (String) body.get("profile_photo");
+        if (profilePhoto == null && avatar != null) profilePhoto = avatar;
+        if (avatar == null && profilePhoto != null) avatar = profilePhoto;
+
+        List<Map<String, Object>> staffList = List.of();
+        if (idObj != null) {
+            try {
+                long sId = ((Number) idObj).longValue();
+                if (sId > 0) {
+                    staffList = jdbc.queryForList("SELECT * FROM kitchen_staff WHERE id = ? LIMIT 1", sId);
+                }
+            } catch (Exception ignored) {}
+        }
+        if (staffList.isEmpty() && email != null && !email.isBlank()) {
+            staffList = jdbc.queryForList("SELECT * FROM kitchen_staff WHERE email = ? LIMIT 1", email.trim());
+        }
+        if (staffList.isEmpty() && phone != null && !phone.isBlank()) {
+            staffList = jdbc.queryForList("SELECT * FROM kitchen_staff WHERE phone = ? LIMIT 1", phone.trim());
+        }
+
+        if (staffList.isEmpty()) {
+            // Also check admin_users if logged in as admin
+            List<Map<String, Object>> admins = List.of();
+            if (email != null && !email.isBlank()) {
+                admins = jdbc.queryForList("SELECT * FROM admin_users WHERE email = ? LIMIT 1", email.trim());
+            }
+            if (!admins.isEmpty()) {
+                long adminId = ((Number) admins.getFirst().get("id")).longValue();
+                if (avatar != null && !avatar.isBlank()) {
+                    jdbc.update("UPDATE admin_users SET avatar = ? WHERE id = ?", avatar.trim(), adminId);
+                }
+                Map<String, Object> adminUpdated = new HashMap<>(jdbc.queryForList("SELECT * FROM admin_users WHERE id = ? LIMIT 1", adminId).getFirst());
+                adminUpdated.remove("password_hash");
+                return ResponseEntity.ok(adminUpdated);
+            }
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Staff not found"));
+        }
+
+        long staffId = ((Number) staffList.getFirst().get("id")).longValue();
+        if (name != null && !name.isBlank()) {
+            jdbc.update("UPDATE kitchen_staff SET name = ? WHERE id = ?", name.trim(), staffId);
+        }
+        if (phone != null && !phone.isBlank()) {
+            jdbc.update("UPDATE kitchen_staff SET phone = ? WHERE id = ?", phone.trim(), staffId);
+        }
+        if (profilePhoto != null && !profilePhoto.isBlank()) {
+            try {
+                jdbc.update("UPDATE kitchen_staff SET profile_photo = ?, avatar = ? WHERE id = ?", profilePhoto.trim(), profilePhoto.trim(), staffId);
+            } catch (Exception e) {
+                try {
+                    jdbc.update("UPDATE kitchen_staff SET profile_photo = ? WHERE id = ?", profilePhoto.trim(), staffId);
+                } catch (Exception ignored) {}
+            }
+        }
+
+        Map<String, Object> updated = new HashMap<>(jdbc.queryForList("SELECT * FROM kitchen_staff WHERE id = ? LIMIT 1", staffId).getFirst());
+        updated.remove("password_hash");
+        return ResponseEntity.ok(updated);
+    }
+
     @PostMapping("/customer-update-favorites")
     public ResponseEntity<?> updateCustomerFavorites(@RequestBody Map<String, Object> body) {
         Object customerId = body.get("customerId");

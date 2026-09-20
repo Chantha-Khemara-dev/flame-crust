@@ -19,6 +19,12 @@ public class DatabaseSchemaUpdater implements CommandLineRunner {
             jdbcTemplate.execute("ALTER TABLE customers MODIFY cover_photo LONGTEXT;");
             jdbcTemplate.execute("ALTER TABLE drivers MODIFY profile_photo LONGTEXT;");
             jdbcTemplate.execute("ALTER TABLE drivers MODIFY cover_photo LONGTEXT;");
+            try {
+                jdbcTemplate.execute("ALTER TABLE kitchen_staff ADD COLUMN profile_photo LONGTEXT NULL;");
+            } catch (Exception ignored) {}
+            try {
+                jdbcTemplate.execute("ALTER TABLE kitchen_staff ADD COLUMN avatar LONGTEXT NULL;");
+            } catch (Exception ignored) {}
             System.out.println("--> Schema updated successfully: Image columns changed to LONGTEXT.");
         } catch (Exception e) {
             System.out.println("--> Schema update skipped or already applied: " + e.getMessage());

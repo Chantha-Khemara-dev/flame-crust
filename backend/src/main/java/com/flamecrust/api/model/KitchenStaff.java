@@ -41,4 +41,9 @@ public class KitchenStaff {
     @Column(name = "branch_id")
     private Long branchId;
 
+    @Column(name = "profile_photo")
+    private String profilePhoto;
+
+    @Column(name = "avatar")
+    private String avatar;
 }

@@ -648,6 +648,7 @@ export default function KitchenDashboard() {
               revenueText={formatMoney(stats.revenue)}
               onRefresh={handleRefresh}
               onSignOut={handleSignOut}
+              onUserUpdate={setUser}
             />
           ) : (
             <DashboardView

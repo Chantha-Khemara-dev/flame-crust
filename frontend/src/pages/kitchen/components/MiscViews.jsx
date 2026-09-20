@@ -1,3 +1,4 @@
+import { useState, useRef } from "react";
 import {
   ChefHat,
   Mail,
@@ -16,12 +17,17 @@ import {
   Image as ImageIcon,
   Wallet,
   AlertTriangle,
+  Camera,
+  UploadCloud,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { API_URL } from "@/lib/api";
+import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import {
   LiveClock,
   PersonAvatar,
@@ -33,13 +39,94 @@ import {
   useKitchenPrefs,
 } from "./kitchen-ui";
 
-export function ChefProfileView({ user, stats = {}, revenueText, onRefresh, onSignOut }) {
+export function ChefProfileView({ user, stats = {}, revenueText, onRefresh, onSignOut, onUserUpdate }) {
   const prefs = useKitchenPrefs();
+  const fileInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
 
   const staffName = user?.name || "Kitchen Staff";
   const staffRole = user?.role_title || user?.role || "Head Chef";
   const staffEmail = user?.email || "No email on file";
   const staffPhone = user?.phone || "No phone on file";
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select a valid image file (PNG, JPG, WEBP)");
+      return;
+    }
+
+    setUploading(true);
+    playChime("tap");
+    const toastId = toast.loading("Uploading photo to Cloudinary…");
+
+    try {
+      const uploadedUrl = await uploadImageToCloudinary(file);
+      if (!uploadedUrl) {
+        throw new Error("Failed to get image URL from Cloudinary");
+      }
+
+      // Update current user object
+      const updatedUser = {
+        ...user,
+        avatar: uploadedUrl,
+        profile_photo: uploadedUrl,
+      };
+
+      // Persist to kitchenAuth in localStorage
+      const kAuth = localStorage.getItem("kitchenAuth");
+      if (kAuth) {
+        try {
+          const parsed = JSON.parse(kAuth);
+          localStorage.setItem("kitchenAuth", JSON.stringify({ ...parsed, ...updatedUser }));
+        } catch {}
+      }
+
+      // Persist to adminAuth in localStorage if applicable
+      const aAuth = localStorage.getItem("adminAuth");
+      if (aAuth) {
+        try {
+          const parsed = JSON.parse(aAuth);
+          localStorage.setItem("adminAuth", JSON.stringify({ ...parsed, ...updatedUser }));
+        } catch {}
+      }
+
+      // Notify parent component to update state
+      onUserUpdate?.(updatedUser);
+
+      // Trigger auth event so sidebar and components refresh
+      window.dispatchEvent(new Event("authChanged"));
+
+      // Persist to backend database
+      try {
+        await fetch(`${API_URL}/auth/kitchen-update-profile`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: user?.id,
+            email: user?.email,
+            phone: user?.phone,
+            name: user?.name,
+            avatar: uploadedUrl,
+            profile_photo: uploadedUrl,
+          }),
+        });
+      } catch (backendErr) {
+        console.warn("Backend profile photo save failed, cached in localStorage:", backendErr);
+      }
+
+      playChime("ready");
+      toast.success("Profile photo uploaded to Cloudinary successfully!", { id: toastId });
+    } catch (err) {
+      console.error("Cloudinary upload failed:", err);
+      toast.error(err.message || "Failed to upload photo", { id: toastId });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -61,16 +148,58 @@ export function ChefProfileView({ user, stats = {}, revenueText, onRefresh, onSi
         <div className="max-w-5xl space-y-4 sm:space-y-5">
           <section className="overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-br from-primary/[0.07] via-card to-amber-500/[0.06] shadow-warm">
             <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:p-7">
+              {/* Profile Avatar with Cloudinary Upload */}
               <div className="relative shrink-0">
-                <PersonAvatar
-                  name={staffName}
-                  src={user?.avatar || user?.profile_photo}
-                  className="size-20 rounded-3xl border-2 border-primary/20 shadow-warm sm:size-24"
-                  fallbackClass="from-primary via-orange-500 to-amber-500 text-3xl text-white sm:text-4xl"
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handlePhotoUpload}
+                  accept="image/png,image/jpeg,image/webp,image/jpg"
+                  className="hidden"
+                  disabled={uploading}
                 />
-                <span className="absolute -bottom-1 -right-1 flex size-7 items-center justify-center rounded-full border-2 border-card bg-gradient-to-br from-primary to-amber-500 text-white shadow-warm">
-                  <ChefHat className="size-3.5" />
-                </span>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="group/avatar relative block cursor-pointer rounded-3xl focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 overflow-hidden"
+                  title="Click to upload profile photo to Cloudinary"
+                >
+                  <PersonAvatar
+                    name={staffName}
+                    src={user?.avatar || user?.profile_photo}
+                    className="size-20 rounded-3xl border-2 border-primary/20 shadow-warm transition-transform duration-300 group-hover/avatar:scale-105 sm:size-24"
+                    fallbackClass="from-primary via-orange-500 to-amber-500 text-3xl text-white sm:text-4xl"
+                  />
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center rounded-3xl bg-black/60 text-white opacity-0 backdrop-blur-xs transition-opacity duration-200 group-hover/avatar:opacity-100">
+                    <Camera className="size-5 sm:size-6 text-white" />
+                    <span className="mt-1 text-[9px] font-bold uppercase tracking-wider">Cloudinary</span>
+                  </div>
+
+                  {/* Uploading Spinner */}
+                  {uploading && (
+                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-3xl bg-black/75 text-white backdrop-blur-xs">
+                      <RefreshCw className="size-5 sm:size-6 animate-spin text-primary" />
+                      <span className="mt-1 text-[9px] font-bold uppercase tracking-wider text-white">Saving…</span>
+                    </div>
+                  )}
+                </button>
+
+                {/* Camera / Upload Badge Button */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="absolute -bottom-1 -right-1 flex size-8 cursor-pointer items-center justify-center rounded-full border-2 border-card bg-gradient-to-br from-primary to-amber-500 text-white shadow-warm transition-transform hover:scale-110 active:scale-95 disabled:opacity-70"
+                  title="Upload to Cloudinary"
+                >
+                  {uploading ? (
+                    <RefreshCw className="size-3.5 animate-spin" />
+                  ) : (
+                    <Camera className="size-3.5" />
+                  )}
+                </button>
               </div>
 
               <div className="min-w-0 flex-1">
@@ -84,6 +213,23 @@ export function ChefProfileView({ user, stats = {}, revenueText, onRefresh, onSi
                   >
                     On Duty
                   </Badge>
+
+                  {/* Direct Cloudinary upload trigger button */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="h-7 rounded-full border-border/70 bg-card/80 px-2.5 text-[11px] font-bold shadow-xs transition-all hover:border-primary/50 hover:bg-secondary active:scale-95 sm:h-8 sm:px-3 sm:text-xs"
+                  >
+                    {uploading ? (
+                      <RefreshCw className="mr-1.5 size-3.5 animate-spin text-primary" />
+                    ) : (
+                      <UploadCloud className="mr-1.5 size-3.5 text-primary" />
+                    )}
+                    <span>{uploading ? "Uploading…" : "Upload Photo"}</span>
+                  </Button>
                 </div>
                 <p className="mt-1 text-xs font-extrabold uppercase tracking-[0.14em] text-primary sm:text-sm">
                   {staffRole}
