@@ -549,7 +549,7 @@ function playWinSound(audioCtxRef) {
   } catch {}
 }
 
-function TierBadge({ tier, className }) {
+export function TierBadge({ tier, className }) {
   const config = {
     common: { label: "Common", color: "text-zinc-400 bg-zinc-800/60 border-zinc-700/60" },
     rare: { label: "Rare", color: "text-sky-400 bg-sky-500/10 border-sky-500/25" },

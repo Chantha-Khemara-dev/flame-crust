@@ -55,6 +55,8 @@ import {
   markWonCouponUsed,
   addBonusSpins,
   formatWonVouchersAsCoupons,
+  getPrizeIcon,
+  TierBadge,
 } from "@/components/food/lucky-draw-modal";
 import { QRCodeCanvas } from "qrcode.react";
 import { BakongKHQR, IndividualInfo } from "bakong-khqr";
@@ -1552,42 +1554,53 @@ function CheckoutPage() {
                       ) : (
                         <div className="space-y-3">
                           {/* Lucky Prize Recommendation Banner if user won a voucher */}
-                          {bestLucky && (
-                            <div className="rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 p-3 sm:p-3.5 flex items-center justify-between gap-3 shadow-2xs">
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <div className="size-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center text-base shadow-sm shrink-0">
-                                  🎰
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="font-bold text-xs sm:text-sm text-foreground truncate">
-                                      {bestLucky.label || "Lucky Prize Discount"}
-                                    </span>
-                                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 uppercase">
-                                      Won Prize
-                                    </span>
-                                  </div>
-                                  <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
-                                    Code: <strong className="text-amber-600 dark:text-amber-400 font-bold">{bestLucky.code}</strong> {bestLucky.min_order_amount ? `• Min. $${bestLucky.min_order_amount}` : ""}
-                                  </p>
-                                </div>
-                              </div>
+                          {bestLucky && (() => {
+                            const Icon = getPrizeIcon(bestLucky);
+                            const bgGrad = bestLucky.bgGradient || "from-orange-500 to-amber-500";
+                            return (
+                              <div className="rounded-2xl border border-amber-500/40 bg-card p-3 sm:p-3.5 flex items-center justify-between gap-3 shadow-2xs relative overflow-hidden">
+                                {/* Left edge gradient bar */}
+                                <div className={cn("absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b", bgGrad)} />
+                                {/* Cutout notches */}
+                                <div className="absolute -left-2 top-1/2 -translate-y-1/2 size-3.5 rounded-full bg-background border border-border/60" />
+                                <div className="absolute -right-2 top-1/2 -translate-y-1/2 size-3.5 rounded-full bg-background border border-border/60" />
 
-                              <Button
-                                type="button"
-                                size="sm"
-                                disabled={grossSubtotal < Number(bestLucky.min_order_amount || 0)}
-                                onClick={() => {
-                                  const acc = getCurrentAccount();
-                                  applyCoupon(bestLucky, acc.storageKey);
-                                  toast.success(`🎉 Applied Lucky Draw voucher "${bestLucky.code}"!`);
-                                }}
-                                className="h-8 px-3.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold text-xs shrink-0 cursor-pointer shadow-xs whitespace-nowrap active:scale-95"
-                              >
-                                Apply Voucher ✨
-                              </Button>
-                            </div>
-                          )}
+                                <div className="flex items-center gap-2.5 min-w-0 pl-2">
+                                  <div className={cn("size-9 rounded-xl bg-gradient-to-br flex items-center justify-center text-white shadow-xs shrink-0", bgGrad)}>
+                                    <Icon className="size-4.5 text-white" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="font-bold text-xs sm:text-sm text-foreground truncate">
+                                        {bestLucky.label || "Lucky Prize Discount"}
+                                      </span>
+                                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 uppercase">
+                                        ✨ Won Prize
+                                      </span>
+                                      <TierBadge tier={bestLucky.tier || "rare"} />
+                                    </div>
+                                    <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
+                                      Code: <strong className="text-amber-600 dark:text-amber-400 font-bold">{bestLucky.code}</strong> {bestLucky.min_order_amount ? `• Min. $${bestLucky.min_order_amount}` : ""}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  disabled={grossSubtotal < Number(bestLucky.min_order_amount || 0)}
+                                  onClick={() => {
+                                    const acc = getCurrentAccount();
+                                    applyCoupon(bestLucky, acc.storageKey);
+                                    toast.success(`🎉 Applied Lucky Draw voucher "${bestLucky.code}"!`);
+                                  }}
+                                  className="h-8 px-3.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold text-xs shrink-0 cursor-pointer shadow-xs whitespace-nowrap active:scale-95"
+                                >
+                                  Apply Voucher ✨
+                                </Button>
+                              </div>
+                            );
+                          })()}
 
                           {/* Quick Manual Code Input Form */}
                           <div className="space-y-1.5">

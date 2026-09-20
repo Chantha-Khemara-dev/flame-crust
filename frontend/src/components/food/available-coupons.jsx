@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Ticket, Loader2, Sparkles } from "lucide-react";
+import { Ticket, Loader2, Sparkles, Clock } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { list } from "@/lib/api";
@@ -11,6 +11,8 @@ import {
   getCurrentAccount,
   getWonCoupons,
   formatWonVouchersAsCoupons,
+  getPrizeIcon,
+  TierBadge,
 } from "./lucky-draw-modal.jsx";
 
 export function AvailableCoupons({ 
@@ -221,24 +223,27 @@ export function AvailableCoupons({
             <ScrollArea className="h-[380px]">
               <div className="p-3.5 sm:p-5 space-y-2.5">
                 {displayedCoupons.map((coupon) => {
+                  const Icon = getPrizeIcon(coupon);
                   const isExpired = coupon.expires_at && new Date(coupon.expires_at) <= new Date();
-                  const minOrder = Number(coupon.min_order_amount || 0);
+                  const minOrder = Number(coupon.min_order_amount || coupon.minOrder || 0);
                   const isMinOrderNotMet = subtotal > 0 && minOrder > 0 && subtotal < minOrder;
                   const isCurrentlyApplied = currentCoupon && currentCoupon.code === coupon.code;
                   const isUsed = coupon.isUsed;
                   const isDisabled = isExpired || isMinOrderNotMet || isUsed || isCurrentlyApplied;
                   const isLucky = coupon.isLuckyDraw || String(coupon.code).includes("-");
+                  const bgGradient = coupon.bgGradient || (isLucky ? "from-orange-500 to-amber-500" : "from-emerald-600 to-teal-600");
+                  const tier = coupon.tier || (isLucky ? "rare" : "common");
 
                   return (
                     <div 
                       key={coupon.id || coupon.code} 
                       className={cn(
-                        "group border rounded-2xl p-3 sm:p-3.5 flex items-center justify-between gap-2.5 transition-all relative overflow-hidden",
+                        "group border rounded-2xl transition-all relative overflow-hidden flex flex-col justify-between",
                         isCurrentlyApplied 
                           ? "border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500/30"
                           : (isUsed || isExpired || isMinOrderNotMet)
                             ? "border-border/40 bg-muted/20 opacity-75 cursor-not-allowed" 
-                            : "border-border/70 bg-card hover:border-primary/50 cursor-pointer hover:shadow-xs"
+                            : "border-amber-500/30 bg-card hover:border-amber-500/60 hover:shadow-md cursor-pointer"
                       )}
                       onClick={() => {
                         if (isCurrentlyApplied) return;
@@ -257,62 +262,83 @@ export function AvailableCoupons({
                         handleSelect(coupon);
                       }}
                     >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className={cn(
-                            "flex size-6 sm:size-7 rounded-full items-center justify-center shrink-0",
-                            isLucky ? "bg-amber-500/15 text-amber-500" : "bg-primary/10 text-primary"
-                          )}>
-                            <Ticket className="size-3 sm:size-3.5" />
-                          </span>
-                          <span className="font-mono font-bold text-foreground text-sm sm:text-base tracking-wider">{coupon.code}</span>
-                          {isLucky && (
-                            <span className="text-[9px] sm:text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded-full font-bold uppercase shrink-0">
-                              ✨ Lucky Prize
-                            </span>
-                          )}
-                          {isExpired && (
-                            <span className="text-[9px] sm:text-[10px] bg-red-500/10 text-red-500 px-1.5 py-0.5 rounded-full font-semibold shrink-0">Expired</span>
-                          )}
-                          {isMinOrderNotMet && !isExpired && (
-                            <span className="text-[9px] sm:text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-full font-semibold shrink-0">Min ${minOrder}</span>
-                          )}
+                      {/* Left edge gradient bar */}
+                      <div className={cn("absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b", bgGradient)} />
+
+                      {/* Ticket Notch Cutouts */}
+                      <div className="absolute -left-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-background border border-border/60" />
+                      <div className="absolute -right-2 top-1/2 -translate-y-1/2 size-4 rounded-full bg-background border border-border/60" />
+
+                      {/* Ticket Body Header */}
+                      <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3 pl-5 sm:pl-6">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          {/* Prize Icon in Gradient Box */}
+                          <div className={cn("size-10 sm:size-11 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-xs shrink-0 text-white", bgGradient)}>
+                            <Icon className="size-5 sm:size-5.5" />
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-mono font-bold text-foreground text-sm sm:text-base tracking-wider">{coupon.code}</span>
+                              {isLucky && (
+                                <span className="text-[9px] sm:text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded-full font-bold uppercase shrink-0">
+                                  ✨ Lucky Prize
+                                </span>
+                              )}
+                              <TierBadge tier={tier} />
+                            </div>
+
+                            <p className="text-xs sm:text-sm font-semibold text-muted-foreground mt-0.5 leading-tight">
+                              {coupon.description || (
+                                coupon.discount_type === "FREE_DELIVERY" 
+                                  ? "Free Delivery on your order!" 
+                                  : coupon.discount_type === "PERCENTAGE" 
+                                    ? `${coupon.discount_value}% OFF total`
+                                    : `$${coupon.discount_value} OFF total`
+                              )}
+                            </p>
+
+                            {minOrder > 0 && (
+                              <p className={cn("text-[10px] sm:text-[11px] mt-0.5", isMinOrderNotMet ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-muted-foreground/70")}>
+                                Min order: ${minOrder.toFixed(2)} {isMinOrderNotMet && `(Need $${(minOrder - subtotal).toFixed(2)} more)`}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-semibold leading-tight">
-                          {coupon.discount_type === "FREE_DELIVERY" 
-                            ? "Free Delivery on your order!" 
-                            : coupon.discount_type === "PERCENTAGE" 
-                              ? `${coupon.discount_value}% OFF your total`
-                              : `$${coupon.discount_value} OFF your total`}
-                        </p>
-                        {minOrder > 0 && (
-                          <p className={cn("text-[10px] sm:text-[11px] mt-0.5", isMinOrderNotMet ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-muted-foreground/70")}>
-                            Min. order: ${minOrder} {isMinOrderNotMet && `(Need $${(minOrder - subtotal).toFixed(2)} more)`}
-                          </p>
-                        )}
-                        {coupon.expires_at && (
-                          <p className="text-[9px] text-muted-foreground/60 mt-0.5">
-                            Valid until {new Date(coupon.expires_at).toLocaleDateString()}
-                          </p>
-                        )}
+
+                        {/* Action Button */}
+                        <div className="flex items-center shrink-0">
+                          <Button 
+                            type="button"
+                            variant={isCurrentlyApplied ? "default" : (isUsed || isExpired || isMinOrderNotMet) ? "outline" : "default"} 
+                            size="sm" 
+                            disabled={isDisabled}
+                            className={cn(
+                              "rounded-full shrink-0 h-8 text-xs px-3 sm:px-4 font-bold transition-all shadow-xs",
+                              isCurrentlyApplied 
+                                ? "bg-emerald-600 hover:bg-emerald-600 text-white" 
+                                : !isDisabled 
+                                  ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600 cursor-pointer active:scale-95" 
+                                  : ""
+                            )}
+                          >
+                            {isCurrentlyApplied ? "Applied ✓" : isUsed ? "Used" : isExpired ? "Expired" : isMinOrderNotMet ? "Unavailable" : "Apply"}
+                          </Button>
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <Button 
-                          type="button"
-                          variant={isCurrentlyApplied ? "default" : (isUsed || isExpired || isMinOrderNotMet) ? "outline" : "secondary"} 
-                          size="sm" 
-                          disabled={isDisabled}
-                          className={cn(
-                            "rounded-full shrink-0 h-7 sm:h-8 text-xs px-2.5 sm:px-3.5 font-bold transition-all",
-                            isCurrentlyApplied 
-                              ? "bg-emerald-600 hover:bg-emerald-600 text-white shadow-xs" 
-                              : !isDisabled ? "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer shadow-xs" : ""
-                          )}
-                        >
-                          {isCurrentlyApplied ? "Applied ✓" : isUsed ? "Used" : (isExpired || isMinOrderNotMet) ? "Unavailable" : "Apply"}
-                        </Button>
-                      </div>
+                      {/* Ticket Dotted Divider & Expiration */}
+                      {coupon.expires_at && (
+                        <>
+                          <div className="mx-4 border-t border-dashed border-border/50" />
+                          <div className="px-5 py-1.5 pb-2 text-[10px] text-muted-foreground flex items-center justify-between">
+                            <span className="flex items-center gap-1 text-muted-foreground/80 font-medium">
+                              <Clock className="size-3 text-amber-500" />
+                              {isExpired ? `Expired ${new Date(coupon.expires_at).toLocaleDateString()}` : `Expires ${new Date(coupon.expires_at).toLocaleDateString()}`}
+                            </span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   );
                 })}
