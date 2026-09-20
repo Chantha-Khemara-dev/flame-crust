@@ -371,7 +371,7 @@ export function DashboardView({
         </div>
       ) : stageFilter === "all" ? (
         <>
-          <div className="flex flex-1 flex-col gap-5 overflow-y-auto overscroll-contain touch-pan-y pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] custom-scrollbar md:hidden">
+          <div className="flex flex-1 flex-col gap-5 overflow-y-auto overscroll-contain touch-pan-y pb-36 custom-scrollbar md:hidden">
             {STAGE_ORDER.map((stage) => {
               const { list, oldest, late } = stageMeta(stage);
               const config = STAGES[stage];
@@ -380,8 +380,8 @@ export function DashboardView({
                   <FeedStageHeader stage={stage} count={list.length} oldest={oldest} late={late} />
                   <div className="mt-2.5 flex flex-col gap-3">
                     {list.length === 0 ? (
-                      <div className="flex items-center gap-2.5 rounded-2xl border border-dashed border-border/60 bg-secondary/20 px-3.5 py-3">
-                        <config.icon className="size-4 shrink-0 text-muted-foreground/70" />
+                      <div className="flex items-center gap-2 rounded-xl border border-dashed border-border/60 bg-secondary/20 px-3 py-2">
+                        <config.icon className="size-3.5 shrink-0 text-muted-foreground/70" />
                         <span className="truncate text-[11px] font-semibold text-muted-foreground">
                           {stage === "pending"
                             ? "Rail clear — no incoming tickets"
@@ -548,7 +548,7 @@ function FeedStageHeader({ stage, count, oldest, late }) {
   const Icon = config.icon;
 
   return (
-    <div className="sticky top-0 z-10 -mx-0.5 flex items-center justify-between gap-2 rounded-2xl border border-border/60 bg-card/90 px-3 py-2 shadow-xs backdrop-blur-xl">
+    <div className="sticky top-0 z-10 -mx-0.5 flex items-center justify-between gap-2 rounded-2xl border border-border/60 bg-card/95 px-3 py-2 shadow-xs backdrop-blur-xl dark:bg-zinc-900/95">
       <div className="flex min-w-0 items-center gap-2">
         <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-xl border", config.iconBox)}>
           <Icon className="size-3.5" />

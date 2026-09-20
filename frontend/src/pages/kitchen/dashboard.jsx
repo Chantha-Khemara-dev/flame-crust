@@ -671,9 +671,12 @@ export default function KitchenDashboard() {
           )}
         </main>
 
-        <div className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] z-[70] select-none sm:inset-x-6 lg:hidden">
+        {/* Protective bottom gradient fade curtain */}
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 h-28 bg-gradient-to-t from-background via-background/90 to-transparent z-[65] lg:hidden" />
+
+        <div className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom,0.75rem))] z-[70] select-none sm:inset-x-6 lg:hidden">
           <nav
-            className="mx-auto max-w-md rounded-full border border-black/[0.08] bg-card/85 p-1.5 shadow-warm-lg ring-1 ring-white/30 backdrop-blur-2xl backdrop-saturate-150 transition-all duration-200 dark:border-white/[0.12] dark:bg-zinc-900/85 dark:ring-white/5"
+            className="mx-auto max-w-md rounded-full border border-border/80 bg-card/95 p-1.5 shadow-warm-lg ring-1 ring-black/[0.06] backdrop-blur-2xl backdrop-saturate-150 transition-all duration-200 dark:border-white/[0.12] dark:bg-zinc-900/95 dark:ring-white/10"
             aria-label="Kitchen Navigation Dock"
           >
             <div className="grid grid-cols-4 items-center gap-1">

@@ -134,10 +134,13 @@ export function MobileBottomNav() {
 
   return (
     <>
+      {/* Protective bottom gradient curtain */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 h-28 bg-gradient-to-t from-background via-background/90 to-transparent z-[65] md:hidden" />
+
       {/* Authentic iOS Frosted Glass Mobile Bottom Capsule */}
-      <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] inset-x-3 sm:inset-x-6 z-[70] md:hidden select-none">
+      <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom,0.75rem))] inset-x-3 sm:inset-x-6 z-[70] md:hidden select-none">
         <nav
-          className="mx-auto max-w-md bg-background/80 dark:bg-zinc-900/80 backdrop-blur-2xl backdrop-saturate-150 border border-black/[0.08] dark:border-white/[0.12] ring-1 ring-white/30 dark:ring-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-full p-1.5 transition-all duration-200"
+          className="mx-auto max-w-md bg-background/95 dark:bg-zinc-900/95 backdrop-blur-2xl backdrop-saturate-150 border border-black/[0.08] dark:border-white/[0.12] ring-1 ring-white/30 dark:ring-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.16)] rounded-full p-1.5 transition-all duration-200"
           aria-label="Mobile Navigation Dock"
         >
           <div className="grid grid-cols-5 items-center gap-1">
