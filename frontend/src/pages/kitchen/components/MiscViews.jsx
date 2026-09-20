@@ -194,42 +194,6 @@ export function ChefProfileView({ user, stats = {}, revenueText, onRefresh, onSi
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {/* Page Header */}
-      <div className="shrink-0 mb-4 sm:mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-border/50 pb-3.5">
-        <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-amber-500 text-white shadow-warm">
-            <ChefHat className="size-5" />
-          </div>
-          <div>
-            <h1 className="font-serif text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-              Chef Profile & Station
-            </h1>
-            <p className="text-xs font-medium text-muted-foreground">
-              Personal credentials, live shift productivity & station preferences
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Badge
-            variant="outline"
-            className="gap-1.5 rounded-full border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 shadow-xs"
-          >
-            <StatusDot tone="emerald" /> On Duty • <LiveClock showSeconds={false} />
-          </Badge>
-          {onRefresh && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onRefresh}
-              className="h-8 rounded-full border-border/70 bg-card px-3 text-xs font-semibold shadow-xs hover:border-primary/40 hover:bg-secondary"
-            >
-              <RefreshCw className="mr-1.5 size-3.5 text-primary" /> Sync
-            </Button>
-          )}
-        </div>
-      </div>
-
       <div className="flex-1 overflow-y-auto pb-8 custom-scrollbar">
         <div className="w-full space-y-5 sm:space-y-6">
           {/* Hero Profile Card */}
