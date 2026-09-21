@@ -322,7 +322,7 @@ export function TicketProgress({ startTime, stage, targetPrepMinutes = 12, class
 
 export function shortOrderNo(order) {
   const raw = order?.order_number ? String(order.order_number) : String(order?.id ?? "—");
-  return raw.length > 8 ? raw.slice(-6) : raw;
+  return raw.startsWith("#") ? raw.slice(1) : raw;
 }
 
 export function formatMoney(value) {

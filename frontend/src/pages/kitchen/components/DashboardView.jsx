@@ -651,8 +651,8 @@ function TicketCard({
           <div className="flex items-center gap-2">
             <h3
               className={cn(
-                "truncate font-serif font-bold leading-tight tracking-tight text-foreground",
-                compact ? "text-base" : "text-lg sm:text-xl"
+                "truncate font-mono font-bold leading-tight tracking-tight text-foreground",
+                compact ? "text-xs sm:text-sm" : "text-sm sm:text-base"
               )}
             >
               #{shortOrderNo(order)}
