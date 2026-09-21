@@ -312,10 +312,10 @@ export function OrderChatModal({
   const [inputMsg, setInputMsg] = useState("");
 
   useEffect(() => {
-    if (initialTarget) {
+    if (open && initialTarget) {
       setActiveTarget(initialTarget);
     }
-  }, [initialTarget, open]);
+  }, [open]);
 
   const targetRecipient = currentUser.type === "CUSTOMER"
     ? (activeTarget === "KITCHEN"
@@ -1004,48 +1004,6 @@ export function OrderChatModal({
           </div>
         </DialogHeader>
 
-        {/* Customer Target Selector: Kitchen 👨‍🍳 vs Driver 🛵 */}
-        {currentUser.type === "CUSTOMER" && (
-          <div className="flex items-center p-1.5 bg-secondary/50 border-b border-border/60 gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => setActiveTarget("KITCHEN")}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-2xl text-xs font-bold transition-all cursor-pointer",
-                activeTarget === "KITCHEN"
-                  ? "bg-card text-amber-600 dark:text-amber-400 shadow-xs border border-border/80"
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
-              )}
-            >
-              <ChefHat className="size-4 text-amber-500" />
-              <span>Kitchen 👨‍🍳 (ផ្ទះបាយ)</span>
-              {kitchenUnreadCount > 0 && (
-                <span className="min-w-4 h-4 px-1 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center animate-pulse">
-                  {kitchenUnreadCount}
-                </span>
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTarget("DRIVER")}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-2xl text-xs font-bold transition-all cursor-pointer",
-                activeTarget === "DRIVER"
-                  ? "bg-card text-primary shadow-xs border border-border/80"
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
-              )}
-            >
-              <Bike className="size-4 text-primary" />
-              <span>Driver 🛵 (អ្នកដឹក)</span>
-              {driverUnreadCount > 0 && (
-                <span className="min-w-4 h-4 px-1 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center animate-pulse">
-                  {driverUnreadCount}
-                </span>
-              )}
-            </button>
-          </div>
-        )}
 
         {/* Message Thread */}
         <div className="flex-1 p-4 overflow-y-auto space-y-3 custom-scrollbar bg-background/50">
