@@ -620,27 +620,16 @@ export default function KitchenDashboard() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={toggleTheme}
-              className="size-9 rounded-full border border-border/70 bg-card text-foreground/80 shadow-xs transition-all hover:border-primary/40 hover:bg-secondary hover:text-foreground active:scale-95 cursor-pointer sm:size-10"
+              onClick={(e) => toggleTheme(e)}
+              className="inline-flex size-9 sm:size-10 shrink-0 rounded-full border border-border/70 bg-card text-foreground/80 hover:text-foreground hover:bg-secondary shadow-xs cursor-pointer active:scale-95 transition-all"
               title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             >
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={theme}
-                  initial={{ rotate: -90, scale: 0.5, opacity: 0 }}
-                  animate={{ rotate: 0, scale: 1, opacity: 1 }}
-                  exit={{ rotate: 90, scale: 0.5, opacity: 0 }}
-                  transition={{ duration: 0.25, ease: "easeOut" }}
-                  className="flex items-center justify-center"
-                >
-                  {theme === "dark" ? (
-                    <Sun className="size-4 sm:size-5 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]" />
-                  ) : (
-                    <Moon className="size-4 sm:size-5 text-indigo-400 drop-shadow-[0_0_8px_rgba(129,140,248,0.5)]" />
-                  )}
-                </motion.div>
-              </AnimatePresence>
+              {theme === "dark" ? (
+                <Sun className="size-4 sm:size-5 text-amber-400" />
+              ) : (
+                <Moon className="size-4 sm:size-5 text-indigo-400" />
+              )}
             </Button>
 
             <Button

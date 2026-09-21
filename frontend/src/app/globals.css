@@ -160,12 +160,12 @@
 /* Telegram-style Circular Ripple Theme Reveal */
 ::view-transition-old(root),
 ::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
+  animation: none !important;
+  mix-blend-mode: normal !important;
 }
 
 ::view-transition-group(root) {
-  animation-duration: 800ms !important;
+  animation-duration: 0.75s !important;
 }
 
 ::view-transition-old(root) {
@@ -174,16 +174,6 @@
 
 ::view-transition-new(root) {
   z-index: 99999;
-  animation: telegram-circle-reveal 800ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards !important;
-}
-
-@keyframes telegram-circle-reveal {
-  0% {
-    clip-path: circle(0px at var(--theme-ripple-x, 50%) var(--theme-ripple-y, 50%));
-  }
-  100% {
-    clip-path: circle(var(--theme-ripple-radius, 150vmax) at var(--theme-ripple-x, 50%) var(--theme-ripple-y, 50%));
-  }
 }
 
 /* Silky smooth fallback when View Transitions is not active */

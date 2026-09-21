@@ -88,7 +88,7 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
       isTransitioningRef.current = false;
     }, 950);
 
-    // Telegram circular expanding ripple fallback for devices/browsers without native View Transitions
+    // Silky smooth CSS cross-fade fallback for browsers without View Transitions
     const runFallbackSmooth = () => {
       if (typeof document === "undefined" || isReducedMotion) {
         applyThemeState();
@@ -97,33 +97,13 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
         return;
       }
       try {
-        const ripple = document.createElement("div");
-        ripple.style.position = "fixed";
-        ripple.style.left = `${x}px`;
-        ripple.style.top = `${y}px`;
-        ripple.style.width = "4px";
-        ripple.style.height = "4px";
-        ripple.style.borderRadius = "50%";
-        ripple.style.backgroundColor = newTheme === "dark" ? "#09090b" : "#f8fafc";
-        ripple.style.zIndex = "999999";
-        ripple.style.pointerEvents = "none";
-        ripple.style.transform = "translate(-50%, -50%) scale(0)";
-        ripple.style.transition = "transform 800ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity 250ms ease 650ms";
-        document.body.appendChild(ripple);
-
-        void ripple.offsetHeight;
-        const scale = Math.ceil(endRadius * 1.2);
-        ripple.style.transform = `translate(-50%, -50%) scale(${scale})`;
-
+        document.documentElement.classList.add("theme-transitioning");
+        applyThemeState();
         setTimeout(() => {
-          applyThemeState();
-          ripple.style.opacity = "0";
-          setTimeout(() => {
-            ripple.remove();
-            clearTimeout(safetyTimer);
-            isTransitioningRef.current = false;
-          }, 250);
-        }, 550);
+          document.documentElement.classList.remove("theme-transitioning");
+          clearTimeout(safetyTimer);
+          isTransitioningRef.current = false;
+        }, 700);
       } catch {
         applyThemeState();
         clearTimeout(safetyTimer);
@@ -131,7 +111,7 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
       }
     };
 
-    // Native Telegram-style Circular View Transition (Chrome, Brave, Edge, Safari 18+)
+    // Native Circular View Transition (Chrome, Brave, Edge, Safari 18+)
     if (
       typeof document !== "undefined" &&
       document.startViewTransition &&
@@ -144,22 +124,30 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
 
         transition.ready
           .then(() => {
-            try {
-              document.documentElement.animate(
-                {
-                  clipPath: [
-                    `circle(0px at ${x}px ${y}px)`,
-                    `circle(${Math.ceil(endRadius * 1.05)}px at ${x}px ${y}px)`,
-                  ],
-                },
-                {
-                  duration: 800,
-                  easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
-                  pseudoElement: "::view-transition-new(root)",
-                  fill: "forwards",
-                }
-              );
-            } catch (e) {}
+            const anim = document.documentElement.animate(
+              {
+                clipPath: [
+                  `circle(0px at ${x}px ${y}px)`,
+                  `circle(${Math.ceil(endRadius * 1.05)}px at ${x}px ${y}px)`,
+                ],
+              },
+              {
+                duration: 750,
+                easing: "cubic-bezier(0.25, 1, 0.5, 1)",
+                pseudoElement: "::view-transition-new(root)",
+                fill: "forwards",
+              }
+            );
+
+            anim.finished
+              .then(() => {
+                clearTimeout(safetyTimer);
+                isTransitioningRef.current = false;
+              })
+              .catch(() => {
+                clearTimeout(safetyTimer);
+                isTransitioningRef.current = false;
+              });
           })
           .catch(() => {
             runFallbackSmooth();
