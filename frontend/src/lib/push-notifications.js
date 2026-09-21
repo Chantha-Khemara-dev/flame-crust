@@ -88,10 +88,19 @@ export async function subscribeToPushNotifications({ userType = 'CUSTOMER', user
   // Subscribe with PushManager
   let subscription = await registration.pushManager.getSubscription();
   if (!subscription) {
-    subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: convertedVapidKey
-    });
+    try {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: convertedVapidKey
+      });
+    } catch (subErr) {
+      if (subErr.message?.includes('push service error') || subErr.name === 'AbortError') {
+        throw new Error(
+          'Brave Browser / Push Service ត្រូវបានបិទ។ ប្រសិនបើប្រើ Brave៖ សូមចូល brave://settings/privacy ហើយបើក (Turn ON) "Use Google services for push messaging" រួច Refresh Browser។'
+        );
+      }
+      throw subErr;
+    }
   }
 
   const rawKey = subscription.getKey ? subscription.getKey('p256dh') : null;

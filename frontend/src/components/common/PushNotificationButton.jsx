@@ -50,7 +50,14 @@ export function PushNotificationButton({ userType = 'CUSTOMER', userId = null, c
       }
     } catch (err) {
       console.error(err);
-      toast.error(err.message || 'បរាជ័យក្នុងការបើកការជូនដំណឹង');
+      if (err.message?.includes('Brave') || err.message?.includes('push service error')) {
+        toast.error('Push Service ត្រូវបានបិទនៅក្នុង Browser', {
+          description: 'សម្រាប់ Brave Browser៖ សូមចូលទៅកាន់ brave://settings/privacy ហើយបើក "Use Google services for push messaging" រួច Restart Browser។',
+          duration: 12000,
+        });
+      } else {
+        toast.error(err.message || 'បរាជ័យក្នុងការបើកការជូនដំណឹង');
+      }
       setPermission(getNotificationPermission());
     } finally {
       setLoading(false);
