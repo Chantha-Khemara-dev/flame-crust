@@ -722,6 +722,7 @@ export function OrderChatModal({
         sender_type: currentUser.type,
         sender_name: currentUser.name,
         message: voicePayload,
+        recipient_type: currentUser.type === "CUSTOMER" ? activeTarget : null,
         created_at: new Date().toISOString(),
         pending: true
       };
@@ -733,7 +734,8 @@ export function OrderChatModal({
         sender_type: currentUser.type,
         sender_name: currentUser.name,
         sender_id: currentUser.id || null,
-        message: voicePayload
+        message: voicePayload,
+        recipient_type: currentUser.type === "CUSTOMER" ? activeTarget : null
       });
       await fetchMessages();
     } catch (err) {
@@ -901,6 +903,7 @@ export function OrderChatModal({
       sender_type: currentUser.type,
       sender_name: currentUser.name,
       message: finalMsg,
+      recipient_type: currentUser.type === "CUSTOMER" ? activeTarget : null,
       created_at: new Date().toISOString(),
       pending: true
     };
@@ -1062,7 +1065,16 @@ export function OrderChatModal({
               </p>
             </div>
           ) : (
-            messages.map((m) => {
+            messages.filter(m => {
+              if (currentUser.type !== "CUSTOMER") return true;
+              if (activeTarget === "KITCHEN") {
+                return m.sender_type === "KITCHEN" || m.recipient_type === "KITCHEN";
+              }
+              if (activeTarget === "DRIVER") {
+                return m.sender_type === "DRIVER" || m.recipient_type === "DRIVER" || !m.recipient_type;
+              }
+              return true;
+            }).map((m) => {
               const isMe = m.sender_type === currentUser.type;
               const isCallMsg = typeof m.message === "string" && (m.message.startsWith("📞") || m.message.includes("Voice Call"));
 

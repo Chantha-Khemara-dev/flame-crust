@@ -924,7 +924,7 @@ function Navbar() {
                     </div>
 
                     {/* 2 Chat Target Options: Kitchen vs Driver */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="flex flex-col gap-2">
                       {/* Option 1: Kitchen / ផ្ទះបាយ */}
                       <div
                         onClick={() => {
