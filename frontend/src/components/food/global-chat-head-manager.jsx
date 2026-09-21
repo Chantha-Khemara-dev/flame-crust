@@ -101,15 +101,14 @@ export function GlobalCustomerChatManager() {
           if (lastKnownMsgIdRef.current !== null && lastMsg.id > lastKnownMsgIdRef.current) {
             if (lastMsg.sender_type !== "CUSTOMER") {
               const isKitchenSender = lastMsg.sender_type === "KITCHEN";
-              setLastSenderType(lastMsg.sender_type);
-              const senderDisplayName = isKitchenSender
-                ? (lastMsg.sender_name ? `${lastMsg.sender_name} (Kitchen)` : "Kitchen / Chef 👨‍🍳")
-                : (driver?.name || lastMsg.sender_name || "Delivery Partner 🛵");
-              const senderDisplayPhoto = isKitchenSender
-                ? "https://api.dicebear.com/7.x/bottts/svg?seed=flame-crust-kitchen&backgroundColor=f97316"
-                : (driver?.profilePhoto || driver?.profile_photo);
-
               if (!chatOpen) {
+                setLastSenderType(lastMsg.sender_type);
+                const senderDisplayName = isKitchenSender
+                  ? (lastMsg.sender_name ? `${lastMsg.sender_name} (Kitchen)` : "Kitchen / Chef 👨‍🍳")
+                  : (driver?.name || lastMsg.sender_name || "Delivery Partner 🛵");
+                const senderDisplayPhoto = isKitchenSender
+                  ? "https://api.dicebear.com/7.x/bottts/svg?seed=flame-crust-kitchen&backgroundColor=f97316"
+                  : (driver?.profilePhoto || driver?.profile_photo);
                 setLastMsgText(lastMsg.message);
                 setDismissed(false);
                 setUnreadCount(prev => prev + 1);

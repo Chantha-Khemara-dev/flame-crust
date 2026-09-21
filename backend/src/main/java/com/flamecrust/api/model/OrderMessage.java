@@ -22,6 +22,9 @@ public class OrderMessage {
     @Column(name = "sender_id")
     private Long senderId;
 
+    @Column(name = "recipient_type")
+    private String recipientType;
+
     @Column(name = "sender_name")
     private String senderName;
 

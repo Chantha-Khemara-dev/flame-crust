@@ -1171,7 +1171,7 @@ public class AuthController {
     public ResponseEntity<?> getOrderMessages(@RequestParam("orderId") Long orderId) {
         try {
             List<Map<String, Object>> messages = jdbc.queryForList(
-                "SELECT id, order_id, sender_type, sender_id, sender_name, message, is_read, created_at FROM order_messages WHERE order_id = ? ORDER BY created_at ASC",
+                "SELECT id, order_id, sender_type, sender_id, sender_name, message, recipient_type, is_read, created_at FROM order_messages WHERE order_id = ? ORDER BY created_at ASC",
                 orderId
             );
             return ResponseEntity.ok(messages);
@@ -1280,8 +1280,8 @@ public class AuthController {
             }
 
             jdbc.update(
-                "INSERT INTO order_messages (order_id, sender_type, sender_id, sender_name, message, is_read) VALUES (?, ?, ?, ?, ?, FALSE)",
-                orderId, senderType, targetSenderId, resolvedSenderName, message.trim()
+                "INSERT INTO order_messages (order_id, sender_type, sender_id, sender_name, message, recipient_type, is_read) VALUES (?, ?, ?, ?, ?, ?, FALSE)",
+                orderId, senderType, targetSenderId, resolvedSenderName, message.trim(), recipientType
             );
 
             // Asynchronously dispatch real Web Push Notification with sender photo & direct open URL
