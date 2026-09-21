@@ -66,7 +66,7 @@ public class WebPushService {
             payload.put("title", title);
             payload.put("body", body);
             
-            String icon = (extraData != null && extraData.get("icon") != null) ? extraData.get("icon").toString() : "/logo-192.png";
+            String icon = (extraData != null && extraData.get("icon") != null) ? extraData.get("icon").toString() : "/logo-192-v2.png";
             String badge = (extraData != null && extraData.get("badge") != null) ? extraData.get("badge").toString() : icon;
             payload.put("icon", icon);
             payload.put("badge", badge);

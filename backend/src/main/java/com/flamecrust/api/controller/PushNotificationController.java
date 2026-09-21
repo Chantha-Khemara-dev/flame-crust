@@ -51,6 +51,9 @@ public class PushNotificationController {
         private String endpoint;
         private Long userId;
         private String userType;
+        private String icon;
+        private String badge;
+        private String image;
     }
 
     @GetMapping("/vapid-public-key")
@@ -111,30 +114,38 @@ public class PushNotificationController {
 
     @PostMapping("/test")
     public ResponseEntity<?> testNotification(@RequestBody(required = false) TestPushRequest req) {
-        String title = (req != null && req.getTitle() != null) ? req.getTitle() : "🔥 Flame & Crust";
+        String title = (req != null && req.getTitle() != null) ? req.getTitle() : "Flame & Crust";
         String body = (req != null && req.getBody() != null) ? req.getBody() : "សួស្តី! ការជូនដំណឹង (Push Notification) ដំណើរការបានជោគជ័យហើយ 🎉";
         String url = (req != null && req.getUrl() != null) ? req.getUrl() : "/";
+
+        java.util.Map<String, Object> extra = new java.util.HashMap<>();
+        if (req != null) {
+            if (req.getIcon() != null) extra.put("icon", req.getIcon());
+            if (req.getBadge() != null) extra.put("badge", req.getBadge());
+            if (req.getImage() != null) extra.put("image", req.getImage());
+        }
+        java.util.Map<String, Object> extraData = extra.isEmpty() ? null : extra;
 
         int sentCount = 0;
 
         if (req != null && req.getEndpoint() != null) {
             Optional<PushSubscription> subOpt = subscriptionRepository.findByEndpoint(req.getEndpoint());
             if (subOpt.isPresent()) {
-                boolean ok = webPushService.sendNotification(subOpt.get(), title, body, url, null);
+                boolean ok = webPushService.sendNotification(subOpt.get(), title, body, url, extraData);
                 if (ok) sentCount++;
             }
         } else if (req != null && req.getUserId() != null) {
             String userType = req.getUserType() != null ? req.getUserType() : "CUSTOMER";
             List<PushSubscription> subs = subscriptionRepository.findByUserIdAndUserType(req.getUserId(), userType);
             for (PushSubscription sub : subs) {
-                if (webPushService.sendNotification(sub, title, body, url, null)) {
+                if (webPushService.sendNotification(sub, title, body, url, extraData)) {
                     sentCount++;
                 }
             }
         } else {
             List<PushSubscription> subs = subscriptionRepository.findAll();
             for (PushSubscription sub : subs) {
-                if (webPushService.sendNotification(sub, title, body, url, null)) {
+                if (webPushService.sendNotification(sub, title, body, url, extraData)) {
                     sentCount++;
                 }
             }

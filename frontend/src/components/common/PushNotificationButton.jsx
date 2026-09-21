@@ -75,11 +75,14 @@ export function PushNotificationButton({ userType = 'CUSTOMER', userId = null, c
       }
 
       await sendTestPushNotification({
-        title: '🔥 Flame & Crust',
+        title: 'Flame & Crust',
         body: 'សួស្តី! ការជូនដំណឹងក្រៅ App (Push Notification) ដំណើរការបានជោគជ័យហើយ 🎉',
         url: window.location.pathname,
         userId,
-        userType
+        userType,
+        icon: window.location.origin + '/logo-192-v2.png',
+        badge: window.location.origin + '/logo-192-v2.png',
+        image: window.location.origin + '/logo-v2.png'
       });
 
       toast.success('🚀 បានផ្ញើ Test Push Notification ទៅកាន់ឧបករណ៍របស់អ្នកហើយ! សូមពិនិត្យមើលលើអេក្រង់។');

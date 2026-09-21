@@ -170,21 +170,29 @@ export async function unsubscribeFromPushNotifications() {
   }
 }
 
-export async function sendTestPushNotification({ title, body, url, userId, userType } = {}) {
+export async function sendTestPushNotification({ title, body, url, userId, userType, icon, badge, image } = {}) {
   const existingSub = await getExistingPushSubscription();
   const endpoint = existingSub ? existingSub.endpoint : null;
+
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const resolvedIcon = icon || (origin ? `${origin}/logo-192-v2.png` : '/logo-192-v2.png');
+  const resolvedBadge = badge || resolvedIcon;
+  const resolvedImage = image || (origin ? `${origin}/logo-v2.png` : undefined);
 
   const apiUrl = getApiUrl();
   const res = await fetch(`${apiUrl}/notifications/test`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      title: title || '🔥 Flame & Crust',
+      title: title || 'Flame & Crust',
       body: body || 'សួស្តី! ការជូនដំណឹង (Push Notification) ដំណើរការបានជោគជ័យហើយ 🎉',
       url: url || '/',
       endpoint,
       user_id: userId,
-      user_type: userType
+      user_type: userType,
+      icon: resolvedIcon,
+      badge: resolvedBadge,
+      image: resolvedImage
     })
   });
 

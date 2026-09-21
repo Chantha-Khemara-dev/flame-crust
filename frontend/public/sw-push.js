@@ -1,5 +1,13 @@
 // sw-push.js - Flame & Crust Web Push Notification Service Worker Handler
 
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(clients.claim());
+});
+
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
@@ -13,18 +21,29 @@ self.addEventListener('push', function(event) {
       data = event.data.json();
     } catch (e) {
       data = {
-        title: '🔥 Flame & Crust',
+        title: 'Flame & Crust',
         body: event.data.text()
       };
     }
   }
 
-  const title = data.title || '🔥 Flame & Crust';
+  const resolveUrl = (url) => {
+    if (!url) return undefined;
+    try {
+      if (url.startsWith('http://') || url.startsWith('https://')) return url;
+      return new URL(url, self.location.origin).href;
+    } catch (e) {
+      return url;
+    }
+  };
+
+  const defaultIcon = resolveUrl('/logo-192-v2.png') || resolveUrl('/logo-192.png');
+  const title = data.title || 'Flame & Crust';
   const options = {
     body: data.body || 'អ្នកមានការជូនដំណឹងថ្មីពី Flame & Crust',
-    icon: data.icon || '/logo-192.png',
-    badge: data.badge || data.icon || '/logo-192.png',
-    image: data.image || undefined,
+    icon: resolveUrl(data.icon) || defaultIcon,
+    badge: resolveUrl(data.badge) || resolveUrl(data.icon) || defaultIcon,
+    image: resolveUrl(data.image) || undefined,
     vibrate: [200, 100, 200, 100, 200],
     tag: data.tag || (data.data?.orderId ? ('order-' + data.data.orderId) : ('fc-push-' + Date.now())),
     renotify: true,
