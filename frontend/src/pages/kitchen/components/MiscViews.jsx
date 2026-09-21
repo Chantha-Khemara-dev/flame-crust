@@ -19,6 +19,8 @@ import {
   AlertTriangle,
   Camera,
   UploadCloud,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -28,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { API_URL } from "@/lib/api";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
+import { useTheme } from "@/components/theme-provider.jsx";
 import {
   LiveClock,
   PersonAvatar,
@@ -40,6 +43,7 @@ import {
 } from "./kitchen-ui";
 
 export function ChefProfileView({ user, stats = {}, revenueText, onRefresh, onSignOut, onUserUpdate }) {
+  const { theme, setTheme } = useTheme();
   const prefs = useKitchenPrefs();
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -469,6 +473,31 @@ export function ChefProfileView({ user, stats = {}, revenueText, onRefresh, onSi
               </div>
 
               <div className="space-y-4">
+                {/* Appearance & Theme switch */}
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-secondary/30 p-4 transition-colors hover:bg-secondary/40">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-card border border-border/60 text-primary">
+                      {theme === "dark" ? <Moon className="size-4 text-indigo-400" /> : <Sun className="size-4 text-amber-500" />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-foreground sm:text-sm">
+                        Appearance &amp; Theme
+                      </p>
+                      <p className="text-[11px] font-medium text-muted-foreground">
+                        {theme === "dark" ? "Dark mode active (high contrast for kitchen)" : "Light mode active (crisp daylight view)"}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => setTheme(theme === "dark" ? "light" : "dark", e)}
+                    className="h-8 px-3 rounded-full bg-card hover:bg-secondary border border-border/70 text-xs font-semibold text-foreground flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+                  >
+                    {theme === "dark" ? <Sun className="size-3.5 text-amber-400" /> : <Moon className="size-3.5 text-indigo-400" />}
+                    <span>{theme === "dark" ? "Light" : "Dark"}</span>
+                  </button>
+                </div>
+
                 {/* Sound alert switch */}
                 <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-secondary/30 p-4 transition-colors hover:bg-secondary/40">
                   <div className="flex items-start gap-3 min-w-0">

@@ -165,7 +165,7 @@
 }
 
 ::view-transition-group(root) {
-  animation-duration: 0.45s !important;
+  animation-duration: 650ms !important;
 }
 
 ::view-transition-old(root) {
@@ -174,7 +174,7 @@
 
 ::view-transition-new(root) {
   z-index: 99999;
-  animation: telegram-circle-reveal 800ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards !important;
+  animation: telegram-circle-reveal 650ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards !important;
 }
 
 @keyframes telegram-circle-reveal {

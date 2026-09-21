@@ -82,42 +82,54 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
       }
     };
 
-    // Telegram circular expanding ripple fallback for devices/browsers without native View Transitions
+    // Safety timer to ensure isTransitioningRef is always reset even if browser transition hangs or is aborted
+    const safetyTimer = setTimeout(() => {
+      isTransitioningRef.current = false;
+    }, 700);
+
+    // Smooth responsive fallback for devices without native View Transitions (e.g. mobile Safari/WebKit)
     const runFallbackSmooth = () => {
+      applyThemeState();
       if (typeof document === "undefined" || isReducedMotion) {
-        applyThemeState();
+        clearTimeout(safetyTimer);
         isTransitioningRef.current = false;
         return;
       }
       try {
+        document.documentElement.classList.add("theme-transitioning");
         const ripple = document.createElement("div");
         ripple.style.position = "fixed";
         ripple.style.left = `${x}px`;
         ripple.style.top = `${y}px`;
-        ripple.style.width = "4px";
-        ripple.style.height = "4px";
+        ripple.style.width = "20px";
+        ripple.style.height = "20px";
         ripple.style.borderRadius = "50%";
-        ripple.style.backgroundColor = newTheme === "dark" ? "#09090b" : "#f8fafc";
-        ripple.style.zIndex = "999999";
         ripple.style.pointerEvents = "none";
-        ripple.style.transform = "translate(-50%, -50%) scale(0)";
-        ripple.style.transition = "transform 800ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity 250ms ease 650ms";
+        ripple.style.zIndex = "999999";
+        ripple.style.border = newTheme === "dark" 
+          ? "2px solid rgba(251, 191, 36, 0.7)" 
+          : "2px solid rgba(99, 102, 241, 0.7)";
+        ripple.style.boxShadow = newTheme === "dark"
+          ? "0 0 30px 15px rgba(251, 191, 36, 0.25)"
+          : "0 0 30px 15px rgba(99, 102, 241, 0.25)";
+        ripple.style.transform = "translate(-50%, -50%) scale(0.3)";
+        ripple.style.opacity = "1";
+        ripple.style.transition = "transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 400ms ease-out";
         document.body.appendChild(ripple);
 
-        void ripple.offsetHeight;
-        const scale = Math.ceil(endRadius * 1.2);
-        ripple.style.transform = `translate(-50%, -50%) scale(${scale})`;
+        requestAnimationFrame(() => {
+          ripple.style.transform = `translate(-50%, -50%) scale(${Math.max(window.innerWidth, window.innerHeight) / 10})`;
+          ripple.style.opacity = "0";
+        });
 
         setTimeout(() => {
-          applyThemeState();
-          ripple.style.opacity = "0";
-          setTimeout(() => {
-            ripple.remove();
-            isTransitioningRef.current = false;
-          }, 250);
-        }, 550);
+          ripple.remove();
+          document.documentElement.classList.remove("theme-transitioning");
+          clearTimeout(safetyTimer);
+          isTransitioningRef.current = false;
+        }, 400);
       } catch {
-        applyThemeState();
+        clearTimeout(safetyTimer);
         isTransitioningRef.current = false;
       }
     };
@@ -144,7 +156,7 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
                   ],
                 },
                 {
-                  duration: 800,
+                  duration: 650,
                   easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
                   pseudoElement: "::view-transition-new(root)",
                   fill: "forwards",
@@ -158,6 +170,7 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
 
         transition.finished
           .finally(() => {
+            clearTimeout(safetyTimer);
             isTransitioningRef.current = false;
           });
       } catch {

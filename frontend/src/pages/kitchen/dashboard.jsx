@@ -547,14 +547,14 @@ export default function KitchenDashboard() {
       />
 
       <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="z-20 flex h-16 sm:h-[70px] shrink-0 items-center justify-between gap-2.5 border-b border-border/70 bg-card/85 px-3.5 shadow-2xs backdrop-blur-2xl transition-colors dark:bg-zinc-950/85 sm:px-5 lg:px-6">
-          <div className="flex min-w-0 shrink-0 items-center gap-2.5 sm:gap-3.5">
+        <header className="z-20 flex h-16 sm:h-[70px] shrink-0 items-center justify-between gap-2 border-b border-border/70 bg-card/85 px-3 shadow-2xs backdrop-blur-2xl transition-colors dark:bg-zinc-950/85 sm:px-5 lg:px-6">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3.5">
             <div className="relative flex size-9 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-orange-500 to-amber-500 text-white shadow-warm ring-2 ring-primary/20 sm:size-10 lg:hidden">
               <Flame className="size-5 animate-flicker fill-white/20" />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <h1 className="truncate font-serif text-base font-bold capitalize leading-tight tracking-tight text-foreground sm:text-lg">
+                <h1 className="truncate font-serif text-sm sm:text-lg font-bold capitalize leading-tight tracking-tight text-foreground">
                   {meta.title}
                 </h1>
                 {meta.pill && (
@@ -563,10 +563,10 @@ export default function KitchenDashboard() {
                   </span>
                 )}
               </div>
-              <p className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              <p className="flex items-center gap-2 text-[11px] sm:text-xs font-medium text-muted-foreground">
                 <span className="truncate">{meta.subtitle}</span>
                 {stats.queue > 0 && isBoard && (
-                  <span className="inline-flex items-center gap-1 font-bold text-primary">
+                  <span className="inline-flex items-center gap-1 font-bold text-primary shrink-0">
                     <span className="size-1.5 rounded-full bg-primary animate-pulse" />
                     {stats.queue} live
                   </span>
@@ -678,8 +678,20 @@ export default function KitchenDashboard() {
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="min-w-44 rounded-2xl border-border/70 bg-card p-1.5 shadow-warm-lg"
+                className="min-w-48 rounded-2xl border-border/70 bg-card p-1.5 shadow-warm-lg"
               >
+                <DropdownMenuItem
+                  onClick={toggleTheme}
+                  className="rounded-xl font-semibold cursor-pointer"
+                >
+                  {theme === "dark" ? (
+                    <Sun className="size-4 text-amber-400 mr-2" />
+                  ) : (
+                    <Moon className="size-4 text-indigo-400 mr-2" />
+                  )}
+                  <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
                   onClick={handleExitToStore}
                   className="rounded-xl font-semibold"
