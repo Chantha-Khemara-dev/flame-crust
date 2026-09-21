@@ -36,40 +36,51 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
     if (newTheme === theme || isTransitioningRef.current) return;
     isTransitioningRef.current = true;
 
-    // Determine the origin point of the ripple (from button center, event, or last known touch coordinate)
-    let x = lastPointerPos.x;
-    let y = lastPointerPos.y;
+    // Determine origin coordinate
+    let x = null;
+    let y = null;
 
-    if (event?.currentTarget?.getBoundingClientRect) {
-      const rect = event.currentTarget.getBoundingClientRect();
-      x = Math.round(rect.left + rect.width / 2);
-      y = Math.round(rect.top + rect.height / 2);
-    } else if (event?.target?.getBoundingClientRect) {
-      const rect = event.target.getBoundingClientRect();
-      x = Math.round(rect.left + rect.width / 2);
-      y = Math.round(rect.top + rect.height / 2);
-    } else if (event?.clientX !== undefined && event?.clientY !== undefined) {
-      x = Math.round(event.clientX);
-      y = Math.round(event.clientY);
-    } else if (event?.touches && event.touches[0]) {
-      x = Math.round(event.touches[0].clientX);
-      y = Math.round(event.touches[0].clientY);
+    const btn = event?.currentTarget || event?.target;
+    if (btn && typeof btn.getBoundingClientRect === "function") {
+      const rect = btn.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        x = Math.round(rect.left + rect.width / 2);
+        y = Math.round(rect.top + rect.height / 2);
+      }
     }
+
+    if (x === null || y === null) {
+      if (event?.touches && event.touches[0]) {
+        x = Math.round(event.touches[0].clientX);
+        y = Math.round(event.touches[0].clientY);
+      } else if (event?.clientX !== undefined && event?.clientY !== undefined && (event.clientX !== 0 || event.clientY !== 0)) {
+        x = Math.round(event.clientX);
+        y = Math.round(event.clientY);
+      } else if (lastPointerPos.x && lastPointerPos.y) {
+        x = lastPointerPos.x;
+        y = lastPointerPos.y;
+      }
+    }
+
+    if (!x || isNaN(x) || x <= 0) x = typeof window !== "undefined" ? window.innerWidth - 50 : 300;
+    if (!y || isNaN(y) || y <= 0) y = 40;
 
     const isReducedMotion =
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
 
-    const endRadius = Math.hypot(
-      Math.max(x, window.innerWidth - x),
-      Math.max(y, window.innerHeight - y)
+    const endRadius = Math.ceil(
+      Math.hypot(
+        Math.max(x, window.innerWidth - x),
+        Math.max(y, window.innerHeight - y)
+      ) * 1.05
     );
 
-    // Provide CSS variables for compositor-accelerated keyframe animation
+    // Provide CSS variables for any consumers
     if (typeof document !== "undefined") {
       document.documentElement.style.setProperty("--theme-ripple-x", `${x}px`);
       document.documentElement.style.setProperty("--theme-ripple-y", `${y}px`);
-      document.documentElement.style.setProperty("--theme-ripple-radius", `${Math.ceil(endRadius * 1.05)}px`);
+      document.documentElement.style.setProperty("--theme-ripple-radius", `${endRadius}px`);
     }
 
     const applyThemeState = () => {
@@ -82,53 +93,63 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
       }
     };
 
-    // Safety timer to ensure isTransitioningRef is always reset even if browser transition hangs or is aborted
+    // Safety timer to prevent any frozen state
     const safetyTimer = setTimeout(() => {
       isTransitioningRef.current = false;
     }, 700);
 
-    // Smooth responsive fallback for devices without native View Transitions (e.g. mobile Safari/WebKit)
-    const runFallbackSmooth = () => {
-      applyThemeState();
+    // Universal circular clip-path reveal for all mobile phones (iOS Safari, Android WebViews, etc.)
+    const runUniversalCircularFallback = () => {
       if (typeof document === "undefined" || isReducedMotion) {
+        applyThemeState();
         clearTimeout(safetyTimer);
         isTransitioningRef.current = false;
         return;
       }
       try {
-        document.documentElement.classList.add("theme-transitioning");
-        const ripple = document.createElement("div");
-        ripple.style.position = "fixed";
-        ripple.style.left = `${x}px`;
-        ripple.style.top = `${y}px`;
-        ripple.style.width = "20px";
-        ripple.style.height = "20px";
-        ripple.style.borderRadius = "50%";
-        ripple.style.pointerEvents = "none";
-        ripple.style.zIndex = "999999";
-        ripple.style.border = newTheme === "dark" 
-          ? "2px solid rgba(251, 191, 36, 0.7)" 
-          : "2px solid rgba(99, 102, 241, 0.7)";
-        ripple.style.boxShadow = newTheme === "dark"
-          ? "0 0 30px 15px rgba(251, 191, 36, 0.25)"
-          : "0 0 30px 15px rgba(99, 102, 241, 0.25)";
-        ripple.style.transform = "translate(-50%, -50%) scale(0.3)";
-        ripple.style.opacity = "1";
-        ripple.style.transition = "transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 400ms ease-out";
-        document.body.appendChild(ripple);
+        const overlay = document.createElement("div");
+        overlay.style.position = "fixed";
+        overlay.style.inset = "0";
+        overlay.style.zIndex = "999999";
+        overlay.style.pointerEvents = "none";
+        overlay.style.backgroundColor = newTheme === "dark" ? "#09090b" : "#fcfbf9";
+        overlay.style.clipPath = `circle(0px at ${x}px ${y}px)`;
+        overlay.style.webkitClipPath = `circle(0px at ${x}px ${y}px)`;
+        document.body.appendChild(overlay);
 
-        requestAnimationFrame(() => {
-          ripple.style.transform = `translate(-50%, -50%) scale(${Math.max(window.innerWidth, window.innerHeight) / 10})`;
-          ripple.style.opacity = "0";
-        });
+        // Force browser reflow
+        void overlay.offsetHeight;
 
+        const anim = overlay.animate(
+          [
+            { clipPath: `circle(0px at ${x}px ${y}px)`, webkitClipPath: `circle(0px at ${x}px ${y}px)` },
+            { clipPath: `circle(${endRadius}px at ${x}px ${y}px)`, webkitClipPath: `circle(${endRadius}px at ${x}px ${y}px)` }
+          ],
+          {
+            duration: 520,
+            easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
+            fill: "forwards"
+          }
+        );
+
+        // Switch theme underneath as the circle expands
         setTimeout(() => {
-          ripple.remove();
-          document.documentElement.classList.remove("theme-transitioning");
+          applyThemeState();
+        }, 180);
+
+        anim.onfinish = () => {
+          overlay.remove();
           clearTimeout(safetyTimer);
           isTransitioningRef.current = false;
-        }, 400);
+        };
+
+        setTimeout(() => {
+          overlay?.remove();
+          clearTimeout(safetyTimer);
+          isTransitioningRef.current = false;
+        }, 580);
       } catch {
+        applyThemeState();
         clearTimeout(safetyTimer);
         isTransitioningRef.current = false;
       }
@@ -137,47 +158,54 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
     // Native Telegram-style Circular View Transition (Chrome, Brave, Edge, Safari 18+)
     if (
       typeof document !== "undefined" &&
-      document.startViewTransition &&
+      typeof document.startViewTransition === "function" &&
       !isReducedMotion
     ) {
       try {
+        const styleId = "theme-circle-transition-style";
+        let styleEl = document.getElementById(styleId);
+        if (!styleEl) {
+          styleEl = document.createElement("style");
+          styleEl.id = styleId;
+          document.head.appendChild(styleEl);
+        }
+        styleEl.textContent = `
+          ::view-transition-old(root),
+          ::view-transition-new(root) {
+            animation: none;
+            mix-blend-mode: normal;
+          }
+          ::view-transition-old(root) {
+            z-index: 1;
+          }
+          ::view-transition-new(root) {
+            z-index: 999999;
+            animation: telegram-circle-reveal 520ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards !important;
+          }
+          @keyframes telegram-circle-reveal {
+            0% {
+              clip-path: circle(0px at ${x}px ${y}px);
+            }
+            100% {
+              clip-path: circle(${endRadius}px at ${x}px ${y}px);
+            }
+          }
+        `;
+
         const transition = document.startViewTransition(() => {
           applyThemeState();
         });
 
-        transition.ready
-          .then(() => {
-            try {
-              document.documentElement.animate(
-                {
-                  clipPath: [
-                    `circle(0px at ${x}px ${y}px)`,
-                    `circle(${Math.ceil(endRadius * 1.05)}px at ${x}px ${y}px)`,
-                  ],
-                },
-                {
-                  duration: 650,
-                  easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
-                  pseudoElement: "::view-transition-new(root)",
-                  fill: "forwards",
-                }
-              );
-            } catch (e) {}
-          })
-          .catch(() => {
-            runFallbackSmooth();
-          });
-
-        transition.finished
-          .finally(() => {
-            clearTimeout(safetyTimer);
-            isTransitioningRef.current = false;
-          });
+        transition.finished.finally(() => {
+          styleEl?.remove();
+          clearTimeout(safetyTimer);
+          isTransitioningRef.current = false;
+        });
       } catch {
-        runFallbackSmooth();
+        runUniversalCircularFallback();
       }
     } else {
-      runFallbackSmooth();
+      runUniversalCircularFallback();
     }
   };
 
