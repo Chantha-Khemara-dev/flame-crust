@@ -1045,8 +1045,8 @@ function Navbar() {
               ? "Flame & Crust Kitchen 👨‍🍳"
               : (selectedChatOrder.driver?.name || "Delivery Partner"),
             photo: selectedChatTarget === "KITCHEN" || !selectedChatOrder.driver?.name
-              ? "https://api.dicebear.com/7.x/bottts/svg?seed=flame-crust-kitchen&backgroundColor=f97316"
-              : (selectedChatOrder.driver?.profilePhoto || selectedChatOrder.driver?.profile_photo),
+              ? (selectedChatOrder.chefPhoto || "https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=300&auto=format&fit=crop&q=80")
+              : (selectedChatOrder.driverPhoto || selectedChatOrder.driver?.profilePhoto || selectedChatOrder.driver?.profile_photo || "https://res.cloudinary.com/gdkctwwo/image/upload/v1787385235/fphxromlgwbv1xyo2ukw.jpg"),
             role: selectedChatTarget === "KITCHEN" || !selectedChatOrder.driver?.name
               ? "Kitchen Staff (ផ្ទះបាយ)"
               : (selectedChatOrder.driver?.vehicleInfo || selectedChatOrder.driver?.vehicle_info || "Delivery Partner"),

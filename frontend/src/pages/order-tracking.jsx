@@ -265,8 +265,8 @@ export default function OrderTrackingPage() {
                 ? (lastMsg.sender_name ? `${lastMsg.sender_name} (Kitchen)` : "Flame & Crust Kitchen 👨‍🍳")
                 : (driver?.name || lastMsg.sender_name || "Delivery Partner 🛵");
               const senderDisplayPhoto = isKitchenSender
-                ? "https://api.dicebear.com/7.x/bottts/svg?seed=flame-crust-kitchen&backgroundColor=f97316"
-                : (driver?.profilePhoto || driver?.profile_photo);
+                ? "https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=300&auto=format&fit=crop&q=80"
+                : (driver?.profilePhoto || driver?.profile_photo || "https://res.cloudinary.com/gdkctwwo/image/upload/v1787385235/fphxromlgwbv1xyo2ukw.jpg");
 
               if (!chatOpen) {
                 setLastMsgText(lastMsg.message);
@@ -1137,7 +1137,7 @@ export default function OrderTrackingPage() {
           driver={driver}
           recipient={{
             name: chatRecipientType === "KITCHEN" ? "Flame & Crust Kitchen 👨‍🍳" : (driver?.name || "Courier Partner"),
-            photo: chatRecipientType === "KITCHEN" ? "https://api.dicebear.com/7.x/bottts/svg?seed=flame-crust-kitchen&backgroundColor=f97316" : (driver?.profilePhoto || driver?.profile_photo),
+            photo: chatRecipientType === "KITCHEN" ? "https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=300&auto=format&fit=crop&q=80" : (driver?.profilePhoto || driver?.profile_photo || "https://res.cloudinary.com/gdkctwwo/image/upload/v1787385235/fphxromlgwbv1xyo2ukw.jpg"),
             role: chatRecipientType === "KITCHEN" ? "Master Chef (ផ្ទះបាយ)" : (driver?.vehicleInfo || driver?.vehicle_info || "Courier Partner"),
             phone: chatRecipientType === "KITCHEN" ? "" : (driver?.phone || "0965755963")
           }}

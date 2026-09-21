@@ -1279,11 +1279,43 @@ public class AuthController {
                     senderPhoto = "https://api.dicebear.com/7.x/initials/svg?seed=" + URLEncoder.encode(resolvedSenderName, StandardCharsets.UTF_8) + "&backgroundColor=f59e0b&textColor=ffffff";
                 }
             } else if ("KITCHEN".equalsIgnoreCase(senderType)) {
+                if (targetSenderId == null) {
+                    try {
+                        List<Map<String, Object>> staffRows = jdbc.queryForList("SELECT id, name, profile_photo, avatar FROM kitchen_staff WHERE profile_photo IS NOT NULL OR avatar IS NOT NULL ORDER BY id ASC LIMIT 1");
+                        if (!staffRows.isEmpty()) {
+                            Map<String, Object> s = staffRows.get(0);
+                            targetSenderId = ((Number) s.get("id")).longValue();
+                            if (s.get("profile_photo") != null && !s.get("profile_photo").toString().isBlank()) {
+                                senderPhoto = s.get("profile_photo").toString();
+                            } else if (s.get("avatar") != null && !s.get("avatar").toString().isBlank()) {
+                                senderPhoto = s.get("avatar").toString();
+                            }
+                            if (resolvedSenderName == null || resolvedSenderName.isBlank() || "Chef".equalsIgnoreCase(resolvedSenderName) || "Kitchen".equalsIgnoreCase(resolvedSenderName)) {
+                                resolvedSenderName = s.get("name") != null ? s.get("name").toString() : "Master Chef 👨‍🍳";
+                            }
+                        }
+                    } catch (Exception ignored) {}
+                } else {
+                    try {
+                        List<Map<String, Object>> staffRows = jdbc.queryForList("SELECT id, name, profile_photo, avatar FROM kitchen_staff WHERE id = ? LIMIT 1", targetSenderId);
+                        if (!staffRows.isEmpty()) {
+                            Map<String, Object> s = staffRows.get(0);
+                            if (s.get("profile_photo") != null && !s.get("profile_photo").toString().isBlank()) {
+                                senderPhoto = s.get("profile_photo").toString();
+                            } else if (s.get("avatar") != null && !s.get("avatar").toString().isBlank()) {
+                                senderPhoto = s.get("avatar").toString();
+                            }
+                            if (resolvedSenderName == null || resolvedSenderName.isBlank() || "Chef".equalsIgnoreCase(resolvedSenderName) || "Kitchen".equalsIgnoreCase(resolvedSenderName)) {
+                                resolvedSenderName = s.get("name") != null ? s.get("name").toString() : "Master Chef 👨‍🍳";
+                            }
+                        }
+                    } catch (Exception ignored) {}
+                }
                 if (resolvedSenderName == null || resolvedSenderName.isBlank() || "Chef".equalsIgnoreCase(resolvedSenderName)) {
-                    resolvedSenderName = "Kitchen / ចុងភៅ";
+                    resolvedSenderName = "Master Chef 👨‍🍳";
                 }
                 if (senderPhoto == null || senderPhoto.isBlank()) {
-                    senderPhoto = "https://api.dicebear.com/7.x/bottts/svg?seed=flame-crust-kitchen&backgroundColor=f97316";
+                    senderPhoto = "https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=300&auto=format&fit=crop&q=80";
                 }
             }
 

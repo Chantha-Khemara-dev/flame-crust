@@ -37,10 +37,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getOrderMessages, sendOrderMessage, markOrderMessagesRead, reportOrderChatTyping, checkOrderChatTyping, deleteOrderMessage } from "@/lib/api";
+import { getOrderMessages, sendOrderMessage, markOrderMessagesRead, reportOrderChatTyping, checkOrderChatTyping, deleteOrderMessage, list } from "@/lib/api";
 import { uploadImageToCloudinary, uploadAudioToCloudinary } from "@/lib/cloudinary";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+
+export const REAL_CHEF_FALLBACK_PHOTO = "https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=300&auto=format&fit=crop&q=80";
+export const REAL_DRIVER_FALLBACK_PHOTO = "https://res.cloudinary.com/gdkctwwo/image/upload/v1787385235/fphxromlgwbv1xyo2ukw.jpg";
 
 export function playChatChimeSound() {
   try {
@@ -370,6 +373,7 @@ export function OrderChatModal({
   const [activeTarget, setActiveTarget] = useState(initialTarget || "DRIVER");
   const [messages, setMessages] = useState([]);
   const [inputMsg, setInputMsg] = useState("");
+  const [chefInfo, setChefInfo] = useState(null);
 
   useEffect(() => {
     if (open && initialTarget) {
@@ -377,17 +381,36 @@ export function OrderChatModal({
     }
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    let isMounted = true;
+    list("kitchen_staff")
+      .then(staffList => {
+        if (!isMounted || !Array.isArray(staffList) || staffList.length === 0) return;
+        const foundChef = staffList.find(s => s.profile_photo || s.avatar) || staffList[0];
+        if (foundChef) {
+          setChefInfo({
+            name: foundChef.name ? `${foundChef.name} 👨‍🍳` : "Flame & Crust Kitchen 👨‍🍳",
+            photo: foundChef.profile_photo || foundChef.avatar || REAL_CHEF_FALLBACK_PHOTO,
+            role: "Master Chef (ផ្ទះបាយ)"
+          });
+        }
+      })
+      .catch(() => {});
+    return () => { isMounted = false; };
+  }, [open]);
+
   const targetRecipient = currentUser.type === "CUSTOMER"
     ? (activeTarget === "KITCHEN"
         ? {
-            name: "Flame & Crust Kitchen 👨‍🍳",
-            photo: "https://api.dicebear.com/7.x/bottts/svg?seed=flame-crust-kitchen&backgroundColor=f97316",
-            role: "Master Chef (ផ្ទះបាយ)",
+            name: chefInfo?.name || "Flame & Crust Kitchen 👨‍🍳",
+            photo: chefInfo?.photo || REAL_CHEF_FALLBACK_PHOTO,
+            role: chefInfo?.role || "Master Chef (ផ្ទះបាយ)",
             phone: ""
           }
         : {
             name: driver?.name || (recipient?.role?.toLowerCase().includes("kitchen") ? "Delivery Partner 🛵" : recipient?.name) || "Delivery Partner 🛵",
-            photo: driver?.profilePhoto || driver?.profile_photo || (recipient?.role?.toLowerCase().includes("kitchen") ? null : recipient?.photo),
+            photo: driver?.profilePhoto || driver?.profile_photo || (recipient?.role?.toLowerCase().includes("kitchen") ? null : recipient?.photo) || REAL_DRIVER_FALLBACK_PHOTO,
             role: driver?.vehicleInfo || driver?.vehicle_info || (recipient?.role?.toLowerCase().includes("kitchen") ? "Courier Partner" : recipient?.role) || "Courier Partner",
             phone: driver?.phone || (recipient?.role?.toLowerCase().includes("kitchen") ? "" : recipient?.phone) || ""
           })
@@ -1021,6 +1044,12 @@ export function OrderChatModal({
                 src={targetRecipient.photo} 
                 alt={targetRecipient.name} 
                 className="size-10.5 rounded-full object-cover border-2 border-primary/40 shrink-0"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = targetRecipient.role?.toLowerCase().includes("kitchen") || targetRecipient.role?.toLowerCase().includes("chef")
+                    ? REAL_CHEF_FALLBACK_PHOTO
+                    : REAL_DRIVER_FALLBACK_PHOTO;
+                }}
               />
             ) : (
               <div className="size-10.5 rounded-full bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center shrink-0 shadow-xs">
@@ -1137,21 +1166,33 @@ export function OrderChatModal({
                   )}
                 >
                   {!isMe && (
-                    <div className="size-6.5 rounded-full overflow-hidden shrink-0 mb-1 border border-border/50 flex items-center justify-center">
+                    <div className="size-6.5 rounded-full overflow-hidden shrink-0 mb-1 border border-border/50 flex items-center justify-center bg-secondary/60">
                       {m.sender_type === "KITCHEN" ? (
-                        <div className="size-full bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                          <ChefHat className="size-3.5" />
-                        </div>
+                        <img 
+                          src={m.sender_photo || m.sender_avatar || chefInfo?.photo || (targetRecipient?.role?.toLowerCase().includes("kitchen") ? targetRecipient.photo : null) || REAL_CHEF_FALLBACK_PHOTO} 
+                          alt="Chef" 
+                          className="size-full object-cover" 
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = REAL_CHEF_FALLBACK_PHOTO;
+                          }}
+                        />
                       ) : m.sender_type === "DRIVER" ? (
-                        recipient.photo && recipient.role?.toLowerCase().includes("driver") ? (
-                          <img src={recipient.photo} alt="" className="size-full object-cover" />
-                        ) : (
-                          <div className="size-full bg-red-500/20 text-red-600 flex items-center justify-center">
-                            <Bike className="size-3.5" />
-                          </div>
-                        )
-                      ) : recipient.photo ? (
-                        <img src={recipient.photo} alt="" className="size-full object-cover" />
+                        <img 
+                          src={m.sender_photo || m.sender_avatar || driver?.profilePhoto || driver?.profile_photo || (recipient?.role?.toLowerCase().includes("driver") ? recipient.photo : null) || REAL_DRIVER_FALLBACK_PHOTO} 
+                          alt="Driver" 
+                          className="size-full object-cover" 
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = REAL_DRIVER_FALLBACK_PHOTO;
+                          }}
+                        />
+                      ) : (recipient?.photo || m.sender_photo) ? (
+                        <img 
+                          src={recipient?.photo || m.sender_photo} 
+                          alt="" 
+                          className="size-full object-cover" 
+                        />
                       ) : (
                         <div className="size-full bg-primary/15 flex items-center justify-center text-primary text-[10px] font-bold">
                           {m.sender_name?.[0] || recipient.name?.[0] || "U"}
@@ -1316,7 +1357,17 @@ export function OrderChatModal({
             <div className="flex items-center gap-2 mr-auto animate-in fade-in duration-200 pt-1">
               <div className="size-6.5 rounded-full overflow-hidden bg-primary/15 shrink-0 border border-border/50">
                 {targetRecipient.photo ? (
-                  <img src={targetRecipient.photo} alt="" className="size-full object-cover" />
+                  <img 
+                    src={targetRecipient.photo} 
+                    alt="" 
+                    className="size-full object-cover" 
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = targetRecipient.role?.toLowerCase().includes("kitchen") || targetRecipient.role?.toLowerCase().includes("chef")
+                        ? REAL_CHEF_FALLBACK_PHOTO
+                        : REAL_DRIVER_FALLBACK_PHOTO;
+                    }}
+                  />
                 ) : (
                   <div className="size-full flex items-center justify-center text-primary text-[10px] font-bold">
                     {targetRecipient.name?.[0] || "P"}
