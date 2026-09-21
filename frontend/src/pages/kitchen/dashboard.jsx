@@ -546,9 +546,9 @@ export default function KitchenDashboard() {
       />
 
       <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="z-20 flex shrink-0 items-center justify-between gap-2.5 border-b border-border/70 bg-card/85 px-3.5 pt-[env(safe-area-inset-top,0px)] shadow-2xs backdrop-blur-2xl transition-colors dark:bg-zinc-950/85 sm:px-5 lg:px-6">
-          <div className="flex min-w-0 shrink-0 items-center gap-2.5 py-3 sm:gap-3.5">
-            <div className="relative flex size-9 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-orange-500 to-amber-500 text-white shadow-warm ring-2 ring-primary/20 sm:size-10">
+        <header className="z-20 flex h-16 sm:h-[70px] shrink-0 items-center justify-between gap-2.5 border-b border-border/70 bg-card/85 px-3.5 shadow-2xs backdrop-blur-2xl transition-colors dark:bg-zinc-950/85 sm:px-5 lg:px-6">
+          <div className="flex min-w-0 shrink-0 items-center gap-2.5 sm:gap-3.5">
+            <div className="relative flex size-9 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-orange-500 to-amber-500 text-white shadow-warm ring-2 ring-primary/20 sm:size-10 lg:hidden">
               <Flame className="size-5 animate-flicker fill-white/20" />
             </div>
             <div className="min-w-0">
@@ -720,7 +720,7 @@ export default function KitchenDashboard() {
           </div>
         )}
 
-        <main className="relative flex-1 overflow-hidden p-2.5 sm:p-3 lg:py-3 lg:pr-3.5 lg:pl-0 pb-0 lg:pb-3.5 overscroll-contain">
+        <main className="relative flex-1 overflow-hidden p-3 sm:p-4 lg:p-4.5 overscroll-contain">
           {loading ? (
             <KdsBoardSkeleton />
           ) : error && activeOrders.length === 0 ? (

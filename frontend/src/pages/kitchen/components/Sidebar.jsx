@@ -27,9 +27,9 @@ const STATION_ROWS = [
 function SidebarContent({ activeView, onSelectView, user, activeOrdersCount = 0, stageCounts = {}, onStageSelect, onSignOut }) {
   return (
     <div className="relative flex h-full flex-col bg-card/90 text-foreground backdrop-blur-2xl dark:bg-zinc-950/90">
-      <div className="flex items-center gap-3 border-b border-border/70 p-5 pt-[max(1.25rem,calc(env(safe-area-inset-top,0px)+0.75rem))] sm:p-6">
-        <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-orange-500 to-amber-500 text-white shadow-warm ring-2 ring-primary/20">
-          <Flame className="size-6 animate-flicker fill-white/20" />
+      <div className="flex h-16 sm:h-[70px] shrink-0 items-center gap-3 border-b border-border/70 px-4 sm:px-5">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-orange-500 to-amber-500 text-white shadow-warm ring-2 ring-primary/20">
+          <Flame className="size-5.5 animate-flicker fill-white/20" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -192,7 +192,7 @@ export function KitchenSidebar({
   onSignOut,
 }) {
   return (
-    <aside className="hidden h-[calc(100vh-env(safe-area-inset-top,0px))] w-64 shrink-0 overflow-hidden border-r border-border/60 transition-colors lg:flex">
+    <aside className="hidden h-full w-64 shrink-0 overflow-hidden border-r border-border/70 transition-colors lg:flex">
       <SidebarContent
         activeView={activeView}
         onSelectView={setActiveView}
