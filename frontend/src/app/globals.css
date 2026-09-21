@@ -509,4 +509,21 @@ input[type="number"] {
   margin-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Custom Chat Toast Container Reset - Remove any background or border from outer container */
+[data-sonner-toast]:has(.custom-chat-toast),
+[data-sonner-toast][data-styled="false"],
+li:has(.custom-chat-toast) {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+[data-sonner-toast]:has(.custom-chat-toast) [data-close-button],
+li:has(.custom-chat-toast) [data-close-button] {
+  display: none !important;
+}
+
+
 

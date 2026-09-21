@@ -99,7 +99,7 @@ export function showChatNotificationToast({ senderName, message, photo, orderNum
 
   toast.custom((t) => (
     <div 
-      className="w-[380px] sm:w-[440px] max-w-[95vw] bg-card/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-border/80 dark:border-zinc-800 shadow-2xl rounded-2xl p-3.5 flex items-start gap-3.5 transition-all select-none ring-1 ring-black/5 dark:ring-white/5 animate-in fade-in slide-in-from-top-4 duration-300 group"
+      className="custom-chat-toast w-[380px] sm:w-[440px] max-w-[95vw] bg-card/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-border/80 dark:border-zinc-800 shadow-2xl rounded-2xl p-3.5 flex items-start gap-3.5 transition-all select-none ring-1 ring-black/5 dark:ring-white/5 animate-in fade-in slide-in-from-top-4 duration-300 group"
     >
       {/* Avatar / Photo with Online Pulse */}
       <div 
@@ -183,7 +183,7 @@ export function showChatNotificationToast({ senderName, message, photo, orderNum
         </button>
       </div>
     </div>
-  ), { duration: 6000, position: "top-center" });
+  ), { duration: 6000, position: "top-center", unstyled: true });
 }
 
 export function VoiceMessagePlayer({ audioUrl, duration: givenDuration, isMe, msgId }) {
