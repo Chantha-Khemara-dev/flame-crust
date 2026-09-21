@@ -1133,6 +1133,8 @@ export default function OrderTrackingPage() {
             photo: customer?.avatar,
             avatar: customer?.avatar
           }}
+          initialTarget={chatRecipientType}
+          driver={driver}
           recipient={{
             name: chatRecipientType === "KITCHEN" ? "Flame & Crust Kitchen 👨‍🍳" : (driver?.name || "Courier Partner"),
             photo: chatRecipientType === "KITCHEN" ? "https://api.dicebear.com/7.x/bottts/svg?seed=flame-crust-kitchen&backgroundColor=f97316" : (driver?.profilePhoto || driver?.profile_photo),

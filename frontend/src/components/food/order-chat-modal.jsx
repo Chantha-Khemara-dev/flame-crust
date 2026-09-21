@@ -303,10 +303,35 @@ export function OrderChatModal({
   orderId, 
   orderNumber,
   currentUser = { type: "CUSTOMER", name: "Customer" }, 
-  recipient = { name: "Driver", role: "Courier Partner", phone: "" } 
+  recipient = { name: "Driver", role: "Courier Partner", phone: "" },
+  driver = null,
+  initialTarget = "DRIVER"
 }) {
+  const [activeTarget, setActiveTarget] = useState(initialTarget || "DRIVER");
   const [messages, setMessages] = useState([]);
   const [inputMsg, setInputMsg] = useState("");
+
+  useEffect(() => {
+    if (initialTarget) {
+      setActiveTarget(initialTarget);
+    }
+  }, [initialTarget, open]);
+
+  const targetRecipient = currentUser.type === "CUSTOMER"
+    ? (activeTarget === "KITCHEN"
+        ? {
+            name: "Flame & Crust Kitchen 👨‍🍳",
+            photo: "https://api.dicebear.com/7.x/bottts/svg?seed=flame-crust-kitchen&backgroundColor=f97316",
+            role: "Master Chef (ផ្ទះបាយ)",
+            phone: ""
+          }
+        : {
+            name: driver?.name || (recipient?.role?.toLowerCase().includes("kitchen") ? "Delivery Partner 🛵" : recipient?.name) || "Delivery Partner 🛵",
+            photo: driver?.profilePhoto || driver?.profile_photo || (recipient?.role?.toLowerCase().includes("kitchen") ? null : recipient?.photo),
+            role: driver?.vehicleInfo || driver?.vehicle_info || (recipient?.role?.toLowerCase().includes("kitchen") ? "Courier Partner" : recipient?.role) || "Courier Partner",
+            phone: driver?.phone || (recipient?.role?.toLowerCase().includes("kitchen") ? "" : recipient?.phone) || ""
+          })
+    : recipient;
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [otherTyping, setOtherTyping] = useState(false);
@@ -719,13 +744,25 @@ export function OrderChatModal({
     }
   };
 
+  const kitchenUnreadCount = messages.filter(m => m.sender_type === "KITCHEN" && !m.is_read).length;
+  const driverUnreadCount = messages.filter(m => m.sender_type === "DRIVER" && !m.is_read).length;
+
   const cannedReplies = currentUser.type === "CUSTOMER" 
-    ? [
-        "👋 Hi! How long until delivery?",
-        "🏠 I am waiting downstairs.",
-        "🚪 Please leave it at the gate/door.",
-        "📞 Please call me when you arrive."
-      ]
+    ? (activeTarget === "KITCHEN"
+        ? [
+            "👨‍🍳 សួស្តី! តើម្ហូបជិតឆ្អិននៅបង?",
+            "🌶️ សូមកុំដាក់ម្ទេស ឬដាក់តិចបានហើយ",
+            "🧅 សូមកុំដាក់ខ្ទឹមបារាំង (No onions)",
+            "🍕 សូមជួយកាត់ជា ៨ ដុំ",
+            "🙏 អរគុណច្រើនបង chef!"
+          ]
+        : [
+            "🛵 សួស្តីបង! តើជិតមកដល់ទីតាំងខ្ញុំនៅ?",
+            "🏠 ខ្ញុំកំពុងរង់ចាំនៅខាងក្រោម",
+            "🚪 សូមទុកនៅមាត់ទ្វារ/របង",
+            "📞 មកដល់សូមទូរស័ព្ទមកខ្ញុំ",
+            "📍 ខ្ញុំបានផ្ញើទីតាំងច្បាស់ក្នុង Chat"
+          ])
     : currentUser.type === "KITCHEN"
     ? [
         "👨‍🍳 Your order is currently being freshly baked!",
@@ -876,7 +913,8 @@ export function OrderChatModal({
         sender_type: currentUser.type,
         sender_name: currentUser.name,
         sender_id: currentUser.id || null,
-        message: finalMsg
+        message: finalMsg,
+        recipient_type: currentUser.type === "CUSTOMER" ? activeTarget : null
       });
       await fetchMessages();
     } catch (err) {
@@ -915,17 +953,17 @@ export function OrderChatModal({
         {/* Header */}
         <DialogHeader className="p-4 border-b border-border/60 bg-secondary/30 shrink-0 flex flex-row items-center justify-between space-y-0">
           <div className="flex items-center gap-3 min-w-0">
-            {recipient.photo ? (
+            {targetRecipient.photo ? (
               <img 
-                src={recipient.photo} 
-                alt={recipient.name} 
+                src={targetRecipient.photo} 
+                alt={targetRecipient.name} 
                 className="size-10.5 rounded-full object-cover border-2 border-primary/40 shrink-0"
               />
             ) : (
               <div className="size-10.5 rounded-full bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                {recipient.role?.toLowerCase().includes("kitchen") || recipient.role?.toLowerCase().includes("chef") ? (
+                {targetRecipient.role?.toLowerCase().includes("kitchen") || targetRecipient.role?.toLowerCase().includes("chef") ? (
                   <ChefHat className="size-5.5" />
-                ) : recipient.role?.toLowerCase().includes("driver") || (currentUser.type === "CUSTOMER" && recipient.role?.toLowerCase().includes("delivery")) ? (
+                ) : targetRecipient.role?.toLowerCase().includes("driver") || (currentUser.type === "CUSTOMER" && targetRecipient.role?.toLowerCase().includes("delivery")) ? (
                   <Bike className="size-5.5" />
                 ) : (
                   <User className="size-5.5" />
@@ -934,19 +972,19 @@ export function OrderChatModal({
             )}
             <div className="min-w-0 text-left">
               <DialogTitle className="font-bold text-sm sm:text-base text-foreground truncate flex items-center gap-1.5">
-                {recipient.name || "Live Chat"}
+                {targetRecipient.name || "Live Chat"}
                 <span className="size-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground truncate">
-                {recipient.role || (currentUser.type === "KITCHEN" ? "Customer Chat" : "Order Chat")} {orderNumber ? `• Order #${orderNumber}` : ""}
+                {targetRecipient.role || (currentUser.type === "KITCHEN" ? "Customer Chat" : "Order Chat")} {orderNumber ? `• Order #${orderNumber}` : ""}
               </DialogDescription>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {recipient.phone && (
+            {targetRecipient.phone && (
               <a
-                href={`tel:${recipient.phone}`}
+                href={`tel:${targetRecipient.phone}`}
                 className="size-9 rounded-full bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-colors"
                 title="Cellular Phone Call"
               >
@@ -962,6 +1000,49 @@ export function OrderChatModal({
             </button>
           </div>
         </DialogHeader>
+
+        {/* Customer Target Selector: Kitchen 👨‍🍳 vs Driver 🛵 */}
+        {currentUser.type === "CUSTOMER" && (
+          <div className="flex items-center p-1.5 bg-secondary/50 border-b border-border/60 gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveTarget("KITCHEN")}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-2xl text-xs font-bold transition-all cursor-pointer",
+                activeTarget === "KITCHEN"
+                  ? "bg-card text-amber-600 dark:text-amber-400 shadow-xs border border-border/80"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+              )}
+            >
+              <ChefHat className="size-4 text-amber-500" />
+              <span>Kitchen 👨‍🍳 (ផ្ទះបាយ)</span>
+              {kitchenUnreadCount > 0 && (
+                <span className="min-w-4 h-4 px-1 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center animate-pulse">
+                  {kitchenUnreadCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTarget("DRIVER")}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-2xl text-xs font-bold transition-all cursor-pointer",
+                activeTarget === "DRIVER"
+                  ? "bg-card text-primary shadow-xs border border-border/80"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+              )}
+            >
+              <Bike className="size-4 text-primary" />
+              <span>Driver 🛵 (អ្នកដឹក)</span>
+              {driverUnreadCount > 0 && (
+                <span className="min-w-4 h-4 px-1 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center animate-pulse">
+                  {driverUnreadCount}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Message Thread */}
         <div className="flex-1 p-4 overflow-y-auto space-y-3 custom-scrollbar bg-background/50">
@@ -1196,11 +1277,11 @@ export function OrderChatModal({
           {otherTyping && (
             <div className="flex items-center gap-2 mr-auto animate-in fade-in duration-200 pt-1">
               <div className="size-6.5 rounded-full overflow-hidden bg-primary/15 shrink-0 border border-border/50">
-                {recipient.photo ? (
-                  <img src={recipient.photo} alt="" className="size-full object-cover" />
+                {targetRecipient.photo ? (
+                  <img src={targetRecipient.photo} alt="" className="size-full object-cover" />
                 ) : (
                   <div className="size-full flex items-center justify-center text-primary text-[10px] font-bold">
-                    {recipient.name?.[0] || "P"}
+                    {targetRecipient.name?.[0] || "P"}
                   </div>
                 )}
               </div>
@@ -1208,7 +1289,7 @@ export function OrderChatModal({
                 <span className="size-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.3s]" />
                 <span className="size-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.15s]" />
                 <span className="size-1.5 rounded-full bg-primary animate-bounce" />
-                <span className="text-[10px] text-muted-foreground ml-1 font-medium">{recipient.name || "Partner"} is typing...</span>
+                <span className="text-[10px] text-muted-foreground ml-1 font-medium">{targetRecipient.name || "Partner"} is typing...</span>
               </div>
             </div>
           )}
@@ -1395,7 +1476,15 @@ export function OrderChatModal({
             <Input 
               value={inputMsg}
               onChange={(e) => handleInputChange(e.target.value)}
-              placeholder={uploadingVoice ? "Sending voice note..." : selectedImageFile ? "Add a caption (optional)..." : "Type a message..."}
+              placeholder={
+                uploadingVoice 
+                  ? "Sending voice note..." 
+                  : selectedImageFile 
+                    ? "Add a caption (optional)..." 
+                    : currentUser.type === "CUSTOMER"
+                      ? (activeTarget === "KITCHEN" ? "💬 សរសេរសារផ្ញើទៅផ្ទះបាយ (Message kitchen)..." : "💬 សរសេរសារផ្ញើទៅអ្នកដឹក (Message driver)...")
+                      : "Type a message..."
+              }
               disabled={uploadingVoice}
               className="rounded-full bg-secondary/40 border-border/70 text-xs sm:text-sm h-11 px-4 flex-1 focus-visible:ring-primary"
             />

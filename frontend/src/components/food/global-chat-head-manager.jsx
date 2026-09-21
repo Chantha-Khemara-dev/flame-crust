@@ -167,6 +167,8 @@ export function GlobalCustomerChatManager() {
             type: "CUSTOMER",
             name: activeOrder.customer_name || "Customer"
           }}
+          initialTarget={lastSenderType}
+          driver={driver}
           recipient={{
             name: lastSenderType === "KITCHEN" || !driver?.name ? "Flame & Crust Kitchen 👨‍🍳" : (driver?.name || "Delivery Partner"),
             photo: lastSenderType === "KITCHEN" || !driver?.name ? "https://api.dicebear.com/7.x/bottts/svg?seed=flame-crust-kitchen&backgroundColor=f97316" : (driver?.profilePhoto || driver?.profile_photo),

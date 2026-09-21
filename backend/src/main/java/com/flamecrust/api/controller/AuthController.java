@@ -1193,6 +1193,7 @@ public class AuthController {
             String senderName = (String) payload.getOrDefault("sender_name", payload.getOrDefault("senderName", "Customer"));
             Object senderIdObj = payload.get("sender_id") != null ? payload.get("sender_id") : payload.get("senderId");
             Long senderId = senderIdObj != null ? Long.valueOf(senderIdObj.toString()) : null;
+            String recipientType = (String) payload.getOrDefault("recipient_type", payload.getOrDefault("recipientType", null));
             String message = (String) payload.get("message");
 
             if (message == null || message.trim().isEmpty()) {
@@ -1290,6 +1291,7 @@ public class AuthController {
             final Long finalSenderId = targetSenderId;
             final Long finalOrderId = orderId;
             final String finalSenderPhoto = senderPhoto;
+            final String finalRecipientType = recipientType;
 
             CompletableFuture.runAsync(() -> {
                 try {
@@ -1331,11 +1333,20 @@ public class AuthController {
                             webPushService.sendToUserWithExtra(customerId, "CUSTOMER", title, notiBody, url, extra);
                         } else if ("CUSTOMER".equalsIgnoreCase(finalSenderType)) {
                             String title = "💬 " + finalSenderName + " (អតិថិជន 🍕)";
-                            if (driverId != null) {
-                                String url = "/driver/dashboard";
-                                webPushService.sendToUserWithExtra(driverId, "DRIVER", title, notiBody, url, extra);
+                            if ("DRIVER".equalsIgnoreCase(finalRecipientType)) {
+                                if (driverId != null) {
+                                    String url = "/driver/dashboard";
+                                    webPushService.sendToUserWithExtra(driverId, "DRIVER", title + " (ផ្ញើមកអ្នកដឹក 🛵)", notiBody, url, extra);
+                                }
+                            } else if ("KITCHEN".equalsIgnoreCase(finalRecipientType)) {
+                                webPushService.sendToUserType("KITCHEN", title + " (ផ្ញើមកផ្ទះបាយ 👨‍🍳)", notiBody, "/kitchen/dashboard");
+                            } else {
+                                if (driverId != null) {
+                                    String url = "/driver/dashboard";
+                                    webPushService.sendToUserWithExtra(driverId, "DRIVER", title, notiBody, url, extra);
+                                }
+                                webPushService.sendToUserType("KITCHEN", title, notiBody, "/kitchen/dashboard");
                             }
-                            webPushService.sendToUserType("KITCHEN", title, notiBody, "/kitchen/dashboard");
                         }
                     }
                 } catch (Exception ex) {

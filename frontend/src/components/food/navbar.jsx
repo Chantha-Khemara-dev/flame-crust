@@ -75,15 +75,11 @@ function Navbar() {
   const [ordersModalOpen, setOrdersModalOpen] = useState(false);
   const [chatListModalOpen, setChatListModalOpen] = useState(false);
   const [selectedChatOrder, setSelectedChatOrder] = useState(null);
+  const [selectedChatTarget, setSelectedChatTarget] = useState("KITCHEN");
   const [orderConversations, setOrderConversations] = useState([]);
 
-  // Fetch drivers & last messages for all active orders, grouped by Driver
+  // Fetch drivers & messages for all active orders, organized by Order ID (តាម Order ID)
   useEffect(() => {
-    if (activeOrders.length === 0) {
-      setOrderConversations([]);
-      return;
-    }
-
     if (!activeOrders || activeOrders.length === 0) {
       setOrderConversations([]);
       return;
@@ -95,7 +91,7 @@ function Navbar() {
       try {
         const allDrivers = (await list("drivers").catch(() => [])) || [];
 
-        const rawConvos = await Promise.all(
+        const orderConvos = await Promise.all(
           activeOrders.map(async (ord) => {
             const driverId = ord.driverId || ord.driver_id;
             let driver = null;
@@ -112,53 +108,34 @@ function Navbar() {
             } catch (e) { }
 
             const lastMsg = Array.isArray(msgs) && msgs.length > 0 ? msgs[msgs.length - 1] : null;
-            const unreadCount = Array.isArray(msgs)
-              ? msgs.filter(m => m.sender_type !== "CUSTOMER" && !m.is_read).length
+            const kitchenUnreadCount = Array.isArray(msgs)
+              ? msgs.filter(m => m.sender_type === "KITCHEN" && !m.is_read).length
               : 0;
+            const driverUnreadCount = Array.isArray(msgs)
+              ? msgs.filter(m => m.sender_type === "DRIVER" && !m.is_read).length
+              : 0;
+            const unreadCount = kitchenUnreadCount + driverUnreadCount;
 
             return {
               order: ord,
-              driver: driver || { id: "store", name: "Flame & Crust Courier", vehicleInfo: "Delivery Partner" },
+              driver,
               lastMessage: lastMsg,
+              kitchenUnreadCount,
+              driverUnreadCount,
               unreadCount
             };
           })
         );
 
-        // Group by unique Driver so 1 person has 1 conversation card (មនុស្សម្នាក់ដាក់តែមួយ)
-        const driverMap = new Map();
-        for (const item of rawConvos) {
-          const driverKey = item.driver?.id ? String(item.driver.id) : (item.driver?.name || "driver");
-          if (!driverMap.has(driverKey)) {
-            driverMap.set(driverKey, {
-              driver: item.driver,
-              order: item.order,
-              orders: [item.order],
-              lastMessage: item.lastMessage,
-              unreadCount: item.unreadCount || 0
-            });
-          } else {
-            const existing = driverMap.get(driverKey);
-            existing.orders.push(item.order);
-            existing.unreadCount += (item.unreadCount || 0);
-            if (item.lastMessage) {
-              if (!existing.lastMessage || new Date(item.lastMessage.created_at || 0) > new Date(existing.lastMessage.created_at || 0)) {
-                existing.lastMessage = item.lastMessage;
-                existing.order = item.order;
-              }
-            }
-          }
-        }
-
-        const uniqueConvos = Array.from(driverMap.values());
-        setOrderConversations(uniqueConvos);
+        setOrderConversations(orderConvos);
 
         // Auto-detect incoming call from driver for any active order
-        for (const convo of uniqueConvos) {
+        for (const convo of orderConvos) {
           try {
             const callRes = await getActiveCall(convo.order.id);
             if (callRes.active && callRes.call?.status === "RINGING" && callRes.call?.receiver_type === "CUSTOMER") {
               if (!selectedChatOrder || String(selectedChatOrder.order.id) !== String(convo.order.id)) {
+                setSelectedChatTarget("DRIVER");
                 setSelectedChatOrder(convo);
               }
             }
@@ -626,18 +603,10 @@ function Navbar() {
               <div className="relative flex items-center justify-center size-10 sm:size-11 shrink-0">
                 <button
                   type="button"
-                  onClick={() => {
-                    if (orderConversations.length === 1) {
-                      const convo = orderConversations[0];
-                      convo.unreadCount = 0;
-                      setSelectedChatOrder(convo);
-                    } else {
-                      setChatListModalOpen(true);
-                    }
-                  }}
+                  onClick={() => setChatListModalOpen(true)}
                   className="relative size-full rounded-full bg-secondary/80 hover:bg-secondary border border-border/70 hover:border-primary text-foreground flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95"
-                  title="Messages & Driver Chats"
-                  aria-label="Messages & Driver Chats"
+                  title="Live Order Chats"
+                  aria-label="Live Order Chats"
                 >
                   <MessageSquare className="size-4.5 sm:size-5 text-primary" />
                   {totalUnreadChats > 0 ? (
@@ -897,107 +866,143 @@ function Navbar() {
       <SearchModal isOpen={searchOpen} onClose={setSearchOpen} />
 
       {/* Active Order Chats List Modal (shows who chatted and for which order) */}
+      {/* Active Order Chats List Modal (organized by Order ID with Kitchen vs Driver selector) */}
       <Dialog open={chatListModalOpen} onOpenChange={setChatListModalOpen}>
-        <DialogContent className="max-w-md w-[92vw] rounded-3xl p-5 border-border/60 z-[99]">
+        <DialogContent className="max-w-lg w-[94vw] rounded-3xl p-5 border-border/60 z-[99]">
           <DialogHeader className="pb-3 border-b border-border/60">
             <DialogTitle className="font-serif text-lg sm:text-xl font-bold flex items-center gap-2">
-              <MessageSquare className="size-5 text-primary" /> Active Delivery Chats ({orderConversations.length})
+              <MessageSquare className="size-5 text-primary" /> Live Order Chats ({orderConversations.length})
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Select an ongoing delivery order to chat directly with your courier partner.
+              ជ្រើសរើសការបញ្ជាទិញ (Order ID) និងជ្រើសរើស Chat ជាមួយផ្ទះបាយ ឬអ្នកដឹកជញ្ជូន
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-2.5 py-2 max-h-[60vh] overflow-y-auto no-scrollbar">
-            {orderConversations.map((convo, idx) => {
-              const isKitchen = convo.lastMessage?.sender_type === "KITCHEN" || (!convo.driver && convo.order?.status !== "DELIVERED");
-              const partnerName = isKitchen
-                ? (convo.lastMessage?.sender_name ? `${convo.lastMessage.sender_name} (Kitchen)` : "Kitchen / Chef 👨‍🍳")
-                : (convo.driver?.name || "Courier Partner 🛵");
-              const partnerPhoto = isKitchen
-                ? "https://api.dicebear.com/7.x/bottts/svg?seed=flame-crust-kitchen&backgroundColor=f97316"
-                : (convo.driver?.profilePhoto || convo.driver?.profile_photo);
-              const orderNum = convo.order?.order_number || convo.order?.id;
-              const hasLastMsg = Boolean(convo.lastMessage);
+          <div className="flex flex-col gap-3 py-2 max-h-[62vh] overflow-y-auto no-scrollbar">
+            {orderConversations.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-xs">
+                មិនមានការបញ្ជាទិញកំពុងដំណើរការទេ (No active orders)
+              </div>
+            ) : (
+              orderConversations.map((convo) => {
+                const orderNum = convo.order?.order_number || convo.order?.id;
+                const status = convo.order?.status || "PENDING";
+                const driver = convo.driver;
 
-              return (
-                <div
-                  key={convo.order.id}
-                  onClick={() => {
-                    convo.unreadCount = 0;
-                    setSelectedChatOrder(convo);
-                    setChatListModalOpen(false);
-                  }}
-                  className="p-3.5 rounded-2xl bg-secondary/30 hover:bg-secondary/60 border border-border/60 hover:border-primary/50 transition-all cursor-pointer flex items-center justify-between gap-3 group active:scale-98"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="relative shrink-0">
-                      {isKitchen ? (
-                        <div className="size-11 rounded-full bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center font-bold shadow-xs">
-                          <ChefHat className="size-5.5" />
-                        </div>
-                      ) : partnerPhoto ? (
-                        <img
-                          src={partnerPhoto}
-                          alt={partnerName}
-                          className="size-11 rounded-full object-cover border-2 border-primary/50"
-                        />
-                      ) : (
-                        <div className="size-11 rounded-full bg-gradient-to-tr from-amber-500 to-red-600 text-white flex items-center justify-center font-bold">
-                          <Bike className="size-5" />
-                        </div>
-                      )}
-                      <span className="absolute bottom-0 right-0 size-3 rounded-full bg-emerald-500 ring-2 ring-background" />
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <h4 className="font-bold text-xs sm:text-sm text-foreground truncate group-hover:text-primary transition-colors">
-                          {partnerName}
-                        </h4>
-                        <span className="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded-md bg-secondary text-primary border border-border/60 shrink-0">
-                          #{orderNum}{convo.orders?.length > 1 ? ` (+${convo.orders.length - 1} more)` : ""}
+                return (
+                  <div
+                    key={convo.order.id}
+                    className="rounded-2xl bg-card border border-border/70 p-3.5 shadow-xs flex flex-col gap-2.5 transition-all"
+                  >
+                    {/* Order Header: Order ID & Status Badge */}
+                    <div className="flex items-center justify-between gap-2 pb-2 border-b border-border/50">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-mono text-xs font-black text-primary px-2 py-0.5 rounded-lg bg-primary/10 border border-primary/20 shrink-0">
+                          #{orderNum}
+                        </span>
+                        <span className="text-xs font-medium text-muted-foreground truncate">
+                          {convo.order?.items?.length ? `${convo.order.items.length} មុខ` : "Delivery Order"}
                         </span>
                       </div>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {hasLastMsg ? (
-                          <span className={cn(convo.unreadCount > 0 ? "font-bold text-foreground" : "")}>
-                            {convo.lastMessage.sender_type === "CUSTOMER"
-                              ? "You: "
-                              : isKitchen
-                                ? "Kitchen: "
-                                : `${partnerName.split(" ")[0]}: `}
-                            {convo.lastMessage.message === "[DELETED]"
-                              ? "🚫 Removed a message"
-                              : convo.lastMessage.message.startsWith("[IMG]:")
-                                ? "📷 Photo"
-                                : convo.lastMessage.message.startsWith("[VOICE]:")
-                                  ? "🎤 Voice message"
-                                  : convo.lastMessage.message}
+
+                      <span className={cn(
+                        "text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0",
+                        status === "DELIVERED" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30" :
+                        status === "ON_DELIVERY" || status === "OUT_FOR_DELIVERY" ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 animate-pulse" :
+                        status === "READY" ? "bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30" :
+                        "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                      )}>
+                        {status.replace(/_/g, " ")}
+                      </span>
+                    </div>
+
+                    {/* 2 Chat Target Options: Kitchen vs Driver */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {/* Option 1: Kitchen / ផ្ទះបាយ */}
+                      <div
+                        onClick={() => {
+                          convo.kitchenUnreadCount = 0;
+                          setSelectedChatTarget("KITCHEN");
+                          setSelectedChatOrder(convo);
+                          setChatListModalOpen(false);
+                        }}
+                        className="p-2.5 rounded-xl bg-secondary/40 hover:bg-secondary/80 border border-border/60 hover:border-amber-500/50 transition-all cursor-pointer flex items-center justify-between gap-2.5 group active:scale-98"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="size-9.5 rounded-full bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                            <ChefHat className="size-4.5" />
+                          </div>
+                          <div className="min-w-0">
+                            <h5 className="font-bold text-xs text-foreground group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors truncate">
+                              Kitchen / ផ្ទះបាយ 👨‍🍳
+                            </h5>
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              ម្ហូប និងការរៀបចំ
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {convo.kitchenUnreadCount > 0 && (
+                            <span className="min-w-4.5 h-4.5 px-1 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center shadow-xs animate-pulse">
+                              {convo.kitchenUnreadCount}
+                            </span>
+                          )}
+                          <span className="text-[11px] font-semibold text-primary group-hover:underline">
+                            Chat →
                           </span>
-                        ) : (
-                          <span className="italic text-muted-foreground/80">Tap to chat regarding order #{orderNum}</span>
-                        )}
-                      </p>
+                        </div>
+                      </div>
+
+                      {/* Option 2: Driver / អ្នកដឹក */}
+                      <div
+                        onClick={() => {
+                          convo.driverUnreadCount = 0;
+                          setSelectedChatTarget("DRIVER");
+                          setSelectedChatOrder(convo);
+                          setChatListModalOpen(false);
+                        }}
+                        className="p-2.5 rounded-xl bg-secondary/40 hover:bg-secondary/80 border border-border/60 hover:border-primary/50 transition-all cursor-pointer flex items-center justify-between gap-2.5 group active:scale-98"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="relative shrink-0">
+                            {driver?.profilePhoto || driver?.profile_photo ? (
+                              <img
+                                src={driver.profilePhoto || driver.profile_photo}
+                                alt={driver.name}
+                                className="size-9.5 rounded-full object-cover border border-primary/40"
+                              />
+                            ) : (
+                              <div className="size-9.5 rounded-full bg-gradient-to-tr from-rose-500 to-red-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                                <Bike className="size-4.5" />
+                              </div>
+                            )}
+                            <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-emerald-500 ring-1.5 ring-background" />
+                          </div>
+                          <div className="min-w-0">
+                            <h5 className="font-bold text-xs text-foreground group-hover:text-primary transition-colors truncate">
+                              {driver ? (driver.name || "Driver") : "Driver / អ្នកដឹក 🛵"}
+                            </h5>
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {driver ? (driver.phone ? `Phone: ${driver.phone}` : "Assigned Courier") : "រង់ចាំអ្នកដឹក..."}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {convo.driverUnreadCount > 0 && (
+                            <span className="min-w-4.5 h-4.5 px-1 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center shadow-xs animate-pulse">
+                              {convo.driverUnreadCount}
+                            </span>
+                          )}
+                          <span className="text-[11px] font-semibold text-primary group-hover:underline">
+                            Chat →
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    {convo.unreadCount > 0 && (
-                      <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-600 text-white text-[10px] font-black flex items-center justify-center shadow-xs animate-pulse">
-                        {convo.unreadCount}
-                      </span>
-                    )}
-                    <Button
-                      size="sm"
-                      className="rounded-full h-8 px-3 text-xs font-semibold bg-primary text-primary-foreground pointer-events-none"
-                    >
-                      Chat
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -1015,17 +1020,19 @@ function Navbar() {
             type: "CUSTOMER",
             name: customer?.name || customer?.phone || "Customer"
           }}
+          initialTarget={selectedChatTarget}
+          driver={selectedChatOrder.driver}
           recipient={{
-            name: selectedChatOrder.lastMessage?.sender_type === "KITCHEN" || !selectedChatOrder.driver?.name
+            name: selectedChatTarget === "KITCHEN" || !selectedChatOrder.driver?.name
               ? "Flame & Crust Kitchen 👨‍🍳"
               : (selectedChatOrder.driver?.name || "Delivery Partner"),
-            photo: selectedChatOrder.lastMessage?.sender_type === "KITCHEN" || !selectedChatOrder.driver?.name
+            photo: selectedChatTarget === "KITCHEN" || !selectedChatOrder.driver?.name
               ? "https://api.dicebear.com/7.x/bottts/svg?seed=flame-crust-kitchen&backgroundColor=f97316"
               : (selectedChatOrder.driver?.profilePhoto || selectedChatOrder.driver?.profile_photo),
-            role: selectedChatOrder.lastMessage?.sender_type === "KITCHEN" || !selectedChatOrder.driver?.name
+            role: selectedChatTarget === "KITCHEN" || !selectedChatOrder.driver?.name
               ? "Kitchen Staff (ផ្ទះបាយ)"
               : (selectedChatOrder.driver?.vehicleInfo || selectedChatOrder.driver?.vehicle_info || "Delivery Partner"),
-            phone: selectedChatOrder.lastMessage?.sender_type === "KITCHEN" || !selectedChatOrder.driver?.name
+            phone: selectedChatTarget === "KITCHEN" || !selectedChatOrder.driver?.name
               ? ""
               : (selectedChatOrder.driver?.phone || "0965755963")
           }}
