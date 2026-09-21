@@ -1024,12 +1024,20 @@ export function OrderChatModal({
             </div>
           ) : (
             messages.filter(m => {
-              if (currentUser.type !== "CUSTOMER") return true;
-              if (activeTarget === "KITCHEN") {
+              if (currentUser.type === "CUSTOMER") {
+                if (activeTarget === "KITCHEN") {
+                  return m.sender_type === "KITCHEN" || m.recipient_type === "KITCHEN";
+                }
+                if (activeTarget === "DRIVER") {
+                  return m.sender_type === "DRIVER" || m.recipient_type === "DRIVER" || (!m.recipient_type && m.sender_type !== "KITCHEN");
+                }
+                return true;
+              }
+              if (currentUser.type === "KITCHEN") {
                 return m.sender_type === "KITCHEN" || m.recipient_type === "KITCHEN";
               }
-              if (activeTarget === "DRIVER") {
-                return m.sender_type === "DRIVER" || m.recipient_type === "DRIVER" || !m.recipient_type;
+              if (currentUser.type === "DRIVER") {
+                return m.sender_type === "DRIVER" || m.recipient_type === "DRIVER" || (!m.recipient_type && m.sender_type !== "KITCHEN");
               }
               return true;
             }).map((m) => {

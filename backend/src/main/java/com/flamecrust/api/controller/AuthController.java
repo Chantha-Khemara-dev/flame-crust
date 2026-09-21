@@ -1170,10 +1170,18 @@ public class AuthController {
     @GetMapping("/order-messages")
     public ResponseEntity<?> getOrderMessages(@RequestParam("orderId") Long orderId) {
         try {
-            List<Map<String, Object>> messages = jdbc.queryForList(
-                "SELECT id, order_id, sender_type, sender_id, sender_name, message, recipient_type, is_read, created_at FROM order_messages WHERE order_id = ? ORDER BY created_at ASC",
-                orderId
-            );
+            List<Map<String, Object>> messages;
+            try {
+                messages = jdbc.queryForList(
+                    "SELECT id, order_id, sender_type, sender_id, sender_name, message, recipient_type, is_read, created_at FROM order_messages WHERE order_id = ? ORDER BY created_at ASC",
+                    orderId
+                );
+            } catch (Exception colEx) {
+                messages = jdbc.queryForList(
+                    "SELECT id, order_id, sender_type, sender_id, sender_name, message, is_read, created_at FROM order_messages WHERE order_id = ? ORDER BY created_at ASC",
+                    orderId
+                );
+            }
             return ResponseEntity.ok(messages);
         } catch (Exception e) {
             log.error("Error fetching order messages for orderId {}", orderId, e);
@@ -1279,10 +1287,17 @@ public class AuthController {
                 }
             }
 
-            jdbc.update(
-                "INSERT INTO order_messages (order_id, sender_type, sender_id, sender_name, message, recipient_type, is_read) VALUES (?, ?, ?, ?, ?, ?, FALSE)",
-                orderId, senderType, targetSenderId, resolvedSenderName, message.trim(), recipientType
-            );
+            try {
+                jdbc.update(
+                    "INSERT INTO order_messages (order_id, sender_type, sender_id, sender_name, message, recipient_type, is_read) VALUES (?, ?, ?, ?, ?, ?, FALSE)",
+                    orderId, senderType, targetSenderId, resolvedSenderName, message.trim(), recipientType
+                );
+            } catch (Exception insertEx) {
+                jdbc.update(
+                    "INSERT INTO order_messages (order_id, sender_type, sender_id, sender_name, message, is_read) VALUES (?, ?, ?, ?, ?, FALSE)",
+                    orderId, senderType, targetSenderId, resolvedSenderName, message.trim()
+                );
+            }
 
             // Asynchronously dispatch real Web Push Notification with sender photo & direct open URL
             final String finalMsgText = message.trim();

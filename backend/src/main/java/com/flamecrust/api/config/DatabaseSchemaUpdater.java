@@ -44,5 +44,12 @@ public class DatabaseSchemaUpdater implements CommandLineRunner {
         } catch (Exception e) {
             System.out.println("--> Schema update skipped or already applied: " + e.getMessage());
         }
+
+        try {
+            jdbcTemplate.execute("ALTER TABLE order_messages ADD COLUMN recipient_type VARCHAR(50) NULL;");
+            System.out.println("--> Schema updated successfully: Added recipient_type column to order_messages.");
+        } catch (Exception e) {
+            System.out.println("--> Schema update skipped or already applied: " + e.getMessage());
+        }
     }
 }
