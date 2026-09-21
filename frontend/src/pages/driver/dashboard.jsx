@@ -43,12 +43,50 @@ let staticDriverCache = {
   timestamp: 0,
 };
 
-function MapUpdater({ center }) {
+function MapUpdater({ center, mobileView }) {
   const map = useMap();
   const lat = center?.[0];
   const lng = center?.[1];
   const lastPanRef = useRef({ lat: null, lng: null });
 
+  // Invalidate map size on mobileView change, layout shifts, or window resize
+  useEffect(() => {
+    if (!map) return;
+
+    const triggerInvalidate = () => {
+      try {
+        map.invalidateSize({ debounceMoveend: true });
+      } catch (e) {}
+    };
+
+    triggerInvalidate();
+    const t1 = setTimeout(triggerInvalidate, 50);
+    const t2 = setTimeout(triggerInvalidate, 150);
+    const t3 = setTimeout(triggerInvalidate, 400);
+
+    const container = map.getContainer();
+    let resizeObserver = null;
+    if (typeof ResizeObserver !== "undefined" && container) {
+      resizeObserver = new ResizeObserver(() => {
+        triggerInvalidate();
+      });
+      resizeObserver.observe(container);
+    }
+
+    window.addEventListener("resize", triggerInvalidate);
+    window.addEventListener("orientationchange", triggerInvalidate);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      if (resizeObserver) resizeObserver.disconnect();
+      window.removeEventListener("resize", triggerInvalidate);
+      window.removeEventListener("orientationchange", triggerInvalidate);
+    };
+  }, [map, mobileView]);
+
+  // Center or pan smoothly when driver location changes
   useEffect(() => {
     if (lat && lng && Number.isFinite(lat) && Number.isFinite(lng)) {
       const prev = lastPanRef.current;
@@ -61,7 +99,64 @@ function MapUpdater({ center }) {
       }
     }
   }, [lat, lng, map]);
+
   return null;
+}
+
+function MapQuickControls({ driverLocation, orders = [] }) {
+  const map = useMap();
+
+  const handleCenterGPS = () => {
+    if (driverLocation && Number.isFinite(driverLocation.lat) && Number.isFinite(driverLocation.lng)) {
+      map.flyTo([driverLocation.lat, driverLocation.lng], 16, { duration: 0.7 });
+    } else {
+      map.flyTo(STORE_COORDS, 15, { duration: 0.7 });
+    }
+  };
+
+  const handleFitBounds = () => {
+    const points = [];
+    if (driverLocation && Number.isFinite(driverLocation.lat) && Number.isFinite(driverLocation.lng)) {
+      points.push([driverLocation.lat, driverLocation.lng]);
+    }
+    points.push(STORE_COORDS);
+    orders.forEach(o => {
+      if (o?.address?.latitude && o?.address?.longitude) {
+        const lat = Number(o.address.latitude);
+        const lng = Number(o.address.longitude);
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          points.push([lat, lng]);
+        }
+      }
+    });
+
+    if (points.length > 1) {
+      map.fitBounds(points, { padding: [45, 45], maxZoom: 16 });
+    } else {
+      map.flyTo(points[0], 15);
+    }
+  };
+
+  return (
+    <div className="absolute bottom-24 right-4 z-[400] flex flex-col gap-2.5 sm:bottom-6 sm:right-6">
+      <button
+        type="button"
+        onClick={handleCenterGPS}
+        className="size-11 sm:size-12 rounded-2xl bg-white/95 dark:bg-card/95 backdrop-blur-md border border-border/70 shadow-lg text-primary flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer"
+        title="My GPS Location"
+      >
+        <Navigation className="size-5 stroke-[2.5]" />
+      </button>
+      <button
+        type="button"
+        onClick={handleFitBounds}
+        className="size-11 sm:size-12 rounded-2xl bg-white/95 dark:bg-card/95 backdrop-blur-md border border-border/70 shadow-lg text-foreground flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer"
+        title="Fit all delivery points"
+      >
+        <MapPin className="size-5 stroke-[2.5] text-amber-500" />
+      </button>
+    </div>
+  );
 }
 
 // ----------------- HEADER -----------------
@@ -1519,10 +1614,16 @@ export default function DriverDashboardPage() {
             className="w-full h-full z-0" 
             zoomControl={false}
           >
-            {/* Swap tiles instead of remounting the whole map (key={theme} forced
-                a full Leaflet teardown + re-init, which froze the UI on toggle) */}
             <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url={
+                theme === "dark"
+                  ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                  : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+              }
+              subdomains="abcd"
+              maxZoom={20}
+              keepBuffer={8}
             />
             
             {/* Store Central Kitchen Marker */}
@@ -1562,9 +1663,16 @@ export default function DriverDashboardPage() {
               return null;
             })}
 
-            {lastLocation && Number.isFinite(lastLocation.lat) && Number.isFinite(lastLocation.lng) && (
-              <MapUpdater center={[lastLocation.lat, lastLocation.lng]} />
-            )}
+            <MapQuickControls driverLocation={lastLocation} orders={myOrders} />
+
+            <MapUpdater 
+              center={
+                lastLocation && Number.isFinite(lastLocation.lat) && Number.isFinite(lastLocation.lng)
+                  ? [lastLocation.lat, lastLocation.lng]
+                  : STORE_COORDS
+              } 
+              mobileView={mobileView}
+            />
           </MapContainer>
         </div>
       </main>
