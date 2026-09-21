@@ -74,56 +74,116 @@ export function playChatChimeSound() {
   } catch (e) {}
 }
 
-export function showChatNotificationToast({ senderName, message, photo, onReply }) {
+export function showChatNotificationToast({ senderName, message, photo, orderNumber, onReply }) {
   playChatChimeSound();
   try {
     if ("vibrate" in navigator) navigator.vibrate([100, 50, 100]);
   } catch (e) {}
 
+  // Parse if senderName contains "•"
+  let displayName = senderName || "New Message";
+  let badge = orderNumber || null;
+  if (!badge && typeof senderName === "string" && senderName.includes("•")) {
+    const parts = senderName.split("•");
+    displayName = parts[0].trim();
+    badge = parts.slice(1).join("•").trim();
+  }
+
+  const isVoice = message?.startsWith("[VOICE]:");
+  const isImage = message?.startsWith("[IMG]:");
+  const displayMsg = isVoice 
+    ? "🎤 Voice message (សារជាសំឡេង)" 
+    : isImage 
+      ? "📷 Photo attachment (រូបភាព)" 
+      : message;
+
   toast.custom((t) => (
     <div 
-      onClick={() => {
-        toast.dismiss(t);
-        if (onReply) onReply();
-      }}
-      className="w-[330px] sm:w-[360px] max-w-[92vw] bg-white dark:bg-zinc-900 border-2 border-red-500/40 dark:border-red-500/30 shadow-2xl rounded-2xl p-3.5 flex items-center gap-3.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-zinc-800/80 transition-all select-none"
+      className="w-[380px] sm:w-[440px] max-w-[95vw] bg-card/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-border/80 dark:border-zinc-800 shadow-2xl rounded-2xl p-3.5 flex items-start gap-3.5 transition-all select-none ring-1 ring-black/5 dark:ring-white/5 animate-in fade-in slide-in-from-top-4 duration-300 group"
     >
-      <div className="relative shrink-0">
+      {/* Avatar / Photo with Online Pulse */}
+      <div 
+        onClick={() => {
+          toast.dismiss(t);
+          if (onReply) onReply();
+        }}
+        className="relative shrink-0 cursor-pointer pt-0.5"
+      >
         {photo ? (
           <img 
             src={photo} 
-            alt={senderName} 
-            className="size-11 rounded-full object-cover border-2 border-red-500/60 shadow-xs" 
+            alt={displayName} 
+            className="size-11.5 rounded-full object-cover border-2 border-primary/50 shadow-md ring-2 ring-background" 
             onError={(e) => {
               e.currentTarget.onerror = null;
-              e.currentTarget.src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(senderName || "FC")}&backgroundColor=f87171&textColor=ffffff`;
+              e.currentTarget.src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(displayName || "FC")}&backgroundColor=f87171&textColor=ffffff`;
             }}
           />
         ) : (
-          <div className="size-11 rounded-full bg-gradient-to-tr from-amber-500 to-red-600 text-white flex items-center justify-center font-bold shadow-xs">
-            <MessageSquare className="size-5" />
+          <div className="size-11.5 rounded-full bg-gradient-to-tr from-amber-500 via-orange-500 to-red-600 text-white flex items-center justify-center font-bold shadow-md ring-2 ring-background">
+            <MessageSquare className="size-5.5 text-white" />
           </div>
         )}
-        <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
+        <span className="absolute bottom-0 right-0 size-3.5 rounded-full bg-emerald-500 ring-2 ring-card dark:ring-zinc-900 shadow-xs" />
       </div>
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2 mb-0.5">
-          <h5 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-zinc-100 truncate">{senderName || "Customer"}</h5>
-          <span className="text-[10px] text-red-600 dark:text-red-400 font-bold whitespace-nowrap shrink-0">Just now</span>
+      {/* Main Content Info */}
+      <div 
+        onClick={() => {
+          toast.dismiss(t);
+          if (onReply) onReply();
+        }}
+        className="flex-1 min-w-0 cursor-pointer"
+      >
+        <div className="flex items-center justify-between gap-1.5 mb-1">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h5 className="font-bold text-xs sm:text-sm text-foreground truncate">
+              {displayName}
+            </h5>
+            {badge && (
+              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20 shrink-0 max-w-[150px] truncate">
+                {badge.startsWith("#") || badge.toLowerCase().includes("ticket") ? badge : `#${badge}`}
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] font-semibold text-muted-foreground whitespace-nowrap shrink-0">
+            Just now
+          </span>
         </div>
-        <p className="text-xs text-slate-600 dark:text-zinc-300 truncate font-medium">
-          {message?.startsWith("[VOICE]:") ? "🎤 Voice Note (Voice Message)" : message?.startsWith("[IMG]:") ? "📷 Photo Attachment" : message}
+
+        <p className="text-xs sm:text-[13px] text-muted-foreground dark:text-zinc-300 font-medium leading-relaxed line-clamp-2 break-words">
+          {displayMsg}
         </p>
       </div>
 
-      <div className="shrink-0">
-        <span className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-3.5 py-1.5 rounded-full shadow-xs whitespace-nowrap inline-block">
-          Reply
-        </span>
+      {/* Action Buttons: Reply + Close (X) */}
+      <div className="flex flex-col items-end gap-1.5 shrink-0 pt-0.5">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            toast.dismiss(t);
+          }}
+          className="size-6 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary flex items-center justify-center transition-colors cursor-pointer"
+          title="Dismiss"
+        >
+          <X className="size-3.5" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            toast.dismiss(t);
+            if (onReply) onReply();
+          }}
+          className="px-3 py-1.5 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer whitespace-nowrap flex items-center gap-1"
+        >
+          <MessageSquare className="size-3" />
+          <span>Reply</span>
+        </button>
       </div>
     </div>
-  ), { duration: 5000, position: "top-center" });
+  ), { duration: 6000, position: "top-center" });
 }
 
 export function VoiceMessagePlayer({ audioUrl, duration: givenDuration, isMe, msgId }) {

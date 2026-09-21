@@ -361,7 +361,8 @@ export default function KitchenDashboard() {
                       : (ord.customer?.avatar || ord.customer_photo);
 
                     showChatNotificationToast({
-                      senderName: `${senderLabel} • Ticket #${shortOrderNo(ord)}`,
+                      senderName: senderLabel,
+                      orderNumber: `Ticket #${shortOrderNo(ord)}`,
                       message: m.message,
                       photo: photo,
                       onReply: () => {
