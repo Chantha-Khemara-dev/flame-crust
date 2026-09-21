@@ -90,6 +90,10 @@ function Navbar() {
       if (!activeOrders || activeOrders.length === 0) return;
       try {
         const allDrivers = (await list("drivers").catch(() => [])) || [];
+        const allKitchenStaff = (await list("kitchen_staff").catch(() => [])) || [];
+        const activeChef = allKitchenStaff.find(s => s.profile_photo || s.avatar) || allKitchenStaff[0] || null;
+        const defaultChefPhoto = activeChef?.profile_photo || activeChef?.avatar || "https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=150&auto=format&fit=crop&q=80";
+        const fallbackDriverPhoto = allDrivers.find(d => d.profile_photo || d.profilePhoto)?.profile_photo || "https://res.cloudinary.com/gdkctwwo/image/upload/v1787385235/fphxromlgwbv1xyo2ukw.jpg";
 
         const orderConvos = await Promise.all(
           activeOrders.map(async (ord) => {
@@ -115,10 +119,13 @@ function Navbar() {
               ? msgs.filter(m => m.sender_type === "DRIVER" && !m.is_read).length
               : 0;
             const unreadCount = kitchenUnreadCount + driverUnreadCount;
+            const driverPhoto = driver?.profile_photo || driver?.profilePhoto || driver?.avatar || fallbackDriverPhoto;
 
             return {
               order: ord,
               driver,
+              chefPhoto: defaultChefPhoto,
+              driverPhoto,
               lastMessage: lastMsg,
               kitchenUnreadCount,
               driverUnreadCount,
@@ -929,8 +936,19 @@ function Navbar() {
                         className="p-2.5 rounded-xl bg-secondary/40 hover:bg-secondary/80 border border-border/60 hover:border-amber-500/50 transition-all cursor-pointer flex items-center justify-between gap-2.5 group active:scale-98"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="size-9.5 rounded-full bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                            <ChefHat className="size-4.5" />
+                          <div className="relative shrink-0">
+                            <img
+                              src={convo.chefPhoto || "https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=150&auto=format&fit=crop&q=80"}
+                              alt="Kitchen Chef"
+                              className="size-10.5 rounded-full object-cover border-2 border-amber-500/70 shadow-xs ring-2 ring-amber-500/20"
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = "https://images.unsplash.com/photo-1581299894007-aaa50297cf16?w=150&auto=format&fit=crop&q=80";
+                              }}
+                            />
+                            <span className="absolute -bottom-1 -right-1 size-4 rounded-full bg-amber-500 text-white flex items-center justify-center text-[9px] shadow-xs ring-1.5 ring-background font-bold">
+                              👨‍🍳
+                            </span>
                           </div>
                           <div className="min-w-0">
                             <h5 className="font-bold text-xs text-foreground group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors truncate">
@@ -965,18 +983,18 @@ function Navbar() {
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div className="relative shrink-0">
-                            {driver?.profilePhoto || driver?.profile_photo ? (
-                              <img
-                                src={driver.profilePhoto || driver.profile_photo}
-                                alt={driver.name}
-                                className="size-9.5 rounded-full object-cover border border-primary/40"
-                              />
-                            ) : (
-                              <div className="size-9.5 rounded-full bg-gradient-to-tr from-rose-500 to-red-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                                <Bike className="size-4.5" />
-                              </div>
-                            )}
-                            <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-emerald-500 ring-1.5 ring-background" />
+                            <img
+                              src={convo.driverPhoto || "https://res.cloudinary.com/gdkctwwo/image/upload/v1787385235/fphxromlgwbv1xyo2ukw.jpg"}
+                              alt={driver ? driver.name : "Driver"}
+                              className="size-10.5 rounded-full object-cover border-2 border-primary/70 shadow-xs ring-2 ring-primary/20"
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(driver?.name || "Driver")}&backgroundColor=ef4444&textColor=ffffff`;
+                              }}
+                            />
+                            <span className="absolute -bottom-1 -right-1 size-4 rounded-full bg-red-600 text-white flex items-center justify-center text-[9px] shadow-xs ring-1.5 ring-background font-bold">
+                              🛵
+                            </span>
                           </div>
                           <div className="min-w-0">
                             <h5 className="font-bold text-xs text-foreground group-hover:text-primary transition-colors truncate">

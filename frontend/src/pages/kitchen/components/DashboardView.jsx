@@ -21,6 +21,7 @@ import {
   ChevronUp,
   Loader2,
   Bike,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getImageUrl } from "@/lib/food-api";
@@ -70,6 +71,7 @@ export function DashboardView({
   onTimeScopeChange,
   staleOrdersCount = 0,
   onClearStaleOrders,
+  unreadChatsByOrder = {},
 }) {
   const now = useNow();
   const compact = density === "compact";
@@ -631,14 +633,25 @@ function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOp
               </span>
             )}
           </div>
-          <h3
-            className={cn(
-              "truncate font-serif font-bold leading-tight tracking-tight text-foreground",
-              compact ? "text-base" : "text-lg sm:text-xl"
+          <div className="flex items-center gap-2">
+            <h3
+              className={cn(
+                "truncate font-serif font-bold leading-tight tracking-tight text-foreground",
+                compact ? "text-base" : "text-lg sm:text-xl"
+              )}
+            >
+              #{shortOrderNo(order)}
+            </h3>
+            {unreadChatsByOrder[order.id] > 0 && (
+              <span
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-black animate-bounce shadow-md ring-2 ring-background cursor-pointer"
+                title={`${unreadChatsByOrder[order.id]} new message(s)`}
+              >
+                <MessageCircle className="size-3 fill-current" />
+                Chat ({unreadChatsByOrder[order.id]})
+              </span>
             )}
-          >
-            #{shortOrderNo(order)}
-          </h3>
+          </div>
           <p className="mt-1 flex items-center gap-1.5 truncate text-[11px] font-semibold text-muted-foreground">
             <User className="size-3 shrink-0" />
             <span className="truncate">{order.customer_name || "Guest"}</span>

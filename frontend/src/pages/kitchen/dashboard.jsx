@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { list, update } from "@/lib/api";
+import { list, update, getOrderMessages } from "@/lib/api";
 import { unsubscribeFromPushNotifications } from "@/lib/push-notifications";
+import { playChatChimeSound, showChatNotificationToast } from "@/components/food/order-chat-modal";
 import { toast } from "sonner";
 import {
   RefreshCw,
@@ -319,6 +320,71 @@ export default function KitchenDashboard() {
   }, [safeHistory]);
 
   const [timeScope, setTimeScope] = useState("all");
+
+  // Real-time Chat Notification Monitor for Kitchen Dashboard
+  const [unreadChatsByOrder, setUnreadChatsByOrder] = useState({});
+  const knownKitchenMsgIdsRef = useRef(new Set());
+  const initialChatLoadDoneRef = useRef(false);
+
+  useEffect(() => {
+    if (!activeOrders || activeOrders.length === 0) {
+      setUnreadChatsByOrder({});
+      return;
+    }
+
+    const checkKitchenChats = async () => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      try {
+        const unreadMap = {};
+        for (const ord of activeOrders) {
+          try {
+            const msgs = await getOrderMessages(ord.id);
+            if (Array.isArray(msgs)) {
+              const incoming = msgs.filter((m) => m.sender_type !== "KITCHEN");
+              const unread = incoming.filter((m) => !m.is_read);
+              if (unread.length > 0) {
+                unreadMap[ord.id] = unread.length;
+              }
+
+              if (initialChatLoadDoneRef.current) {
+                for (const m of incoming) {
+                  if (!knownKitchenMsgIdsRef.current.has(m.id)) {
+                    knownKitchenMsgIdsRef.current.add(m.id);
+                    playChatChimeSound();
+
+                    const isDriver = m.sender_type === "DRIVER";
+                    const senderLabel = isDriver 
+                      ? `${m.sender_name || "Driver"} (អ្នកដឹក 🛵)`
+                      : `${m.sender_name || ord.customer_name || "Customer"} (អតិថិជន 🍕)`;
+                    const photo = isDriver 
+                      ? (ord.driver?.profile_photo || ord.driver?.avatar)
+                      : (ord.customer?.avatar || ord.customer_photo);
+
+                    showChatNotificationToast({
+                      senderName: `${senderLabel} • Ticket #${shortOrderNo(ord)}`,
+                      message: m.message,
+                      photo: photo,
+                      onReply: () => {
+                        setSelectedOrder(ord);
+                      }
+                    });
+                  }
+                }
+              } else {
+                incoming.forEach((m) => knownKitchenMsgIdsRef.current.add(m.id));
+              }
+            }
+          } catch (e) {}
+        }
+        initialChatLoadDoneRef.current = true;
+        setUnreadChatsByOrder(unreadMap);
+      } catch (e) {}
+    };
+
+    checkKitchenChats();
+    const chatPoll = setInterval(checkKitchenChats, 4000);
+    return () => clearInterval(chatPoll);
+  }, [activeOrders]);
 
   const staleOrders = useMemo(() => {
     return activeOrders.filter((o) => {
@@ -702,6 +768,7 @@ export default function KitchenDashboard() {
               onTimeScopeChange={setTimeScope}
               staleOrdersCount={staleOrders.length}
               onClearStaleOrders={handleClearStaleOrders}
+              unreadChatsByOrder={unreadChatsByOrder}
             />
           )}
         </main>

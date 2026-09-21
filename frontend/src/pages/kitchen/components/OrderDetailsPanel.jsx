@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { getImageUrl } from "@/lib/food-api";
+import { getOrderMessages } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { OrderChatModal } from "@/components/food/order-chat-modal";
 import {
@@ -70,7 +71,33 @@ export function OrderDetailsPanel({
   const [chatOpen, setChatOpen] = useState(false);
   const [chatTarget, setChatTarget] = useState("CUSTOMER");
   const [photoOpen, setPhotoOpen] = useState(false);
+  const [panelMessages, setPanelMessages] = useState([]);
   const now = useNow();
+
+  useEffect(() => {
+    if (!order?.id) {
+      setPanelMessages([]);
+      return;
+    }
+    const loadMsgs = async () => {
+      try {
+        const msgs = await getOrderMessages(order.id);
+        if (Array.isArray(msgs)) setPanelMessages(msgs);
+      } catch (e) {}
+    };
+    loadMsgs();
+    const poll = setInterval(loadMsgs, 4000);
+    return () => clearInterval(poll);
+  }, [order?.id, chatOpen]);
+
+  const customerUnreadCount = useMemo(() =>
+    panelMessages.filter((m) => m.sender_type === "CUSTOMER" && !m.is_read).length,
+    [panelMessages]
+  );
+  const driverUnreadCount = useMemo(() =>
+    panelMessages.filter((m) => m.sender_type === "DRIVER" && !m.is_read).length,
+    [panelMessages]
+  );
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -301,9 +328,14 @@ export function OrderDetailsPanel({
                       setChatTarget("CUSTOMER");
                       setChatOpen(true);
                     }}
-                    className="h-10 flex-1 rounded-full bg-primary px-4 font-serif text-xs font-bold text-primary-foreground shadow-warm transition-all hover:bg-primary/90 active:scale-95 sm:flex-initial sm:text-sm"
+                    className="h-10 flex-1 rounded-full bg-primary px-4 font-serif text-xs font-bold text-primary-foreground shadow-warm transition-all hover:bg-primary/90 active:scale-95 sm:flex-initial sm:text-sm relative cursor-pointer"
                   >
                     <MessageCircle className="mr-1.5 size-4" /> Chat
+                    {customerUnreadCount > 0 && (
+                      <span className="ml-1.5 min-w-5 h-5 px-1.5 rounded-full bg-white text-primary text-[10px] font-black inline-flex items-center justify-center animate-bounce shadow-xs">
+                        {customerUnreadCount}
+                      </span>
+                    )}
                   </Button>
                   {customer?.phone && (
                     <Button
@@ -365,9 +397,14 @@ export function OrderDetailsPanel({
                           setChatTarget("DRIVER");
                           setChatOpen(true);
                         }}
-                        className="h-9 rounded-full border-border/70 px-3 text-xs font-semibold hover:bg-secondary cursor-pointer"
+                        className="h-9 rounded-full border-border/70 px-3 text-xs font-semibold hover:bg-secondary cursor-pointer relative"
                       >
                         <MessageCircle className="mr-1.5 size-3.5 text-primary" /> Chat Driver
+                        {driverUnreadCount > 0 && (
+                          <span className="ml-1.5 min-w-4.5 h-4.5 px-1 rounded-full bg-red-600 text-white text-[9px] font-black inline-flex items-center justify-center animate-pulse shadow-xs">
+                            {driverUnreadCount}
+                          </span>
+                        )}
                       </Button>
                     )}
                     {driver && driver.phone && (
