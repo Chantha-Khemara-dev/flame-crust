@@ -101,7 +101,7 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
         ripple.style.zIndex = "999999";
         ripple.style.pointerEvents = "none";
         ripple.style.transform = "translate(-50%, -50%) scale(0)";
-        ripple.style.transition = "transform 450ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease 300ms";
+        ripple.style.transition = "transform 800ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity 250ms ease 650ms";
         document.body.appendChild(ripple);
 
         void ripple.offsetHeight;
@@ -114,8 +114,8 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
           setTimeout(() => {
             ripple.remove();
             isTransitioningRef.current = false;
-          }, 200);
-        }, 320);
+          }, 250);
+        }, 550);
       } catch {
         applyThemeState();
         isTransitioningRef.current = false;
@@ -144,8 +144,8 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
                   ],
                 },
                 {
-                  duration: 450,
-                  easing: "cubic-bezier(0.4, 0, 0.2, 1)",
+                  duration: 800,
+                  easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
                   pseudoElement: "::view-transition-new(root)",
                   fill: "forwards",
                 }
