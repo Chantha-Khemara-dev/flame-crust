@@ -567,6 +567,8 @@ function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOp
   const items = Array.isArray(order.items) ? order.items : [];
   const itemCount = items.reduce((sum, item) => sum + (parseInt(item.quantity) || 1), 0);
   const waited = elapsedFrom(stage === "preparing" ? order.updated_at || order.created_at : order.created_at, now) || 0;
+  const isDelivery = order.order_type !== "DINE_IN" && order.order_type !== "TAKEAWAY";
+  const canAdvance = stage === "pending" || stage === "preparing" || (stage === "ready" && !isDelivery);
   const urgency = urgencyOf(stage, waited, targetPrepMinutes);
   const tone = URGENCY_STYLE[urgency.tone];
   const totalWait = elapsedFrom(order.created_at, now) || 0;
@@ -757,7 +759,7 @@ function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOp
         <span className="hidden shrink-0 items-center gap-1 rounded-full border border-border/60 bg-secondary/60 px-2 py-1 text-[10px] font-bold text-muted-foreground sm:inline-flex">
           <ShoppingBag className="size-3" /> {itemCount}
         </span>
-        {config.nextStatus ? (
+        {canAdvance ? (
           <Button
             disabled={isUpdating}
             onClick={(event) => {
@@ -780,30 +782,37 @@ function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOp
               <>
                 <config.icon className="mr-1.5 size-3.5 shrink-0 transition-transform group-hover/btn:scale-125" />
                 <span className="truncate">
-                  {config.actionLabel || (
-                    stage === "pending"
-                      ? "Start Cooking"
-                      : stage === "preparing"
-                        ? "Mark Ready"
-                        : (order.order_type === "DINE_IN" || order.order_type === "TAKEAWAY")
-                          ? "Complete Order"
-                          : order.driver_name
-                            ? `Pickup by ${order.driver_name}`
-                            : "Complete Order"
-                  )}
+                  {stage === "pending"
+                    ? "Start Cooking"
+                    : stage === "preparing"
+                      ? "Mark Ready"
+                      : "Complete / Hand Over"}
                 </span>
               </>
             )}
           </Button>
         ) : (
-          <div
-            className={cn(
-              "flex flex-1 shrink-0 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 font-serif font-bold text-emerald-700 shadow-2xs dark:bg-emerald-500/18 dark:text-emerald-300",
-              compact ? "h-10 text-[11px]" : "h-11 text-xs sm:h-12 sm:text-sm"
-            )}
-          >
-            <CheckCircle2 className="mr-2 size-4" /> Awaiting Pickup
-          </div>
+          order.driver_name ? (
+            <div
+              className={cn(
+                "flex flex-1 shrink-0 items-center justify-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/12 font-serif font-bold text-emerald-700 shadow-2xs dark:bg-emerald-500/18 dark:text-emerald-300 min-w-0 px-2",
+                compact ? "h-9 text-[11px]" : "h-10 text-xs sm:h-11 sm:text-sm"
+              )}
+            >
+              <Bike className="size-3.5 shrink-0 text-emerald-600 animate-pulse" />
+              <span className="truncate">Driver: {order.driver_name} • Awaiting Pickup</span>
+            </div>
+          ) : (
+            <div
+              className={cn(
+                "flex flex-1 shrink-0 items-center justify-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/12 font-serif font-bold text-amber-700 shadow-2xs dark:bg-amber-500/18 dark:text-amber-300 min-w-0 px-2 animate-pulse",
+                compact ? "h-9 text-[11px]" : "h-10 text-xs sm:h-11 sm:text-sm"
+              )}
+            >
+              <Clock3 className="size-3.5 shrink-0 text-amber-600" />
+              <span className="truncate">Waiting for Driver (រង់ចាំអ្នកដឹក)</span>
+            </div>
+          )
         )}
       </footer>
     </article>

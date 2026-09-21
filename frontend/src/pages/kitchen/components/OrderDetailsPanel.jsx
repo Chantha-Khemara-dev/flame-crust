@@ -611,8 +611,12 @@ export function OrderDetailsPanel({
                       variant="outline"
                       size="sm"
                       disabled={isUpdating}
-                      onClick={() => !isUpdating && updateOrderStatus(order.id, "DELIVERED")}
-                      className="h-11 shrink-0 rounded-full border-border/70 text-xs font-semibold hover:bg-secondary active:scale-95"
+                      onClick={() => {
+                        if (isUpdating) return;
+                        if (!window.confirm("ការកុម្ម៉ង់នេះជាប្រភេទ Delivery! តើអតិថិជនពិតជាបានមកទទួលម្ហូបផ្ទាល់នៅហាងមែនទេ?")) return;
+                        updateOrderStatus(order.id, "DELIVERED");
+                      }}
+                      className="h-11 shrink-0 rounded-full border-border/70 text-xs font-semibold hover:bg-secondary active:scale-95 text-muted-foreground"
                       title="Mark complete if customer picked up directly"
                     >
                       Complete Directly

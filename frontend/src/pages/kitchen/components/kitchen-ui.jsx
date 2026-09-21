@@ -62,7 +62,7 @@ export const STAGES = {
     columnTint: "from-emerald-500/[0.07] via-card to-card",
     hoverBorder: "hover:border-emerald-500/50",
     action: "from-teal-600 via-emerald-600 to-green-600",
-    actionLabel: "Complete Order",
+    actionLabel: "Complete / Hand Over",
     nextStatus: "DELIVERED",
   },
 };
