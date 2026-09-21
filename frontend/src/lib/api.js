@@ -135,14 +135,35 @@ async function request(path, options = {}) {
     const driverAuth = localStorage.getItem("driverAuth");
     const kitchenAuth = localStorage.getItem("kitchenAuth");
     
-    if (adminAuth) {
-      try { token = JSON.parse(adminAuth).token; } catch (e) {}
-    } else if (kitchenAuth) {
-      try { token = JSON.parse(kitchenAuth).token; } catch (e) {}
-    } else if (driverAuth) {
-      try { token = JSON.parse(driverAuth).token; } catch (e) {}
-    } else if (customerAuth) {
-      try { token = JSON.parse(customerAuth).token; } catch (e) {}
+    const currentPath = window.location.pathname || '';
+
+    // Route-aware token priority to prevent cross-portal token collision
+    if (currentPath.startsWith('/driver')) {
+      if (driverAuth) {
+        try { token = JSON.parse(driverAuth).token; } catch (e) {}
+      }
+    } else if (currentPath.startsWith('/kitchen')) {
+      if (kitchenAuth) {
+        try { token = JSON.parse(kitchenAuth).token; } catch (e) {}
+      }
+    } else if (currentPath.startsWith('/admin')) {
+      if (adminAuth) {
+        try { token = JSON.parse(adminAuth).token; } catch (e) {}
+      }
+    }
+
+    if (!token) {
+      if (driverAuth && currentPath.includes("driver")) {
+        try { token = JSON.parse(driverAuth).token; } catch (e) {}
+      } else if (adminAuth) {
+        try { token = JSON.parse(adminAuth).token; } catch (e) {}
+      } else if (kitchenAuth) {
+        try { token = JSON.parse(kitchenAuth).token; } catch (e) {}
+      } else if (driverAuth) {
+        try { token = JSON.parse(driverAuth).token; } catch (e) {}
+      } else if (customerAuth) {
+        try { token = JSON.parse(customerAuth).token; } catch (e) {}
+      }
     }
   }
 

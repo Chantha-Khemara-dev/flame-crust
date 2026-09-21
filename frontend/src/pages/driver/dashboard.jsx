@@ -36,15 +36,31 @@ L.Icon.Default.mergeOptions({
 const STORE_COORDS = [11.5564, 104.9282]; // Flame & Crust central location
 const LOCATION_INTERVAL = 5_000;
 
+let staticDriverCache = {
+  addresses: null,
+  customers: null,
+  products: null,
+  timestamp: 0,
+};
+
 function MapUpdater({ center }) {
   const map = useMap();
+  const lat = center?.[0];
+  const lng = center?.[1];
+  const lastPanRef = useRef({ lat: null, lng: null });
+
   useEffect(() => {
-    if (center && Number.isFinite(center[0]) && Number.isFinite(center[1])) {
-      try {
-        map.setView(center, map.getZoom(), { animate: true });
-      } catch (e) {}
+    if (lat && lng && Number.isFinite(lat) && Number.isFinite(lng)) {
+      const prev = lastPanRef.current;
+      const moved = !prev.lat || Math.abs(prev.lat - lat) > 0.0003 || Math.abs(prev.lng - lng) > 0.0003;
+      if (moved) {
+        lastPanRef.current = { lat, lng };
+        try {
+          map.panTo([lat, lng], { animate: false });
+        } catch (e) {}
+      }
     }
-  }, [center, map]);
+  }, [lat, lng, map]);
   return null;
 }
 
@@ -1076,6 +1092,8 @@ export default function DriverDashboardPage() {
   const watchIdRef = useRef(null);
   const locationTimerRef = useRef(null);
   const lastSentLocRef = useRef(null);
+  const pendingStatusByOrderRef = useRef(new Map());
+  const pendingAcceptedOrdersRef = useRef(new Set());
 
   // ── Auth Check ──
   useEffect(() => {
@@ -1156,14 +1174,38 @@ export default function DriverDashboardPage() {
   }, [driver, sendLocation]);
 
   // ── Fetch Orders & Real Customer / Product Details ──
-  const fetchAllData = async () => {
+  const fetchAllData = async (force = false) => {
     if (!driver) return;
-    if (ordersInFlightRef.current) return;
+    if (ordersInFlightRef.current && !force) return;
     ordersInFlightRef.current = true;
     try {
       const allOrders = await list("orders", { limit: 200, sort: "id", dir: "desc" });
       
       const isDeliveryOrder = (o) => !o.order_type || o.order_type.toUpperCase() === "DELIVERY";
+
+      // Apply optimistic protection to fetched orders so background polling never reverts UI state
+      allOrders.forEach(o => {
+        const idStr = String(o.id);
+        if (pendingAcceptedOrdersRef.current.has(idStr)) {
+          if (String(o.driver_id) === String(driver.id) || String(o.driverId) === String(driver.id)) {
+            pendingAcceptedOrdersRef.current.delete(idStr);
+          } else {
+            o.driver_id = driver.id;
+          }
+        }
+        if (pendingStatusByOrderRef.current.has(idStr)) {
+          const pending = pendingStatusByOrderRef.current.get(idStr);
+          if (Date.now() - pending.timestamp < 15000) {
+            if (o.status !== pending.status) {
+              o.status = pending.status;
+            } else {
+              pendingStatusByOrderRef.current.delete(idStr);
+            }
+          } else {
+            pendingStatusByOrderRef.current.delete(idStr);
+          }
+        }
+      });
 
       const assigned = allOrders.filter(o => 
         (String(o.driver_id) === String(driver.id) || String(o.driverId) === String(driver.id)) && 
@@ -1173,21 +1215,53 @@ export default function DriverDashboardPage() {
       
       const available = allOrders.filter(o => 
         !o.driver_id && 
+        !pendingAcceptedOrdersRef.current.has(String(o.id)) &&
         isDeliveryOrder(o) &&
         ["PENDING", "CONFIRMED", "PREPARING", "READY"].includes(o.status)
       );
       
-      const [allAddresses, allCustomers, allOrderItems, allProducts] = await Promise.all([
-        list("addresses", { limit: -1 }).catch(() => []),
-        list("customers", { limit: -1 }).catch(() => []),
-        list("order_items", { limit: -1 }).catch(() => []),
-        list("products", { limit: -1 }).catch(() => [])
+      // High-efficiency micro-cache for static tables (addresses, customers, products)
+      const now = Date.now();
+      const needStaticRefresh = force || !staticDriverCache.addresses || (now - staticDriverCache.timestamp > 60000);
+
+      let allAddresses = staticDriverCache.addresses;
+      let allCustomers = staticDriverCache.customers;
+      let allProducts = staticDriverCache.products;
+
+      const orderItemsPromise = list("order_items", { limit: -1 }).catch(() => []);
+      let staticPromise = Promise.resolve();
+
+      if (needStaticRefresh) {
+        staticPromise = Promise.all([
+          list("addresses", { limit: -1 }).catch(() => []),
+          list("customers", { limit: -1 }).catch(() => []),
+          list("products", { limit: -1 }).catch(() => [])
+        ]).then(([addr, cust, prod]) => {
+          staticDriverCache = {
+            addresses: addr,
+            customers: cust,
+            products: prod,
+            timestamp: Date.now()
+          };
+          allAddresses = addr;
+          allCustomers = cust;
+          allProducts = prod;
+        });
+      }
+
+      const [allOrderItems] = await Promise.all([
+        orderItemsPromise,
+        staticPromise
       ]);
+
+      if (!allAddresses) allAddresses = staticDriverCache.addresses || [];
+      if (!allCustomers) allCustomers = staticDriverCache.customers || [];
+      if (!allProducts) allProducts = staticDriverCache.products || [];
 
       const enrich = (ordersList) => ordersList.map((o) => {
         const address = allAddresses.find(a => String(a.id) === String(o.address_id)) || null;
         const customer = allCustomers.find(c => String(c.id) === String(o.customer_id)) || null;
-        const items = allOrderItems.filter(item => String(item.order_id) === String(o.id)).map(item => {
+        const items = (Array.isArray(allOrderItems) ? allOrderItems : []).filter(item => String(item.order_id) === String(o.id)).map(item => {
           const product = allProducts.find(p => String(p.id) === String(item.product_id));
           return {
             ...item,
@@ -1229,24 +1303,30 @@ export default function DriverDashboardPage() {
   const handleRefresh = async () => {
     if (refreshing) return;
     setRefreshing(true);
-    await fetchAllData();
-    // Guaranteed reset — fetchAllData can bail early via the in-flight guard
+    staticDriverCache.timestamp = 0; // Force full refresh
+    await fetchAllData(true);
     setRefreshing(false);
   };
 
   const updateOrderStatus = async (orderId, newStatus) => {
     if (actionLoadingId) return;
-    setActionLoadingId(orderId);
+    const strOrderId = String(orderId);
+    setActionLoadingId(strOrderId);
 
-    // ⚡ Instant Optimistic Update
-    setMyOrders(prev => {
-      if (newStatus === "DELIVERED" || newStatus === "CANCELLED") {
-        return prev.filter(o => String(o.id) !== String(orderId));
-      }
-      return prev.map(o => String(o.id) === String(orderId) ? { ...o, status: newStatus } : o);
+    // ⚡ Instant Optimistic Update with Shield against stale background polling
+    pendingStatusByOrderRef.current.set(strOrderId, {
+      status: newStatus,
+      timestamp: Date.now()
     });
 
-    if (selectedOrderDetails && String(selectedOrderDetails.id) === String(orderId)) {
+    setMyOrders(prev => {
+      if (newStatus === "DELIVERED" || newStatus === "CANCELLED") {
+        return prev.filter(o => String(o.id) !== strOrderId);
+      }
+      return prev.map(o => String(o.id) === strOrderId ? { ...o, status: newStatus } : o);
+    });
+
+    if (selectedOrderDetails && String(selectedOrderDetails.id) === strOrderId) {
       if (newStatus === "DELIVERED" || newStatus === "CANCELLED") {
         setSelectedOrderDetails(null);
       } else {
@@ -1257,25 +1337,27 @@ export default function DriverDashboardPage() {
     try {
       await update("orders", orderId, { status: newStatus });
       toast.success(`Status updated: ${newStatus.replace(/_/g, " ")}`);
-      fetchAllData();
     } catch (err) {
+      pendingStatusByOrderRef.current.delete(strOrderId);
       toast.error("Failed to update status");
-      fetchAllData();
     } finally {
       setActionLoadingId(null);
+      fetchAllData(true);
     }
   };
 
   const acceptOrder = async (orderId) => {
     if (actionLoadingId) return;
+    const strOrderId = String(orderId);
 
-    const targetOrder = availableOrders.find(o => String(o.id) === String(orderId)) || selectedOrderDetails;
+    const targetOrder = availableOrders.find(o => String(o.id) === strOrderId) || selectedOrderDetails;
     if (targetOrder && targetOrder.status !== "READY") {
       toast.error("ម្ហូបមិនទាន់រួចរាល់ទេ! សូមរង់ចាំផ្ទះបាយធ្វើដល់ READY សិន ទើបអាចទទួលដឹកបាន។");
       return;
     }
 
-    setActionLoadingId(orderId);
+    setActionLoadingId(strOrderId);
+    pendingAcceptedOrdersRef.current.add(strOrderId);
 
     // ⚡ Instant Optimistic Update: Transfer from Available to My Deliveries immediately!
     if (targetOrder) {
@@ -1283,8 +1365,8 @@ export default function DriverDashboardPage() {
         ...targetOrder,
         driver_id: driver.id,
       };
-      setAvailableOrders(prev => prev.filter(o => String(o.id) !== String(orderId)));
-      setMyOrders(prev => [acceptedOrder, ...prev.filter(o => String(o.id) !== String(orderId))]);
+      setAvailableOrders(prev => prev.filter(o => String(o.id) !== strOrderId));
+      setMyOrders(prev => [acceptedOrder, ...prev.filter(o => String(o.id) !== strOrderId)]);
     }
 
     // Switch view to My Deliveries immediately
@@ -1295,12 +1377,12 @@ export default function DriverDashboardPage() {
       // Only assign driver_id — preserve the actual kitchen preparation status!
       await update("orders", orderId, { driver_id: driver.id });
       toast.success("Delivery accepted! Assigned to you.");
-      fetchAllData();
     } catch (err) {
+      pendingAcceptedOrdersRef.current.delete(strOrderId);
       toast.error("Failed to accept delivery");
-      fetchAllData();
     } finally {
       setActionLoadingId(null);
+      fetchAllData(true);
     }
   };
 
@@ -1362,13 +1444,13 @@ export default function DriverDashboardPage() {
             ) : currentDisplayOrders.length === 0 ? (
               <EmptyState tab={activeTab} onRefresh={handleRefresh} />
             ) : (
-              <AnimatePresence mode="popLayout" initial={false}>
+              <AnimatePresence mode="wait" initial={false}>
                 <motion.div
                   key={activeTab}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.12 }}
                   className="space-y-4 pb-28 lg:pb-6"
                 >
                   {currentDisplayOrders.map(order => (
@@ -1378,7 +1460,7 @@ export default function DriverDashboardPage() {
                         order={order} 
                         onAccept={stableAcceptOrder}
                         onSelectDetails={handleSelectDetails}
-                        isActionLoading={actionLoadingId === order.id}
+                        isActionLoading={Boolean(actionLoadingId && String(actionLoadingId) === String(order.id))}
                       />
                     ) : (
                       <MemoActiveDeliveryCard 
@@ -1388,7 +1470,7 @@ export default function DriverDashboardPage() {
                         onSelectDetails={handleSelectDetails}
                         onOpenChat={handleOpenChat}
                         unreadCount={unreadMap[order.id] || 0}
-                        isActionLoading={actionLoadingId === order.id}
+                        isActionLoading={Boolean(actionLoadingId && String(actionLoadingId) === String(order.id))}
                         lastLocation={lastLocation}
                       />
                     )
@@ -1502,7 +1584,7 @@ export default function DriverDashboardPage() {
         onAccept={acceptOrder}
         onUpdateStatus={updateOrderStatus}
         isAvailable={activeTab === "available"}
-        isActionLoading={Boolean(selectedOrderDetails && actionLoadingId === selectedOrderDetails.id)}
+        isActionLoading={Boolean(selectedOrderDetails && actionLoadingId && String(actionLoadingId) === String(selectedOrderDetails.id))}
       />
 
       {/* Live Order Chat Modal for Driver */}
