@@ -463,6 +463,7 @@ public class AdminCrudController {
                                 case "PREPARING" -> "ចុងភៅកំពុងរៀបចំធ្វើម្ហូបរបស់អ្នកយ៉ាងយកចិត្តទុកដាក់ 🍕";
                                 case "READY" -> "ម្ហូបរបស់អ្នករួចរាល់ហើយ កំពុងរង់ចាំអ្នកដឹកជញ្ជូន 🛵";
                                 case "OUT_FOR_DELIVERY" -> "អ្នកដឹកកំពុងធ្វើដំណើរយកម្ហូបជូនអ្នកហើយ 🚀";
+                                case "ARRIVED" -> "អ្នកដឹកជញ្ជូនបានមកដល់ទីតាំងរបស់អ្នកហើយ! សូមចេញមកទទួលម្ហូប 📍";
                                 case "DELIVERED" -> "ការកុម្ម៉ង់ត្រូវបានដឹកជញ្ជូនជោគជ័យ! សូមពិសារដោយឆ្ងាញ់មាត់ 😋";
                                 case "CANCELLED" -> "ការកុម្ម៉ង់របស់អ្នកត្រូវបានបោះបង់";
                                 default -> null;
@@ -473,11 +474,11 @@ public class AdminCrudController {
                         }
                     }
 
-                    // Push notifications for drivers
+                    // Push notifications for drivers - Only trigger when kitchen is done and order is READY
                     boolean isDelivery = orderType == null || "DELIVERY".equalsIgnoreCase(orderType);
                     if (isDelivery && status != null) {
-                        if (driverId == null && ("CONFIRMED".equalsIgnoreCase(status) || "PREPARING".equalsIgnoreCase(status) || "READY".equalsIgnoreCase(status))) {
-                            webPushService.sendToUserType("DRIVER", "🛵 ការកុម្ម៉ង់ថ្មី #" + orderId, "មានការកុម្ម៉ង់ថ្មីរង់ចាំការដឹកជញ្ជូន!", "/driver/dashboard");
+                        if (driverId == null && "READY".equalsIgnoreCase(status)) {
+                            webPushService.sendToUserType("DRIVER", "🛵 ម្ហូបរួចរាល់ហើយ #" + orderId, "ផ្ទះបាយបានចម្អិនម្ហូបរួចរាល់ហើយ! សូមចូលទៅទទួលដឹកជញ្ជូន 🛵", "/driver/dashboard");
                         } else if (driverId != null && "READY".equalsIgnoreCase(status)) {
                             webPushService.sendToUser(driverId, "DRIVER", "🍕 ម្ហូបរួចរាល់ហើយ #" + orderId, "ផ្ទះបាយបានរៀបចំម្ហូបរួចរាល់ហើយ! សូមមកទទួលយកម្ហូបដើម្បីដឹកជញ្ជូន 🛵", "/driver/dashboard");
                         }

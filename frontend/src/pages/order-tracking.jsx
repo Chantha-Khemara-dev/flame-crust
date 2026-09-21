@@ -189,7 +189,8 @@ const STATUS_STEPS = [
   { id: "PREPARING", label: "Preparing", icon: ChefHat },
   { id: "READY", label: "Ready", icon: ShoppingBag },
   { id: "OUT_FOR_DELIVERY", label: "On Way", icon: Bike },
-  { id: "DELIVERED", label: "Delivered", icon: MapPin },
+  { id: "ARRIVED", label: "Arrived", icon: MapPin },
+  { id: "DELIVERED", label: "Delivered", icon: CheckCircle2 },
 ];
 
 export default function OrderTrackingPage() {
@@ -562,7 +563,16 @@ export default function OrderTrackingPage() {
           eta: "15 - 20 mins",
           badge: "bg-purple-500/15 text-purple-600 dark:text-purple-400"
         };
-      case "OUT_FOR_DELIVERY":
+      case "OUT_FOR_DELIVERY": {
+        const hasArrivedGps = remainingDistanceKm <= 0.15;
+        if (hasArrivedGps) {
+          return {
+            title: "Driver Has Arrived! 📍",
+            desc: "អ្នកដឹកជញ្ជូនបានមកដល់ទីតាំងរបស់អ្នកហើយ! សូមចេញមកទទួលម្ហូប។",
+            eta: "ដល់គោលដៅហើយ (Arrived)",
+            badge: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 animate-pulse border border-emerald-500/30"
+          };
+        }
         return {
           title: "Courier is on the Way! 🛵",
           desc: "Your hot pizza is on its way to your doorstep.",
@@ -570,6 +580,14 @@ export default function OrderTrackingPage() {
             ? `~${remainingMinutes} mins (${remainingDistanceKm.toFixed(1)} km)`
             : `~${remainingMinutes} mins (${remainingDistanceKm} km)`,
           badge: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+        };
+      }
+      case "ARRIVED":
+        return {
+          title: "Driver Has Arrived! 📍",
+          desc: "អ្នកដឹកជញ្ជូនបានមកដល់ទីតាំងរបស់អ្នកហើយ! សូមចេញមកទទួលម្ហូប។",
+          eta: "ដល់គោលដៅហើយ (Arrived)",
+          badge: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 animate-pulse border border-emerald-500/30"
         };
       case "DELIVERED":
         return {

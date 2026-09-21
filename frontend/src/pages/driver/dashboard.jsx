@@ -325,10 +325,12 @@ function NewDeliveryRequestCard({ order, onAccept, onSelectDetails, isActionLoad
         </Button>
         <Button 
           onClick={() => onAccept(order.id)}
-          disabled={isActionLoading}
+          disabled={order.status !== "READY" || isActionLoading}
           className={cn(
-            "flex-[2] h-12 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white font-black text-sm uppercase tracking-wider shadow-md shadow-red-600/25 active:scale-95 transition-all border-none flex items-center justify-center gap-2",
-            isActionLoading && "opacity-75 cursor-not-allowed pointer-events-none"
+            "flex-[2] h-12 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider shadow-md active:scale-95 transition-all border-none flex items-center justify-center gap-2",
+            order.status === "READY" && !isActionLoading
+              ? "bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white shadow-red-600/25 cursor-pointer"
+              : "bg-secondary dark:bg-card text-muted-foreground border border-border/60 dark:border-white/5 cursor-not-allowed opacity-80"
           )}
         >
           {isActionLoading ? (
@@ -336,10 +338,20 @@ function NewDeliveryRequestCard({ order, onAccept, onSelectDetails, isActionLoad
               <Loader2 className="size-4.5 animate-spin stroke-[2.5]" />
               <span>Accepting...</span>
             </>
-          ) : (
+          ) : order.status === "READY" ? (
             <>
               <Check className="size-4.5 stroke-[3]" />
               <span>Accept Order</span>
+            </>
+          ) : order.status === "PREPARING" ? (
+            <>
+              <Clock className="size-4 animate-spin text-amber-500" />
+              <span className="text-[11px] sm:text-xs">Cooking (Wait for Ready)</span>
+            </>
+          ) : (
+            <>
+              <Clock className="size-4 text-blue-500" />
+              <span className="text-[11px] sm:text-xs">Waiting Kitchen...</span>
             </>
           )}
         </Button>
@@ -350,15 +362,33 @@ function NewDeliveryRequestCard({ order, onAccept, onSelectDetails, isActionLoad
 }
 
 // ----------------- SCREEN 2 & 3: ACTIVE DELIVERY / PASSENGER & ORDER DETAILS -----------------
-function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat, unreadCount = 0, isActionLoading }) {
+function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat, unreadCount = 0, isActionLoading, lastLocation }) {
   const totalItems = order.items?.reduce((acc, curr) => acc + curr.quantity, 0) || 0;
   const customerName = order.customer?.name || "Customer";
   const customerPhone = order.customer?.phone || order.customer_phone || "";
   const customerAvatar = order.customer?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(customerName)}&backgroundColor=fef08a&textColor=854d0e`;
   const fareEstimate = Number(order.delivery_fee || 2.50).toFixed(2);
 
-  const isEnRoute = order.status === "OUT_FOR_DELIVERY";
+  const isEnRoute = order.status === "OUT_FOR_DELIVERY" || order.status === "ARRIVED";
+  const isArrivedStatus = order.status === "ARRIVED";
   const isReady = order.status === "READY";
+
+  const getDistanceKm = (lat1, lon1, lat2, lon2) => {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  const distToDestinationKm = (lastLocation?.lat && order.address?.latitude && order.address?.longitude)
+    ? getDistanceKm(lastLocation.lat, lastLocation.lng, Number(order.address.latitude), Number(order.address.longitude))
+    : null;
+
+  const isNearDestination = isArrivedStatus || (distToDestinationKm !== null && distToDestinationKm <= 0.2);
 
   return (
     <div className="bg-card rounded-[28px] p-5 shadow-sm border-2 border-red-500/30 dark:border-red-500/20 relative overflow-hidden transition-all">
@@ -424,42 +454,42 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat
           <button
             type="button"
             onClick={() => onSelectDetails(order)}
-            className="size-10 rounded-full bg-secondary text-foreground flex items-center justify-center hover:bg-secondary/70 active:scale-95 transition-transform cursor-pointer"
-            title="View Full Details"
+            className="size-10 rounded-full bg-secondary text-foreground flex items-center justify-center hover:bg-secondary/70 transition-colors"
+            title="View Details"
           >
-            <ChevronRight className="size-5" />
+            <Eye className="size-4.5 stroke-[2.5]" />
           </button>
         </div>
       </div>
 
-      {/* Pickup & Dropoff Route Map Visual */}
-      <div className="space-y-3 mb-4 pl-1">
+      {/* Delivery Pickup & Dropoff Address Route */}
+      <div className="bg-secondary/30 dark:bg-card/70 rounded-2xl p-3.5 mb-4 border border-border/60 dark:border-white/5 space-y-3">
         {/* Pickup Pin */}
-        <div className="flex items-start gap-3 relative">
-          <div className="size-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 mt-0.5 ring-4 ring-emerald-500/20">
-            <Store className="size-3.5 stroke-[2.5]" />
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 size-6 rounded-full bg-red-500/15 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+            <span className="size-2 rounded-full bg-red-600" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-              Pickup Point
-            </p>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+              Pickup (Flame & Crust Kitchen)
+            </span>
             <p className="text-xs font-bold text-foreground dark:text-foreground truncate">
-              Flame & Crust Store (Main Kitchen)
+              Central Kitchen, Street 302, BKK1, Phnom Penh
             </p>
           </div>
         </div>
 
-        {/* Route Connecting Line */}
-        <div className="w-0.5 h-4 bg-secondary ml-3" />
+        {/* Route Line */}
+        <div className="ml-3 pl-3 border-l-2 border-dashed border-border dark:border-white/10 h-2" />
 
         {/* Dropoff Pin */}
-        <div className="flex items-start gap-3 relative">
-          <div className="size-6 rounded-full bg-red-500 text-white flex items-center justify-center shrink-0 mt-0.5 ring-4 ring-red-500/20">
-            <MapPin className="size-3.5 stroke-[2.5]" />
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 size-6 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <MapPin className="size-3.5 stroke-[3]" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-wider text-red-500">
-              Drop Location
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Customer Destination
             </p>
             <p className="text-xs font-bold text-foreground dark:text-foreground truncate">
               {order.address?.address_line || "Customer Delivery Address"}
@@ -469,18 +499,27 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat
       </div>
 
       {/* Progress Flow Steps */}
-      <div className="grid grid-cols-3 gap-1.5 mb-4 py-2 border-y border-border/50 dark:border-white/5 text-center">
+      <div className="grid grid-cols-4 gap-1 mb-4 py-2 border-y border-border/50 dark:border-white/5 text-center">
         <div className={cn(
-          "py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors",
+          "py-1 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-colors",
           order.status === "READY" || isEnRoute ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/15 text-amber-600 dark:text-amber-400 animate-pulse"
         )}>
           {order.status === "READY" || isEnRoute ? "1. Ready" : "1. In Kitchen"}
         </div>
-        <div className={cn("py-1 rounded-lg text-[10px] font-black uppercase tracking-wider", isEnRoute ? "bg-red-500/15 text-red-600 dark:text-red-400" : "bg-secondary text-muted-foreground/80")}>
+        <div className={cn(
+          "py-1 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-wider",
+          isEnRoute ? "bg-blue-500/15 text-blue-600 dark:text-blue-400" : "bg-secondary text-muted-foreground/80"
+        )}>
           2. En Route
         </div>
-        <div className="py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-secondary text-muted-foreground/80">
-          3. Delivered
+        <div className={cn(
+          "py-1 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all",
+          isNearDestination ? "bg-purple-500/20 text-purple-600 dark:text-purple-300 font-extrabold animate-pulse" : "bg-secondary text-muted-foreground/80"
+        )}>
+          3. Arrived 📍
+        </div>
+        <div className="py-1 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-secondary text-muted-foreground/80">
+          4. Delivered
         </div>
       </div>
 
@@ -530,6 +569,33 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat
           </>
         ) : (
           <>
+            {/* Arrival & Proximity Detection Banner */}
+            {isNearDestination ? (
+              <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-bold animate-in fade-in">
+                <MapPin className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400 animate-bounce" />
+                <div className="flex-1 min-w-0">
+                  <span className="block font-black text-sm text-emerald-700 dark:text-emerald-300">
+                    📍 បានមកដល់គោលដៅហើយ! (Arrived at Destination)
+                  </span>
+                  <span className="text-[11px] text-muted-foreground font-medium">
+                    សូមទាក់ទងអតិថិជន និងប្រគល់ម្ហូបជូនពួកគាត់
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between p-2.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-xs font-semibold text-blue-700 dark:text-blue-300">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Navigation className="size-4 shrink-0 text-blue-500 animate-pulse" />
+                  <span className="truncate">កំពុងធ្វើដំណើរទៅកាន់គោលដៅ...</span>
+                </div>
+                {distToDestinationKm !== null && (
+                  <span className="font-black text-blue-800 dark:text-blue-200 shrink-0">
+                    {distToDestinationKm < 1 ? `${Math.round(distToDestinationKm * 1000)}m` : `${distToDestinationKm.toFixed(1)} km`}
+                  </span>
+                )}
+              </div>
+            )}
+
             <a 
               href={order.address?.latitude ? `https://www.google.com/maps/dir/?api=1&destination=${order.address.latitude},${order.address.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.address?.address_line || "Phnom Penh")}`}
               target="_blank"
@@ -540,11 +606,34 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat
               Open GPS Navigation
             </a>
 
+            {!isArrivedStatus && !isNearDestination && (
+              <Button
+                variant="outline"
+                onClick={() => onUpdateStatus(order.id, "ARRIVED")}
+                disabled={isActionLoading}
+                className="h-11 w-full rounded-2xl border-2 border-emerald-500/50 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 active:scale-98 transition-all"
+              >
+                <MapPin className="size-4 stroke-[2.5]" />
+                <span>ខ្ញុំបានមកដល់គោលដៅហើយ (I've Arrived)</span>
+              </Button>
+            )}
+
             <Button 
-              onClick={() => onUpdateStatus(order.id, "DELIVERED")}
+              onClick={() => {
+                if (!isNearDestination && distToDestinationKm !== null && distToDestinationKm > 0.3) {
+                  const distText = distToDestinationKm < 1 ? `${Math.round(distToDestinationKm * 1000)} ម៉ែត្រ` : `${distToDestinationKm.toFixed(1)} km`;
+                  if (!window.confirm(`អ្នកស្ថិតនៅចម្ងាយប្រហែល ${distText} ពីគោលដៅនៅឡើយ។ តើអ្នកពិតជាបានមកដល់ទីតាំងអតិថិជន និងប្រគល់ម្ហូបរួចរាល់ហើយមែនទេ?`)) {
+                    return;
+                  }
+                }
+                onUpdateStatus(order.id, "DELIVERED");
+              }}
               disabled={isActionLoading}
               className={cn(
-                "h-13 w-full rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/30 active:scale-98 transition-all border-none flex items-center justify-center gap-2",
+                "h-13 w-full rounded-2xl font-black text-sm uppercase tracking-wider shadow-lg transition-all border-none flex items-center justify-center gap-2",
+                isNearDestination
+                  ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/30 active:scale-98 cursor-pointer"
+                  : "bg-emerald-600/80 hover:bg-emerald-600 text-white shadow-md active:scale-98 cursor-pointer",
                 isActionLoading && "opacity-75 cursor-not-allowed pointer-events-none"
               )}
             >
@@ -556,7 +645,7 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat
               ) : (
                 <>
                   <CheckCircle2 className="size-5 stroke-[2.5]" />
-                  <span>Complete Delivery</span>
+                  <span>{isNearDestination ? "Complete Delivery (ប្រគល់រួចរាល់)" : "Complete Delivery"}</span>
                 </>
               )}
             </Button>
@@ -775,10 +864,12 @@ function OrderDetailsModal({ order, driver, isOpen, onClose, onAccept, onUpdateS
                 await onAccept(order.id);
                 onClose();
               }}
-              disabled={isActionLoading}
+              disabled={order.status !== "READY" || isActionLoading}
               className={cn(
-                "w-full h-14 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white font-black text-base uppercase tracking-wider shadow-lg shadow-red-600/30 active:scale-98 transition-all border-none flex items-center justify-center gap-2",
-                isActionLoading && "opacity-75 cursor-not-allowed pointer-events-none"
+                "w-full h-14 rounded-2xl font-black text-base uppercase tracking-wider shadow-lg active:scale-98 transition-all border-none flex items-center justify-center gap-2",
+                order.status === "READY" && !isActionLoading
+                  ? "bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white shadow-red-600/30 cursor-pointer"
+                  : "bg-secondary dark:bg-card text-muted-foreground border border-border/60 dark:border-white/5 cursor-not-allowed opacity-80"
               )}
             >
               {isActionLoading ? (
@@ -786,10 +877,20 @@ function OrderDetailsModal({ order, driver, isOpen, onClose, onAccept, onUpdateS
                   <Loader2 className="size-5 animate-spin stroke-[2.5]" />
                   <span>Accepting Delivery...</span>
                 </>
-              ) : (
+              ) : order.status === "READY" ? (
                 <>
                   <span>Accept Ride & Delivery</span>
                   <ArrowRight className="size-5 stroke-[3]" />
+                </>
+              ) : order.status === "PREPARING" ? (
+                <>
+                  <Clock className="size-5 animate-spin text-amber-500" />
+                  <span>Cooking in Kitchen (Wait for Ready)</span>
+                </>
+              ) : (
+                <>
+                  <Clock className="size-5 text-blue-500" />
+                  <span>Waiting for Kitchen...</span>
                 </>
               )}
             </Button>
@@ -1170,10 +1271,16 @@ export default function DriverDashboardPage() {
 
   const acceptOrder = async (orderId) => {
     if (actionLoadingId) return;
+
+    const targetOrder = availableOrders.find(o => String(o.id) === String(orderId)) || selectedOrderDetails;
+    if (targetOrder && targetOrder.status !== "READY") {
+      toast.error("ម្ហូបមិនទាន់រួចរាល់ទេ! សូមរង់ចាំផ្ទះបាយធ្វើដល់ READY សិន ទើបអាចទទួលដឹកបាន។");
+      return;
+    }
+
     setActionLoadingId(orderId);
 
     // ⚡ Instant Optimistic Update: Transfer from Available to My Deliveries immediately!
-    const targetOrder = availableOrders.find(o => String(o.id) === String(orderId)) || selectedOrderDetails;
     if (targetOrder) {
       const acceptedOrder = {
         ...targetOrder,
@@ -1285,6 +1392,7 @@ export default function DriverDashboardPage() {
                         onOpenChat={handleOpenChat}
                         unreadCount={unreadMap[order.id] || 0}
                         isActionLoading={actionLoadingId === order.id}
+                        lastLocation={lastLocation}
                       />
                     )
                   ))}
