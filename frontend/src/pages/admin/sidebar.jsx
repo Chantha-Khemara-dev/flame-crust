@@ -420,7 +420,7 @@ function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-border/50" />
               <DropdownMenuItem 
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")} 
+                onClick={(e) => setTheme(theme === "dark" ? "light" : "dark", e)} 
                 className="rounded-lg cursor-pointer font-bold focus:bg-primary/10 focus:text-primary transition-colors flex items-center justify-between"
               >
                 <span className="flex items-center gap-2">

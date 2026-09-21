@@ -52,6 +52,7 @@ import { toast } from "sonner";
 import { getDriverMe, updateDriverProfile, list } from "@/lib/api";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { unsubscribeFromPushNotifications } from "@/lib/push-notifications";
+import { useTheme } from "@/components/theme-provider.jsx";
 import { cn } from "@/lib/utils";
 
 const DEFAULT_COVER_PHOTO = "https://images.unsplash.com/photo-1526367790999-0150786686a2?q=80&w=2000&auto=format&fit=crop";
@@ -80,7 +81,7 @@ export default function DriverProfilePage() {
 
   const [driver, setDriver] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [theme, setTheme] = useState(() => localStorage.getItem("driverTheme") || localStorage.getItem("theme") || "light");
+  const { theme, setTheme } = useTheme();
 
   // Navigation tabs matching customer profile (MENU as root hub)
   const searchParams = new URLSearchParams(location.search);
@@ -137,23 +138,7 @@ export default function DriverProfilePage() {
     totalEarnings: 0,
   });
 
-  // Sync theme
-  useEffect(() => {
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-      document.body.style.backgroundColor = "#09090b";
-      localStorage.setItem("driverTheme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      document.body.style.backgroundColor = "#f8fafc";
-      localStorage.setItem("driverTheme", "light");
-    }
-    return () => {
-      document.body.style.backgroundColor = "";
-      const currentAppTheme = localStorage.getItem("flame-crust-theme") || "light";
-      document.documentElement.classList.toggle("dark", currentAppTheme === "dark");
-    };
-  }, [theme]);
+
 
   // Load driver details & delivery stats
   useEffect(() => {
@@ -430,7 +415,7 @@ export default function DriverProfilePage() {
 
             <button
               type="button"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              onClick={(e) => setTheme(theme === "dark" ? "light" : "dark", e)}
               aria-label="Toggle theme"
               className="flex size-9 sm:size-10 items-center justify-center rounded-full border border-border/60 bg-secondary/70 hover:bg-secondary text-foreground transition-all active:scale-95 shadow-2xs cursor-pointer"
             >
@@ -773,7 +758,7 @@ export default function DriverProfilePage() {
                         </div>
                         <button
                           type="button"
-                          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                          onClick={(e) => setTheme(theme === "dark" ? "light" : "dark", e)}
                           className="h-7 sm:h-8 px-2.5 sm:px-3.5 rounded-full bg-secondary hover:bg-secondary/80 border border-border/60 text-[10px] sm:text-xs font-semibold text-foreground flex items-center gap-1 sm:gap-1.5 transition-all active:scale-95 cursor-pointer shadow-2xs"
                         >
                           {theme === "dark" ? <Moon className="size-3 sm:size-3.5" /> : <Sun className="size-3 sm:size-3.5" />}

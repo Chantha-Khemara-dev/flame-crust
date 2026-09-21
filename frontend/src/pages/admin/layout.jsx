@@ -131,7 +131,7 @@ function AdminLayout() {
               variant="ghost"
               size="icon"
               className="size-9 rounded-full text-foreground/70 hover:text-primary hover:bg-secondary/60 transition-colors cursor-pointer"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              onClick={(e) => setTheme(theme === "dark" ? "light" : "dark", e)}
               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >

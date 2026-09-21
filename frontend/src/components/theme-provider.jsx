@@ -6,13 +6,16 @@ const ThemeContext = createContext({ theme: "light", setTheme: () => {} });
 let lastPointerPos = { x: 0, y: 0 };
 if (typeof window !== "undefined") {
   lastPointerPos = { x: window.innerWidth - 60, y: 40 };
-  window.addEventListener(
-    "pointerdown",
-    (e) => {
-      lastPointerPos = { x: e.clientX, y: e.clientY };
-    },
-    { passive: true }
-  );
+  const recordPointer = (e) => {
+    if (e.touches && e.touches[0]) {
+      lastPointerPos = { x: Math.round(e.touches[0].clientX), y: Math.round(e.touches[0].clientY) };
+    } else if (e.clientX !== undefined && e.clientY !== undefined) {
+      lastPointerPos = { x: Math.round(e.clientX), y: Math.round(e.clientY) };
+    }
+  };
+  window.addEventListener("pointerdown", recordPointer, { passive: true });
+  window.addEventListener("touchstart", recordPointer, { passive: true });
+  window.addEventListener("click", recordPointer, { passive: true });
 }
 
 export function ThemeProvider({ children, defaultTheme = "light" }) {
@@ -22,6 +25,7 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
       return (
         localStorage.getItem("flame-crust-theme") ||
         localStorage.getItem("kitchenTheme") ||
+        localStorage.getItem("driverTheme") ||
         defaultTheme
       );
     }
@@ -32,9 +36,25 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
     if (newTheme === theme || isTransitioningRef.current) return;
     isTransitioningRef.current = true;
 
-    // Determine the origin point of the ripple (from event or last known click coordinate)
-    const x = event?.clientX ?? lastPointerPos.x;
-    const y = event?.clientY ?? lastPointerPos.y;
+    // Determine the origin point of the ripple (from button center, event, or last known touch coordinate)
+    let x = lastPointerPos.x;
+    let y = lastPointerPos.y;
+
+    if (event?.currentTarget?.getBoundingClientRect) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      x = Math.round(rect.left + rect.width / 2);
+      y = Math.round(rect.top + rect.height / 2);
+    } else if (event?.target?.getBoundingClientRect) {
+      const rect = event.target.getBoundingClientRect();
+      x = Math.round(rect.left + rect.width / 2);
+      y = Math.round(rect.top + rect.height / 2);
+    } else if (event?.clientX !== undefined && event?.clientY !== undefined) {
+      x = Math.round(event.clientX);
+      y = Math.round(event.clientY);
+    } else if (event?.touches && event.touches[0]) {
+      x = Math.round(event.touches[0].clientX);
+      y = Math.round(event.touches[0].clientY);
+    }
 
     const isReducedMotion =
       typeof window !== "undefined" &&
@@ -44,6 +64,13 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
       Math.max(x, window.innerWidth - x),
       Math.max(y, window.innerHeight - y)
     );
+
+    // Provide CSS variables for compositor-accelerated keyframe animation
+    if (typeof document !== "undefined") {
+      document.documentElement.style.setProperty("--theme-ripple-x", `${x}px`);
+      document.documentElement.style.setProperty("--theme-ripple-y", `${y}px`);
+      document.documentElement.style.setProperty("--theme-ripple-radius", `${Math.ceil(endRadius * 1.05)}px`);
+    }
 
     const applyThemeState = () => {
       setThemeState(newTheme);
@@ -55,7 +82,7 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
       }
     };
 
-    // Silky smooth CSS cross-fade fallback for browsers without View Transitions (prevents layout thrashing/freezing)
+    // Telegram circular expanding ripple fallback for devices/browsers without native View Transitions
     const runFallbackSmooth = () => {
       if (typeof document === "undefined" || isReducedMotion) {
         applyThemeState();
@@ -63,19 +90,39 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
         return;
       }
       try {
-        document.documentElement.classList.add("theme-transitioning");
-        applyThemeState();
+        const ripple = document.createElement("div");
+        ripple.style.position = "fixed";
+        ripple.style.left = `${x}px`;
+        ripple.style.top = `${y}px`;
+        ripple.style.width = "4px";
+        ripple.style.height = "4px";
+        ripple.style.borderRadius = "50%";
+        ripple.style.backgroundColor = newTheme === "dark" ? "#09090b" : "#f8fafc";
+        ripple.style.zIndex = "999999";
+        ripple.style.pointerEvents = "none";
+        ripple.style.transform = "translate(-50%, -50%) scale(0)";
+        ripple.style.transition = "transform 450ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease 300ms";
+        document.body.appendChild(ripple);
+
+        void ripple.offsetHeight;
+        const scale = Math.ceil(endRadius * 1.2);
+        ripple.style.transform = `translate(-50%, -50%) scale(${scale})`;
+
         setTimeout(() => {
-          document.documentElement.classList.remove("theme-transitioning");
-          isTransitioningRef.current = false;
-        }, 750);
+          applyThemeState();
+          ripple.style.opacity = "0";
+          setTimeout(() => {
+            ripple.remove();
+            isTransitioningRef.current = false;
+          }, 200);
+        }, 320);
       } catch {
         applyThemeState();
         isTransitioningRef.current = false;
       }
     };
 
-    // Check if the browser natively supports View Transitions (Chrome, Edge, Safari 18+)
+    // Native Telegram-style Circular View Transition (Chrome, Brave, Edge, Safari 18+)
     if (
       typeof document !== "undefined" &&
       document.startViewTransition &&
@@ -88,29 +135,22 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
 
         transition.ready
           .then(() => {
-            // Expand the new theme outward in a silky circular ripple (750ms, graceful deceleration, zero lag)
-            const anim = document.documentElement.animate(
-              {
-                clipPath: [
-                  `circle(0px at ${x}px ${y}px)`,
-                  `circle(${Math.ceil(endRadius * 1.05)}px at ${x}px ${y}px)`,
-                ],
-              },
-              {
-                duration: 750,
-                easing: "cubic-bezier(0.25, 1, 0.5, 1)",
-                pseudoElement: "::view-transition-new(root)",
-                fill: "forwards",
-              }
-            );
-
-            anim.finished
-              .then(() => {
-                isTransitioningRef.current = false;
-              })
-              .catch(() => {
-                isTransitioningRef.current = false;
-              });
+            try {
+              document.documentElement.animate(
+                {
+                  clipPath: [
+                    `circle(0px at ${x}px ${y}px)`,
+                    `circle(${Math.ceil(endRadius * 1.05)}px at ${x}px ${y}px)`,
+                  ],
+                },
+                {
+                  duration: 450,
+                  easing: "cubic-bezier(0.4, 0, 0.2, 1)",
+                  pseudoElement: "::view-transition-new(root)",
+                  fill: "forwards",
+                }
+              );
+            } catch (e) {}
           })
           .catch(() => {
             runFallbackSmooth();

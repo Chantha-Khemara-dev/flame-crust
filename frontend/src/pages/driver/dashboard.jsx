@@ -16,6 +16,7 @@ import { PushNotificationButton } from "@/components/common/PushNotificationButt
 import { PushNotificationPromptModal } from "@/components/common/PushNotificationPromptModal";
 import { DriverBottomNav } from "@/components/food/driver-bottom-nav";
 import { subscribeToPushNotifications } from "@/lib/push-notifications";
+import { useTheme } from "@/components/theme-provider.jsx";
 import { cn } from "@/lib/utils";
 
 // Leaflet imports
@@ -966,27 +967,11 @@ const MemoActiveDeliveryCard = memo(ActiveDeliveryCard);
 
 export default function DriverDashboardPage() {
   const navigate = useNavigate();
-  const [theme, setTheme] = useState(localStorage.getItem("driverTheme") || "light");
+  const { theme, setTheme } = useTheme();
 
-  const toggleTheme = () => {
-    setTheme(prev => prev === "light" ? "dark" : "light");
-  };
-
-  useEffect(() => {
-    localStorage.setItem("driverTheme", theme);
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-      document.body.style.backgroundColor = '#09090b';
-    } else {
-      document.documentElement.classList.remove("dark");
-      document.body.style.backgroundColor = '#f8fafc';
-    }
-    return () => {
-      document.body.style.backgroundColor = '';
-      const currentAppTheme = localStorage.getItem("flame-crust-theme") || "light";
-      document.documentElement.classList.toggle("dark", currentAppTheme === "dark");
-    };
-  }, [theme]);
+  const toggleTheme = useCallback((e) => {
+    setTheme(theme === "dark" ? "light" : "dark", e);
+  }, [theme, setTheme]);
 
   const [driver, setDriver] = useState(() => {
     try {

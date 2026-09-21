@@ -547,11 +547,11 @@ function Navbar() {
             <Button
               variant="ghost"
               size="icon"
-              className="hidden sm:inline-flex size-10 sm:size-11 shrink-0 rounded-full text-foreground/70 hover:text-primary"
+              className="inline-flex size-9 sm:size-11 shrink-0 rounded-full text-foreground/70 hover:text-primary cursor-pointer active:scale-95 transition-transform"
               onClick={(e) => setTheme(theme === "dark" ? "light" : "dark", e)}
               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             >
-              {theme === "dark" ? <Sun className="size-4 sm:size-5" /> : <Moon className="size-4 sm:size-5" />}
+              {theme === "dark" ? <Sun className="size-4 sm:size-5 text-amber-400" /> : <Moon className="size-4 sm:size-5 text-indigo-400" />}
             </Button>
 
 
