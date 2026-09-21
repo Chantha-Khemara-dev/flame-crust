@@ -349,6 +349,7 @@ export function DashboardView({
                           onOpen={() => onOrderClick?.(order)}
                           onAdvance={() => updateOrderStatus?.(order.id, config.nextStatus)}
                           isUpdating={updatingOrders.has(String(order.id))}
+                          unreadChatsByOrder={unreadChatsByOrder}
                         />
                       ))
                     )}
@@ -375,6 +376,7 @@ export function DashboardView({
                   updatingOrders={updatingOrders}
                   onOrderClick={onOrderClick}
                   stacked
+                  unreadChatsByOrder={unreadChatsByOrder}
                 />
               );
             })}
@@ -396,6 +398,7 @@ export function DashboardView({
               updatingOrders={updatingOrders}
               onOrderClick={onOrderClick}
               expanded
+              unreadChatsByOrder={unreadChatsByOrder}
             />
           );
         })()
@@ -417,6 +420,7 @@ function StationColumn({
   onOrderClick,
   stacked = false,
   expanded = false,
+  unreadChatsByOrder = {},
 }) {
   const config = STAGES[stage];
   const Icon = config.icon;
@@ -487,6 +491,7 @@ function StationColumn({
               onOpen={() => onOrderClick?.(order)}
               onAdvance={() => updateOrderStatus?.(order.id, config.nextStatus)}
               isUpdating={updatingOrders.has(String(order.id))}
+              unreadChatsByOrder={unreadChatsByOrder}
             />
           ))
         )}
@@ -563,7 +568,17 @@ function ColumnEmpty({ stage, expanded }) {
   );
 }
 
-function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOpen, onAdvance, isUpdating = false }) {
+function TicketCard({
+  order,
+  stage,
+  compact,
+  showImages,
+  targetPrepMinutes,
+  onOpen,
+  onAdvance,
+  isUpdating = false,
+  unreadChatsByOrder = {},
+}) {
   const now = useNow();
   const config = STAGES[stage];
   const items = Array.isArray(order.items) ? order.items : [];
@@ -642,7 +657,7 @@ function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOp
             >
               #{shortOrderNo(order)}
             </h3>
-            {unreadChatsByOrder[order.id] > 0 && (
+            {(unreadChatsByOrder?.[order.id] || 0) > 0 && (
               <span
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-black animate-bounce shadow-md ring-2 ring-background cursor-pointer"
                 title={`${unreadChatsByOrder[order.id]} new message(s)`}
