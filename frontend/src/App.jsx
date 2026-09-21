@@ -9,22 +9,48 @@ import { MobileBottomNav } from "@/components/food/mobile-bottom-nav.jsx";
 import { LuckyDrawFloatingButton } from "@/components/food/lucky-draw-floating-btn.jsx";
 import { API_URL } from "@/lib/api";
 
-const Home = lazy(() => import("./pages/home.jsx"));
-const MenuPage = lazy(() => import("./pages/menu.jsx"));
-const ProductDetailPage = lazy(() => import("./pages/product-detail.jsx"));
-const CartPage = lazy(() => import("./pages/cart.jsx"));
-const CheckoutPage = lazy(() => import("./pages/checkout.jsx"));
-const PaymentGatewayPage = lazy(() => import("./pages/payment.jsx"));
-const OrderConfirmationPage = lazy(() => import("./pages/order-confirmation.jsx"));
-const AdminLayout = lazy(() => import("./pages/admin/layout.jsx"));
-const LeaveReviewPage = lazy(() => import("./pages/leave-review.jsx"));
-const LoginPage = lazy(() => import("./pages/login.jsx"));
-const OrderTrackingPage = lazy(() => import("./pages/order-tracking.jsx"));
-const DriverLoginPage = lazy(() => import("./pages/driver/login.jsx"));
-const DriverDashboardPage = lazy(() => import("./pages/driver/dashboard.jsx"));
-const DriverProfilePage = lazy(() => import("./pages/driver/profile.jsx"));
-const KitchenDashboardPage = lazy(() => import("./pages/kitchen/dashboard.jsx"));
-const ProfilePage = lazy(() => import("./pages/profile.jsx"));
+function lazyWithRetry(componentImport) {
+  return lazy(async () => {
+    try {
+      return await componentImport();
+    } catch (error) {
+      const msg = error?.message || "";
+      const isChunkLoadError =
+        msg.includes("dynamically imported module") ||
+        msg.includes("Failed to fetch") ||
+        msg.includes("Loading chunk") ||
+        error?.name === "ChunkLoadError";
+
+      if (typeof window !== "undefined" && isChunkLoadError) {
+        const key = "chunk_retry_" + window.location.pathname;
+        const retried = sessionStorage.getItem(key);
+        if (!retried) {
+          sessionStorage.setItem(key, "true");
+          window.location.reload();
+          return new Promise(() => {});
+        }
+      }
+      throw error;
+    }
+  });
+}
+
+const Home = lazyWithRetry(() => import("./pages/home.jsx"));
+const MenuPage = lazyWithRetry(() => import("./pages/menu.jsx"));
+const ProductDetailPage = lazyWithRetry(() => import("./pages/product-detail.jsx"));
+const CartPage = lazyWithRetry(() => import("./pages/cart.jsx"));
+const CheckoutPage = lazyWithRetry(() => import("./pages/checkout.jsx"));
+const PaymentGatewayPage = lazyWithRetry(() => import("./pages/payment.jsx"));
+const OrderConfirmationPage = lazyWithRetry(() => import("./pages/order-confirmation.jsx"));
+const AdminLayout = lazyWithRetry(() => import("./pages/admin/layout.jsx"));
+const LeaveReviewPage = lazyWithRetry(() => import("./pages/leave-review.jsx"));
+const LoginPage = lazyWithRetry(() => import("./pages/login.jsx"));
+const OrderTrackingPage = lazyWithRetry(() => import("./pages/order-tracking.jsx"));
+const DriverLoginPage = lazyWithRetry(() => import("./pages/driver/login.jsx"));
+const DriverDashboardPage = lazyWithRetry(() => import("./pages/driver/dashboard.jsx"));
+const DriverProfilePage = lazyWithRetry(() => import("./pages/driver/profile.jsx"));
+const KitchenDashboardPage = lazyWithRetry(() => import("./pages/kitchen/dashboard.jsx"));
+const ProfilePage = lazyWithRetry(() => import("./pages/profile.jsx"));
 
 // Delay pre-fetching to prevent blocking the main thread on low-end devices
 if (typeof window !== "undefined") {

@@ -39,8 +39,10 @@ const LOCATION_INTERVAL = 5_000;
 function MapUpdater({ center }) {
   const map = useMap();
   useEffect(() => {
-    if (center && center[0] && center[1]) {
-      map.setView(center, map.getZoom(), { animate: true });
+    if (center && Number.isFinite(center[0]) && Number.isFinite(center[1])) {
+      try {
+        map.setView(center, map.getZoom(), { animate: true });
+      } catch (e) {}
     }
   }, [center, map]);
   return null;
@@ -111,7 +113,7 @@ function DriverHeader({ driver, locationActive, theme, toggleTheme, onRefresh, r
             </div>
             <div className="relative shrink-0">
               {driver?.profile_photo ? (
-                <img src={driver.profile_photo} alt={driver.name} className="size-9 rounded-full object-cover ring-2 ring-red-500/80 shadow-sm shrink-0" />
+                <img src={driver.profile_photo} alt={driver?.name || "Driver"} className="size-9 rounded-full object-cover ring-2 ring-red-500/80 shadow-sm shrink-0" />
               ) : (
                 <div className="size-9 rounded-full bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-600 dark:text-red-400 shrink-0">
                   <User className="size-4.5" />
@@ -176,11 +178,15 @@ function OrderTabs({ activeTab, setActiveTab, availableCount, activeCount }) {
 
 // ----------------- SCREEN 1: NEW RIDE/DELIVERY REQUEST CARD -----------------
 function NewDeliveryRequestCard({ order, onAccept, onSelectDetails, isActionLoading }) {
-  const totalItems = order.items?.reduce((acc, curr) => acc + curr.quantity, 0) || 0;
-  const customerName = order.customer?.name || "Customer";
-  const customerAvatar = order.customer?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(customerName)}&backgroundColor=fef08a&textColor=854d0e`;
-  const fareEstimate = Number(order.delivery_fee || 2.50).toFixed(2);
-  const paymentMethod = order.payment_method || "CASH";
+  const rawItems = Array.isArray(order?.items)
+    ? order.items
+    : (typeof order?.items === "string" ? (() => { try { return JSON.parse(order.items); } catch { return []; } })() : []);
+  const items = Array.isArray(rawItems) ? rawItems : [];
+  const totalItems = items.reduce((acc, curr) => acc + (Number(curr?.quantity) || 1), 0);
+  const customerName = order?.customer?.name || order?.address?.contact_name || "Customer";
+  const customerAvatar = order?.customer?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(customerName)}&backgroundColor=fef08a&textColor=854d0e`;
+  const fareEstimate = Number(order?.delivery_fee || 2.50).toFixed(2);
+  const paymentMethod = order?.payment_method || "CASH";
 
   return (
     <div className="bg-card rounded-[28px] p-3.5 shadow-sm hover:shadow-md transition-all duration-300 border border-border/70 relative overflow-hidden group sm:p-5">
@@ -293,14 +299,14 @@ function NewDeliveryRequestCard({ order, onAccept, onSelectDetails, isActionLoad
 
       {/* Food Items Preview Bar */}
       <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 mb-4">
-        {order.items?.map((item, idx) => (
+        {items.map((item, idx) => (
           <div key={idx} className="relative shrink-0 flex items-center justify-center size-12 rounded-xl bg-secondary border border-border/70 dark:border-white/5 overflow-hidden shadow-xs">
-            {item.product_image ? (
-              <img src={getImageUrl(item.product_image)} alt={item.product_name} className="w-full h-full object-cover" />
+            {item?.product_image ? (
+              <img src={getImageUrl(item.product_image)} alt={item?.product_name} className="w-full h-full object-cover" />
             ) : (
               <Package className="size-5 text-muted-foreground/80" />
             )}
-            {item.quantity > 1 && (
+            {item?.quantity > 1 && (
               <span className="absolute bottom-0.5 right-0.5 bg-black/85 text-amber-400 text-[9px] font-black px-1.5 py-0.2 rounded-md">
                 x{item.quantity}
               </span>
@@ -309,7 +315,7 @@ function NewDeliveryRequestCard({ order, onAccept, onSelectDetails, isActionLoad
         ))}
         {totalItems > 0 && (
           <span className="text-xs font-bold text-muted-foreground pl-1 shrink-0">
-            {totalItems} items (${Number(order.total_amount || 0).toFixed(2)})
+            {totalItems} items (${Number(order?.total_amount || 0).toFixed(2)})
           </span>
         )}
       </div>
@@ -364,18 +370,22 @@ function NewDeliveryRequestCard({ order, onAccept, onSelectDetails, isActionLoad
 
 // ----------------- SCREEN 2 & 3: ACTIVE DELIVERY / PASSENGER & ORDER DETAILS -----------------
 function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat, unreadCount = 0, isActionLoading, lastLocation }) {
-  const totalItems = order.items?.reduce((acc, curr) => acc + curr.quantity, 0) || 0;
-  const customerName = order.customer?.name || "Customer";
-  const customerPhone = order.customer?.phone || order.customer_phone || "";
-  const customerAvatar = order.customer?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(customerName)}&backgroundColor=fef08a&textColor=854d0e`;
-  const fareEstimate = Number(order.delivery_fee || 2.50).toFixed(2);
+  const rawItems = Array.isArray(order?.items)
+    ? order.items
+    : (typeof order?.items === "string" ? (() => { try { return JSON.parse(order.items); } catch { return []; } })() : []);
+  const items = Array.isArray(rawItems) ? rawItems : [];
+  const totalItems = items.reduce((acc, curr) => acc + (Number(curr?.quantity) || 1), 0);
+  const customerName = order?.customer?.name || order?.address?.contact_name || "Customer";
+  const customerPhone = order?.customer?.phone || order?.customer_phone || order?.address?.contact_phone || "";
+  const customerAvatar = order?.customer?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(customerName)}&backgroundColor=fef08a&textColor=854d0e`;
+  const fareEstimate = Number(order?.delivery_fee || 2.50).toFixed(2);
 
-  const isEnRoute = order.status === "OUT_FOR_DELIVERY" || order.status === "ARRIVED";
-  const isArrivedStatus = order.status === "ARRIVED";
-  const isReady = order.status === "READY";
+  const isEnRoute = order?.status === "OUT_FOR_DELIVERY" || order?.status === "ARRIVED";
+  const isArrivedStatus = order?.status === "ARRIVED";
+  const isReady = order?.status === "READY";
 
   const getDistanceKm = (lat1, lon1, lat2, lon2) => {
-    if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+    if (!Number.isFinite(lat1) || !Number.isFinite(lon1) || !Number.isFinite(lat2) || !Number.isFinite(lon2)) return null;
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
@@ -385,8 +395,8 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   };
 
-  const distToDestinationKm = (lastLocation?.lat && order.address?.latitude && order.address?.longitude)
-    ? getDistanceKm(lastLocation.lat, lastLocation.lng, Number(order.address.latitude), Number(order.address.longitude))
+  const distToDestinationKm = (lastLocation?.lat && order?.address?.latitude && order?.address?.longitude)
+    ? getDistanceKm(Number(lastLocation.lat), Number(lastLocation.lng), Number(order.address.latitude), Number(order.address.longitude))
     : null;
 
   const isNearDestination = isArrivedStatus || (distToDestinationKm !== null && distToDestinationKm <= 0.2);
@@ -663,12 +673,16 @@ function OrderDetailsModal({ order, driver, isOpen, onClose, onAccept, onUpdateS
   if (!isOpen || !order) return null;
 
   const [chatOpen, setChatOpen] = useState(false);
-  const totalItems = order.items?.reduce((acc, curr) => acc + curr.quantity, 0) || 0;
-  const customerName = order.customer?.name || "Customer";
-  const customerPhone = order.customer?.phone || order.customer_phone || "";
-  const customerAvatar = order.customer?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(customerName)}&backgroundColor=fef08a&textColor=854d0e`;
-  const fareEstimate = Number(order.delivery_fee || 2.50).toFixed(2);
-  const paymentMethod = order.payment_method || "CASH";
+  const rawItems = Array.isArray(order?.items)
+    ? order.items
+    : (typeof order?.items === "string" ? (() => { try { return JSON.parse(order.items); } catch { return []; } })() : []);
+  const items = Array.isArray(rawItems) ? rawItems : [];
+  const totalItems = items.reduce((acc, curr) => acc + (Number(curr?.quantity) || 1), 0);
+  const customerName = order?.customer?.name || order?.address?.contact_name || "Customer";
+  const customerPhone = order?.customer?.phone || order?.customer_phone || order?.address?.contact_phone || "";
+  const customerAvatar = order?.customer?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(customerName)}&backgroundColor=fef08a&textColor=854d0e`;
+  const fareEstimate = Number(order?.delivery_fee || 2.50).toFixed(2);
+  const paymentMethod = order?.payment_method || "CASH";
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
@@ -828,27 +842,25 @@ function OrderDetailsModal({ order, driver, isOpen, onClose, onAccept, onUpdateS
             </div>
 
             <div className="space-y-2">
-              {order.items?.map((item, idx) => (
+              {items.map((item, idx) => (
                 <div key={idx} className="flex items-center gap-3 p-2.5 bg-secondary/40/60 rounded-2xl border border-border/50 dark:border-white/5">
                   <div className="size-12 rounded-xl bg-secondary overflow-hidden shrink-0 border border-border/60 dark:border-white/5">
-                    {item.product_image ? (
-                      <img src={getImageUrl(item.product_image)} alt={item.product_name} className="w-full h-full object-cover" />
+                    {item?.product_image ? (
+                      <img src={getImageUrl(item.product_image)} alt={item?.product_name} className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-muted-foreground/80">
-                        <Package className="size-5" />
-                      </div>
+                      <Package className="size-5 text-muted-foreground m-auto" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h5 className="font-bold text-xs sm:text-sm text-foreground dark:text-foreground truncate">
-                      {item.product_name || `Item #${item.product_id}`}
+                      {item?.product_name || `Item #${item?.product_id}`}
                     </h5>
                     <p className="text-[11px] text-muted-foreground">
-                      Qty: <span className="font-bold text-foreground dark:text-foreground">{item.quantity}</span> • ${Number(item.price || 0).toFixed(2)}
+                      Qty: <span className="font-bold text-foreground dark:text-foreground">{item?.quantity || 1}</span> • ${Number(item?.price || 0).toFixed(2)}
                     </p>
                   </div>
                   <span className="font-black text-xs text-foreground dark:text-foreground shrink-0">
-                    ${(Number(item.price || 0) * (item.quantity || 1)).toFixed(2)}
+                    ${(Number(item?.price || 0) * (item?.quantity || 1)).toFixed(2)}
                   </span>
                 </div>
               ))}
@@ -1416,7 +1428,11 @@ export default function DriverDashboardPage() {
           </div>
 
           <MapContainer 
-            center={lastLocation ? [lastLocation.lat, lastLocation.lng] : STORE_COORDS} 
+            center={
+              lastLocation && Number.isFinite(lastLocation.lat) && Number.isFinite(lastLocation.lng)
+                ? [lastLocation.lat, lastLocation.lng]
+                : STORE_COORDS
+            } 
             zoom={14} 
             className="w-full h-full z-0" 
             zoomControl={false}
@@ -1435,7 +1451,7 @@ export default function DriverDashboardPage() {
             </Marker>
 
             {/* Driver Location Marker */}
-            {lastLocation && (
+            {lastLocation && Number.isFinite(lastLocation.lat) && Number.isFinite(lastLocation.lng) && (
               <Marker position={[lastLocation.lat, lastLocation.lng]}>
                 <Popup className="font-sans font-bold text-xs">
                   🛵 Your Location (Driver)
@@ -1445,22 +1461,28 @@ export default function DriverDashboardPage() {
             
             {/* Plot customer drop locations */}
             {myOrders.map(order => {
-              if (order.address?.latitude && order.address?.longitude) {
-                return (
-                  <Marker key={order.id} position={[order.address.latitude, order.address.longitude]}>
-                    <Popup className="font-sans">
-                      <div className="p-1">
-                        <p className="font-black text-xs">#{order.order_number || order.id} • {order.customer?.name || "Customer"}</p>
-                        <p className="text-[11px] text-muted-foreground">{order.address?.address_line}</p>
-                      </div>
-                    </Popup>
-                  </Marker>
-                );
+              if (order?.address?.latitude && order?.address?.longitude) {
+                const lat = Number(order.address.latitude);
+                const lng = Number(order.address.longitude);
+                if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                  return (
+                    <Marker key={order.id} position={[lat, lng]}>
+                      <Popup className="font-sans">
+                        <div className="p-1">
+                          <p className="font-black text-xs">#{order.order_number || order.id} • {order.customer?.name || "Customer"}</p>
+                          <p className="text-[11px] text-muted-foreground">{order.address?.address_line}</p>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  );
+                }
               }
               return null;
             })}
 
-            {lastLocation && <MapUpdater center={[lastLocation.lat, lastLocation.lng]} />}
+            {lastLocation && Number.isFinite(lastLocation.lat) && Number.isFinite(lastLocation.lng) && (
+              <MapUpdater center={[lastLocation.lat, lastLocation.lng]} />
+            )}
           </MapContainer>
         </div>
       </main>

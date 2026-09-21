@@ -64,6 +64,7 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "55635804125-p
 
 // Disable iOS/PWA swipe-to-navigate gestures from the edges of the screen
 document.addEventListener("touchstart", (e) => {
+  if (!e.touches || !e.touches[0]) return;
   const x = e.touches[0].pageX;
   // If touch starts within 25px of the left or right edge, block it
   if (x < 25 || x > window.innerWidth - 25) {
