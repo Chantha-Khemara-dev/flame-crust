@@ -210,7 +210,7 @@ export function OrderDetailsPanel({
       <Sheet open={Boolean(order)} onOpenChange={(open) => !open && onClose?.()}>
         <SheetContent
           side="right"
-          className="flex w-full flex-col gap-0 border-l border-border/70 bg-card p-0 pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] shadow-warm-lg sm:max-w-xl md:max-w-2xl [&>button]:top-[max(1rem,calc(env(safe-area-inset-top,0px)+0.75rem))] [&>button]:right-4 [&>button]:rounded-full [&>button]:bg-secondary/70 [&>button]:p-1.5 [&>button]:opacity-100 [&>button]:backdrop-blur-md"
+          className="z-[90] flex w-full flex-col gap-0 border-l border-border/70 bg-card p-0 pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] shadow-warm-lg sm:max-w-xl md:max-w-2xl [&>button]:top-[max(1rem,calc(env(safe-area-inset-top,0px)+0.75rem))] [&>button]:right-4 [&>button]:rounded-full [&>button]:bg-secondary/70 [&>button]:p-1.5 [&>button]:opacity-100 [&>button]:backdrop-blur-md"
         >
           <SheetHeader className="shrink-0 border-b border-border/60 bg-card/85 px-4 py-4 pr-14 backdrop-blur-xl sm:px-6 sm:py-5">
             <SheetTitle className="flex flex-wrap items-center gap-2 font-serif text-xl font-bold tracking-tight text-foreground sm:text-2xl">
@@ -263,7 +263,7 @@ export function OrderDetailsPanel({
             </SheetDescription>
           </SheetHeader>
 
-          <div className="flex-1 space-y-5 overflow-y-auto bg-background/50 p-4 custom-scrollbar sm:space-y-6 sm:p-6">
+          <div className="flex-1 space-y-5 overflow-y-auto bg-background/50 p-4 pb-12 custom-scrollbar sm:space-y-6 sm:p-6 sm:pb-16">
             {isCancelled && (
               <section className="flex items-start gap-3 rounded-3xl border border-destructive/30 bg-destructive/8 p-4">
                 <Ban className="mt-0.5 size-5 shrink-0 text-destructive" />
@@ -604,7 +604,7 @@ export function OrderDetailsPanel({
           </div>
 
           {updateOrderStatus && (
-            <footer className="flex shrink-0 items-center gap-2.5 border-t border-border/60 bg-card/90 p-3.5 backdrop-blur-xl sm:gap-3 sm:p-5">
+            <footer className="flex shrink-0 items-center gap-2.5 border-t border-border/60 bg-card/95 p-3.5 pb-[max(0.875rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))] backdrop-blur-xl sm:gap-3 sm:p-5">
               {!isCancelled && (order.status === "PENDING" || order.status === "CONFIRMED") && (
                 <Button
                   disabled={isUpdating}

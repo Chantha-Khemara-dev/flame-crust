@@ -774,56 +774,60 @@ export default function KitchenDashboard() {
           )}
         </main>
 
-        {/* Protective bottom gradient fade curtain */}
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 h-28 bg-gradient-to-t from-background via-background/90 to-transparent z-[65] lg:hidden" />
+        {/* Protective bottom gradient fade curtain - hide when order details open */}
+        {!selectedOrder && (
+          <div className="pointer-events-none fixed inset-x-0 bottom-0 h-28 bg-gradient-to-t from-background via-background/90 to-transparent z-[65] lg:hidden" />
+        )}
 
-        <div className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom,0.75rem))] z-[70] select-none sm:inset-x-6 lg:hidden">
-          <nav
-            className="mx-auto max-w-md rounded-full border border-border/80 bg-card/95 p-1.5 shadow-warm-lg ring-1 ring-black/[0.06] backdrop-blur-2xl backdrop-saturate-150 transition-all duration-200 dark:border-white/[0.12] dark:bg-zinc-900/95 dark:ring-white/10"
-            aria-label="Kitchen Navigation Dock"
-          >
-            <div className="grid grid-cols-4 items-center gap-1">
-              {DOCK_ITEMS.map((item) => {
-                const isActive =
-                  activeView === item.id || (item.id === "dashboard" && isBoard);
-                const badgeCount = item.badge ? stats.queue : 0;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => selectView(item.id)}
-                    aria-current={isActive ? "page" : undefined}
-                    className="flex w-full cursor-pointer items-center justify-center touch-manipulation transition-opacity duration-100 focus:outline-none active:opacity-75"
-                  >
-                    <div
-                      className={cn(
-                        "relative flex w-full cursor-pointer flex-col items-center justify-center rounded-full px-1 py-1.5 transition-colors duration-150 select-none touch-manipulation",
-                        isActive
-                          ? "bg-primary/12 font-bold text-primary shadow-2xs"
-                          : "text-muted-foreground/80 hover:bg-foreground/5 hover:text-foreground"
-                      )}
+        {!selectedOrder && (
+          <div className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom,0.75rem))] z-[70] select-none sm:inset-x-6 lg:hidden">
+            <nav
+              className="mx-auto max-w-md rounded-full border border-border/80 bg-card/95 p-1.5 shadow-warm-lg ring-1 ring-black/[0.06] backdrop-blur-2xl backdrop-saturate-150 transition-all duration-200 dark:border-white/[0.12] dark:bg-zinc-900/95 dark:ring-white/10"
+              aria-label="Kitchen Navigation Dock"
+            >
+              <div className="grid grid-cols-4 items-center gap-1">
+                {DOCK_ITEMS.map((item) => {
+                  const isActive =
+                    activeView === item.id || (item.id === "dashboard" && isBoard);
+                  const badgeCount = item.badge ? stats.queue : 0;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => selectView(item.id)}
+                      aria-current={isActive ? "page" : undefined}
+                      className="flex w-full cursor-pointer items-center justify-center touch-manipulation transition-opacity duration-100 focus:outline-none active:opacity-75"
                     >
-                      <div className="relative mb-0.5 flex size-6 items-center justify-center">
-                        <item.icon
-                          className={cn(
-                            "size-5 transition-transform duration-150 ease-out",
-                            isActive ? "scale-110 stroke-[2.3]" : "stroke-[1.8]"
-                          )}
-                        />
-                        {badgeCount > 0 && (
-                          <span className="absolute -top-1 -right-2 flex h-4 min-w-4 animate-in items-center justify-center rounded-full bg-gradient-to-r from-primary to-orange-500 px-1 text-[9px] font-extrabold text-white shadow-xs ring-2 ring-card zoom-in-75 duration-150">
-                            {badgeCount}
-                          </span>
+                      <div
+                        className={cn(
+                          "relative flex w-full cursor-pointer flex-col items-center justify-center rounded-full px-1 py-1.5 transition-colors duration-150 select-none touch-manipulation",
+                          isActive
+                            ? "bg-primary/12 font-bold text-primary shadow-2xs"
+                            : "text-muted-foreground/80 hover:bg-foreground/5 hover:text-foreground"
                         )}
+                      >
+                        <div className="relative mb-0.5 flex size-6 items-center justify-center">
+                          <item.icon
+                            className={cn(
+                              "size-5 transition-transform duration-150 ease-out",
+                              isActive ? "scale-110 stroke-[2.3]" : "stroke-[1.8]"
+                            )}
+                          />
+                          {badgeCount > 0 && (
+                            <span className="absolute -top-1 -right-2 flex h-4 min-w-4 animate-in items-center justify-center rounded-full bg-gradient-to-r from-primary to-orange-500 px-1 text-[9px] font-extrabold text-white shadow-xs ring-2 ring-card zoom-in-75 duration-150">
+                              {badgeCount}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] leading-none tracking-tight">{item.label}</span>
                       </div>
-                      <span className="text-[10px] leading-none tracking-tight">{item.label}</span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </nav>
-        </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+          </div>
+        )}
       </div>
 
       <OrderDetailsPanel
