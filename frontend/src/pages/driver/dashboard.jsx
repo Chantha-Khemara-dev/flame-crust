@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   LogOut, MapPin, PhoneCall, CheckCircle2, Package, RefreshCw, Navigation, 
   Wifi, WifiOff, User, Bike, Clock, AlertCircle, Check, ChevronRight, 
-  Sun, Moon, Map, Menu, ArrowLeft, ArrowRight, X, Phone, MessageSquare, 
+  Sun, Moon, Menu, ArrowLeft, ArrowRight, X, Phone, MessageSquare, 
   Star, ShieldCheck, DollarSign, Bell, Sparkles, Store, Loader2, Eye
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -1092,8 +1092,8 @@ export default function DriverDashboardPage() {
   const watchIdRef = useRef(null);
   const locationTimerRef = useRef(null);
   const lastSentLocRef = useRef(null);
-  const pendingStatusByOrderRef = useRef(new Map());
-  const pendingAcceptedOrdersRef = useRef(new Set());
+  const pendingStatusByOrderRef = useRef(new globalThis.Map());
+  const pendingAcceptedOrdersRef = useRef(new globalThis.Set());
 
   // ── Auth Check ──
   useEffect(() => {
