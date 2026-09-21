@@ -68,6 +68,7 @@ export function OrderDetailsPanel({
 }) {
   const isUpdating = order ? updatingOrders.has(String(order.id)) : false;
   const [chatOpen, setChatOpen] = useState(false);
+  const [chatTarget, setChatTarget] = useState("CUSTOMER");
   const [photoOpen, setPhotoOpen] = useState(false);
   const now = useNow();
 
@@ -296,7 +297,10 @@ export function OrderDetailsPanel({
                     </Button>
                   )}
                   <Button
-                    onClick={() => setChatOpen(true)}
+                    onClick={() => {
+                      setChatTarget("CUSTOMER");
+                      setChatOpen(true);
+                    }}
                     className="h-10 flex-1 rounded-full bg-primary px-4 font-serif text-xs font-bold text-primary-foreground shadow-warm transition-all hover:bg-primary/90 active:scale-95 sm:flex-initial sm:text-sm"
                   >
                     <MessageCircle className="mr-1.5 size-4" /> Chat
@@ -352,15 +356,30 @@ export function OrderDetailsPanel({
                       </p>
                     </div>
                   </div>
-                  {driver && driver.phone && (
-                    <a
-                      href={`tel:${driver.phone}`}
-                      className="size-9 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center hover:bg-emerald-500/25 transition-colors shrink-0"
-                      title="Call Driver"
-                    >
-                      <Phone className="size-4" />
-                    </a>
-                  )}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {driver && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setChatTarget("DRIVER");
+                          setChatOpen(true);
+                        }}
+                        className="h-9 rounded-full border-border/70 px-3 text-xs font-semibold hover:bg-secondary cursor-pointer"
+                      >
+                        <MessageCircle className="mr-1.5 size-3.5 text-primary" /> Chat Driver
+                      </Button>
+                    )}
+                    {driver && driver.phone && (
+                      <a
+                        href={`tel:${driver.phone}`}
+                        className="size-9 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center hover:bg-emerald-500/25 transition-colors shrink-0"
+                        title="Call Driver"
+                      >
+                        <Phone className="size-4" />
+                      </a>
+                    )}
+                  </div>
                 </div>
               </section>
             )}
@@ -656,11 +675,21 @@ export function OrderDetailsPanel({
         orderId={order.id}
         orderNumber={order.order_number || order.id}
         currentUser={{ type: "KITCHEN", name: user?.name || "Chef" }}
-        recipient={{
-          name: customer?.name || order.customer_name || "Customer",
-          role: "Customer",
-          photo: customer?.avatar || "",
-        }}
+        recipient={
+          chatTarget === "DRIVER" && driver
+            ? {
+                name: driver.name || "Driver",
+                role: "Driver (អ្នកដឹក)",
+                photo: driver.profile_photo || driver.avatar || "",
+                phone: driver.phone || "",
+              }
+            : {
+                name: customer?.name || order.customer_name || "Customer",
+                role: "Customer (អតិថិជន)",
+                photo: customer?.avatar || "",
+                phone: customer?.phone || "",
+              }
+        }
       />
 
       <PhotoViewer

@@ -1269,6 +1269,13 @@ public class AuthController {
                 if (senderPhoto == null || senderPhoto.isBlank()) {
                     senderPhoto = "https://api.dicebear.com/7.x/initials/svg?seed=" + URLEncoder.encode(resolvedSenderName, StandardCharsets.UTF_8) + "&backgroundColor=f59e0b&textColor=ffffff";
                 }
+            } else if ("KITCHEN".equalsIgnoreCase(senderType)) {
+                if (resolvedSenderName == null || resolvedSenderName.isBlank() || "Chef".equalsIgnoreCase(resolvedSenderName)) {
+                    resolvedSenderName = "Kitchen / ចុងភៅ";
+                }
+                if (senderPhoto == null || senderPhoto.isBlank()) {
+                    senderPhoto = "https://api.dicebear.com/7.x/bottts/svg?seed=flame-crust-kitchen&backgroundColor=f97316";
+                }
             }
 
             jdbc.update(
@@ -1318,10 +1325,17 @@ public class AuthController {
                             String title = "💬 " + finalSenderName + " (អ្នកដឹកជញ្ជូន 🛵)";
                             String url = "/track/" + finalOrderId + "?chat=true";
                             webPushService.sendToUserWithExtra(customerId, "CUSTOMER", title, notiBody, url, extra);
-                        } else if ("CUSTOMER".equalsIgnoreCase(finalSenderType) && driverId != null) {
+                        } else if ("KITCHEN".equalsIgnoreCase(finalSenderType) && customerId != null) {
+                            String title = "💬 " + finalSenderName + " (ផ្ទះបាយ / Kitchen 👨‍🍳)";
+                            String url = "/track/" + finalOrderId + "?chat=true";
+                            webPushService.sendToUserWithExtra(customerId, "CUSTOMER", title, notiBody, url, extra);
+                        } else if ("CUSTOMER".equalsIgnoreCase(finalSenderType)) {
                             String title = "💬 " + finalSenderName + " (អតិថិជន 🍕)";
-                            String url = "/driver/dashboard";
-                            webPushService.sendToUserWithExtra(driverId, "DRIVER", title, notiBody, url, extra);
+                            if (driverId != null) {
+                                String url = "/driver/dashboard";
+                                webPushService.sendToUserWithExtra(driverId, "DRIVER", title, notiBody, url, extra);
+                            }
+                            webPushService.sendToUserType("KITCHEN", title, notiBody, "/kitchen/dashboard");
                         }
                     }
                 } catch (Exception ex) {

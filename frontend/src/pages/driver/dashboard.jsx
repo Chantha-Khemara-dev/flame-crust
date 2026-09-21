@@ -5,7 +5,7 @@ import {
   LogOut, MapPin, PhoneCall, CheckCircle2, Package, RefreshCw, Navigation, 
   Wifi, WifiOff, User, Bike, Clock, AlertCircle, Check, ChevronRight, 
   Sun, Moon, Map, Menu, ArrowLeft, ArrowRight, X, Phone, MessageSquare, 
-  Star, ShieldCheck, DollarSign, Bell, Sparkles, Store, Loader2
+  Star, ShieldCheck, DollarSign, Bell, Sparkles, Store, Loader2, Eye
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";

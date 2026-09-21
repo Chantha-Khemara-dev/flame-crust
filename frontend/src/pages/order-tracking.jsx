@@ -255,15 +255,27 @@ export default function OrderTrackingPage() {
           const lastMsg = msgs[msgs.length - 1];
           if (lastKnownMsgIdRef.current !== null && lastMsg.id > lastKnownMsgIdRef.current) {
             if (lastMsg.sender_type !== "CUSTOMER") {
-              // Incoming message from Driver!
+              const isKitchenSender = lastMsg.sender_type === "KITCHEN";
+              if (isKitchenSender) {
+                setChatRecipientType("KITCHEN");
+              } else if (lastMsg.sender_type === "DRIVER") {
+                setChatRecipientType("DRIVER");
+              }
+              const senderDisplayName = isKitchenSender
+                ? (lastMsg.sender_name ? `${lastMsg.sender_name} (Kitchen)` : "Flame & Crust Kitchen 👨‍🍳")
+                : (driver?.name || lastMsg.sender_name || "Delivery Partner 🛵");
+              const senderDisplayPhoto = isKitchenSender
+                ? "https://api.dicebear.com/7.x/bottts/svg?seed=flame-crust-kitchen&backgroundColor=f97316"
+                : (driver?.profilePhoto || driver?.profile_photo);
+
               if (!chatOpen) {
                 setLastMsgText(lastMsg.message);
                 setChatHeadDismissed(false);
                 setUnreadCount(prev => prev + 1);
                 showChatNotificationToast({
-                  senderName: driver?.name || lastMsg.sender_name || "Delivery Partner",
+                  senderName: senderDisplayName,
                   message: lastMsg.message,
-                  photo: driver?.profilePhoto || driver?.profile_photo,
+                  photo: senderDisplayPhoto,
                   onReply: () => {
                     setChatOpen(true);
                     setUnreadCount(0);
@@ -1122,10 +1134,10 @@ export default function OrderTrackingPage() {
             avatar: customer?.avatar
           }}
           recipient={{
-            name: chatRecipientType === "DRIVER" ? (driver?.name || "Courier Partner") : "Flame & Crust Kitchen",
-            photo: chatRecipientType === "DRIVER" ? (driver?.profilePhoto || driver?.profile_photo) : null,
-            role: chatRecipientType === "DRIVER" ? (driver?.vehicleInfo || driver?.vehicle_info || "Courier Partner") : "Master Chef",
-            phone: chatRecipientType === "DRIVER" ? (driver?.phone || "0965755963") : ""
+            name: chatRecipientType === "KITCHEN" ? "Flame & Crust Kitchen 👨‍🍳" : (driver?.name || "Courier Partner"),
+            photo: chatRecipientType === "KITCHEN" ? "https://api.dicebear.com/7.x/bottts/svg?seed=flame-crust-kitchen&backgroundColor=f97316" : (driver?.profilePhoto || driver?.profile_photo),
+            role: chatRecipientType === "KITCHEN" ? "Master Chef (ផ្ទះបាយ)" : (driver?.vehicleInfo || driver?.vehicle_info || "Courier Partner"),
+            phone: chatRecipientType === "KITCHEN" ? "" : (driver?.phone || "0965755963")
           }}
         />
       )}

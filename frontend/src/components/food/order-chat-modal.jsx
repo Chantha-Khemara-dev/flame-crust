@@ -17,6 +17,7 @@ import {
   Loader2, 
   Bike, 
   User, 
+  ChefHat,
   CheckCheck, 
   Sparkles,
   Wifi,
@@ -725,6 +726,13 @@ export function OrderChatModal({
         "🚪 Please leave it at the gate/door.",
         "📞 Please call me when you arrive."
       ]
+    : currentUser.type === "KITCHEN"
+    ? [
+        "👨‍🍳 Your order is currently being freshly baked!",
+        "🍕 Food is hot and almost ready for pickup.",
+        "⏱️ Kitchen is busy, adding ~5 extra minutes for perfection.",
+        "✅ Order is packed and ready!"
+      ]
     : [
         "🛵 I have picked up your order and am on the way!",
         "📍 Almost there, arriving in ~5 mins.",
@@ -915,7 +923,9 @@ export function OrderChatModal({
               />
             ) : (
               <div className="size-10.5 rounded-full bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                {recipient.role?.toLowerCase().includes("driver") || currentUser.type === "CUSTOMER" ? (
+                {recipient.role?.toLowerCase().includes("kitchen") || recipient.role?.toLowerCase().includes("chef") ? (
+                  <ChefHat className="size-5.5" />
+                ) : recipient.role?.toLowerCase().includes("driver") || (currentUser.type === "CUSTOMER" && recipient.role?.toLowerCase().includes("delivery")) ? (
                   <Bike className="size-5.5" />
                 ) : (
                   <User className="size-5.5" />
@@ -928,7 +938,7 @@ export function OrderChatModal({
                 <span className="size-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground truncate">
-                {recipient.role || "Delivery Chat"} {orderNumber ? `• Order #${orderNumber}` : ""}
+                {recipient.role || (currentUser.type === "KITCHEN" ? "Customer Chat" : "Order Chat")} {orderNumber ? `• Order #${orderNumber}` : ""}
               </DialogDescription>
             </div>
           </div>
@@ -1008,12 +1018,24 @@ export function OrderChatModal({
                   )}
                 >
                   {!isMe && (
-                    <div className="size-6.5 rounded-full overflow-hidden bg-primary/15 shrink-0 mb-1 border border-border/50">
-                      {recipient.photo ? (
+                    <div className="size-6.5 rounded-full overflow-hidden shrink-0 mb-1 border border-border/50 flex items-center justify-center">
+                      {m.sender_type === "KITCHEN" ? (
+                        <div className="size-full bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                          <ChefHat className="size-3.5" />
+                        </div>
+                      ) : m.sender_type === "DRIVER" ? (
+                        recipient.photo && recipient.role?.toLowerCase().includes("driver") ? (
+                          <img src={recipient.photo} alt="" className="size-full object-cover" />
+                        ) : (
+                          <div className="size-full bg-red-500/20 text-red-600 flex items-center justify-center">
+                            <Bike className="size-3.5" />
+                          </div>
+                        )
+                      ) : recipient.photo ? (
                         <img src={recipient.photo} alt="" className="size-full object-cover" />
                       ) : (
-                        <div className="size-full flex items-center justify-center text-primary text-[10px] font-bold">
-                          {recipient.name?.[0] || "P"}
+                        <div className="size-full bg-primary/15 flex items-center justify-center text-primary text-[10px] font-bold">
+                          {m.sender_name?.[0] || recipient.name?.[0] || "U"}
                         </div>
                       )}
                     </div>
@@ -1022,7 +1044,13 @@ export function OrderChatModal({
                   <div className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
                     <div className="flex items-center gap-1 mb-0.5 px-1">
                       <span className="text-[10px] font-semibold text-muted-foreground">
-                        {isMe ? "You" : m.sender_name || (m.sender_type === "DRIVER" ? "Driver" : "Customer")}
+                        {isMe
+                          ? "You"
+                          : m.sender_type === "KITCHEN"
+                            ? (m.sender_name ? `${m.sender_name} (Kitchen)` : "Kitchen / Chef 👨‍🍳")
+                            : m.sender_type === "DRIVER"
+                              ? (m.sender_name ? `${m.sender_name} (Driver)` : "Driver 🛵")
+                              : (m.sender_name || "Customer")}
                       </span>
                       <span className="text-[9px] text-muted-foreground/60">
                         {m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}

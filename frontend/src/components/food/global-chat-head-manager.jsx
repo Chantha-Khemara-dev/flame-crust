@@ -19,6 +19,7 @@ export function GlobalCustomerChatManager() {
   const [chatOpen, setChatOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [lastMsgText, setLastMsgText] = useState("");
+  const [lastSenderType, setLastSenderType] = useState("DRIVER");
   const [dismissed, setDismissed] = useState(false);
   const lastKnownMsgIdRef = useRef(null);
 
@@ -99,15 +100,23 @@ export function GlobalCustomerChatManager() {
           const lastMsg = msgs[msgs.length - 1];
           if (lastKnownMsgIdRef.current !== null && lastMsg.id > lastKnownMsgIdRef.current) {
             if (lastMsg.sender_type !== "CUSTOMER") {
-              // Incoming message from Driver!
+              const isKitchenSender = lastMsg.sender_type === "KITCHEN";
+              setLastSenderType(lastMsg.sender_type);
+              const senderDisplayName = isKitchenSender
+                ? (lastMsg.sender_name ? `${lastMsg.sender_name} (Kitchen)` : "Kitchen / Chef 👨‍🍳")
+                : (driver?.name || lastMsg.sender_name || "Delivery Partner 🛵");
+              const senderDisplayPhoto = isKitchenSender
+                ? "https://api.dicebear.com/7.x/bottts/svg?seed=flame-crust-kitchen&backgroundColor=f97316"
+                : (driver?.profilePhoto || driver?.profile_photo);
+
               if (!chatOpen) {
                 setLastMsgText(lastMsg.message);
                 setDismissed(false);
                 setUnreadCount(prev => prev + 1);
                 showChatNotificationToast({
-                  senderName: driver?.name || lastMsg.sender_name || "Delivery Partner",
+                  senderName: senderDisplayName,
                   message: lastMsg.message,
-                  photo: driver?.profilePhoto || driver?.profile_photo,
+                  photo: senderDisplayPhoto,
                   onReply: () => {
                     setChatOpen(true);
                     setUnreadCount(0);
@@ -134,9 +143,9 @@ export function GlobalCustomerChatManager() {
       {!chatOpen && (
         <FloatingChatHead
           visible={true}
-          photo={driver?.profilePhoto || driver?.profile_photo}
-          name={driver?.name || "Delivery Partner"}
-          role={driver?.vehicleInfo || "Delivery Partner"}
+          photo={lastSenderType === "KITCHEN" ? "https://api.dicebear.com/7.x/bottts/svg?seed=flame-crust-kitchen&backgroundColor=f97316" : (driver?.profilePhoto || driver?.profile_photo)}
+          name={lastSenderType === "KITCHEN" ? "Kitchen / Chef 👨‍🍳" : (driver?.name || "Delivery Partner")}
+          role={lastSenderType === "KITCHEN" ? "Kitchen Staff (ផ្ទះបាយ)" : (driver?.vehicleInfo || "Delivery Partner")}
           lastMessage={lastMsgText}
           unreadCount={unreadCount}
           onClick={() => {
@@ -159,10 +168,10 @@ export function GlobalCustomerChatManager() {
             name: activeOrder.customer_name || "Customer"
           }}
           recipient={{
-            name: driver?.name || "Delivery Partner",
-            photo: driver?.profilePhoto || driver?.profile_photo,
-            role: driver?.vehicleInfo || driver?.vehicle_info || "Delivery Partner",
-            phone: driver?.phone || "0965755963"
+            name: lastSenderType === "KITCHEN" || !driver?.name ? "Flame & Crust Kitchen 👨‍🍳" : (driver?.name || "Delivery Partner"),
+            photo: lastSenderType === "KITCHEN" || !driver?.name ? "https://api.dicebear.com/7.x/bottts/svg?seed=flame-crust-kitchen&backgroundColor=f97316" : (driver?.profilePhoto || driver?.profile_photo),
+            role: lastSenderType === "KITCHEN" || !driver?.name ? "Kitchen Staff (ផ្ទះបាយ)" : (driver?.vehicleInfo || driver?.vehicle_info || "Delivery Partner"),
+            phone: lastSenderType === "KITCHEN" || !driver?.name ? "" : (driver?.phone || "0965755963")
           }}
         />
       )}

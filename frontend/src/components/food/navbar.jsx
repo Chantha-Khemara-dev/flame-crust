@@ -910,8 +910,13 @@ function Navbar() {
 
           <div className="flex flex-col gap-2.5 py-2 max-h-[60vh] overflow-y-auto no-scrollbar">
             {orderConversations.map((convo, idx) => {
-              const driverName = convo.driver?.name || "Courier Partner";
-              const driverPhoto = convo.driver?.profilePhoto || convo.driver?.profile_photo;
+              const isKitchen = convo.lastMessage?.sender_type === "KITCHEN" || (!convo.driver && convo.order?.status !== "DELIVERED");
+              const partnerName = isKitchen
+                ? (convo.lastMessage?.sender_name ? `${convo.lastMessage.sender_name} (Kitchen)` : "Kitchen / Chef 👨‍🍳")
+                : (convo.driver?.name || "Courier Partner 🛵");
+              const partnerPhoto = isKitchen
+                ? "https://api.dicebear.com/7.x/bottts/svg?seed=flame-crust-kitchen&backgroundColor=f97316"
+                : (convo.driver?.profilePhoto || convo.driver?.profile_photo);
               const orderNum = convo.order?.order_number || convo.order?.id;
               const hasLastMsg = Boolean(convo.lastMessage);
 
@@ -927,10 +932,14 @@ function Navbar() {
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="relative shrink-0">
-                      {driverPhoto ? (
+                      {isKitchen ? (
+                        <div className="size-11 rounded-full bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center font-bold shadow-xs">
+                          <ChefHat className="size-5.5" />
+                        </div>
+                      ) : partnerPhoto ? (
                         <img
-                          src={driverPhoto}
-                          alt={driverName}
+                          src={partnerPhoto}
+                          alt={partnerName}
                           className="size-11 rounded-full object-cover border-2 border-primary/50"
                         />
                       ) : (
@@ -944,7 +953,7 @@ function Navbar() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 mb-0.5">
                         <h4 className="font-bold text-xs sm:text-sm text-foreground truncate group-hover:text-primary transition-colors">
-                          {driverName}
+                          {partnerName}
                         </h4>
                         <span className="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded-md bg-secondary text-primary border border-border/60 shrink-0">
                           #{orderNum}{convo.orders?.length > 1 ? ` (+${convo.orders.length - 1} more)` : ""}
@@ -953,15 +962,21 @@ function Navbar() {
                       <p className="text-xs text-muted-foreground truncate">
                         {hasLastMsg ? (
                           <span className={cn(convo.unreadCount > 0 ? "font-bold text-foreground" : "")}>
-                            {convo.lastMessage.sender_type === "CUSTOMER" ? "You: " : `${driverName.split(" ")[0]}: `}
+                            {convo.lastMessage.sender_type === "CUSTOMER"
+                              ? "You: "
+                              : isKitchen
+                                ? "Kitchen: "
+                                : `${partnerName.split(" ")[0]}: `}
                             {convo.lastMessage.message === "[DELETED]"
                               ? "🚫 Removed a message"
                               : convo.lastMessage.message.startsWith("[IMG]:")
                                 ? "📷 Photo"
-                                : convo.lastMessage.message}
+                                : convo.lastMessage.message.startsWith("[VOICE]:")
+                                  ? "🎤 Voice message"
+                                  : convo.lastMessage.message}
                           </span>
                         ) : (
-                          <span className="italic text-muted-foreground/80">Tap to start chatting with {driverName.split(" ")[0]}</span>
+                          <span className="italic text-muted-foreground/80">Tap to chat regarding order #{orderNum}</span>
                         )}
                       </p>
                     </div>
@@ -1001,10 +1016,18 @@ function Navbar() {
             name: customer?.name || customer?.phone || "Customer"
           }}
           recipient={{
-            name: selectedChatOrder.driver?.name || "Delivery Partner",
-            photo: selectedChatOrder.driver?.profilePhoto || selectedChatOrder.driver?.profile_photo,
-            role: selectedChatOrder.driver?.vehicleInfo || selectedChatOrder.driver?.vehicle_info || "Delivery Partner",
-            phone: selectedChatOrder.driver?.phone || "0965755963"
+            name: selectedChatOrder.lastMessage?.sender_type === "KITCHEN" || !selectedChatOrder.driver?.name
+              ? "Flame & Crust Kitchen 👨‍🍳"
+              : (selectedChatOrder.driver?.name || "Delivery Partner"),
+            photo: selectedChatOrder.lastMessage?.sender_type === "KITCHEN" || !selectedChatOrder.driver?.name
+              ? "https://api.dicebear.com/7.x/bottts/svg?seed=flame-crust-kitchen&backgroundColor=f97316"
+              : (selectedChatOrder.driver?.profilePhoto || selectedChatOrder.driver?.profile_photo),
+            role: selectedChatOrder.lastMessage?.sender_type === "KITCHEN" || !selectedChatOrder.driver?.name
+              ? "Kitchen Staff (ផ្ទះបាយ)"
+              : (selectedChatOrder.driver?.vehicleInfo || selectedChatOrder.driver?.vehicle_info || "Delivery Partner"),
+            phone: selectedChatOrder.lastMessage?.sender_type === "KITCHEN" || !selectedChatOrder.driver?.name
+              ? ""
+              : (selectedChatOrder.driver?.phone || "0965755963")
           }}
         />
       )}
