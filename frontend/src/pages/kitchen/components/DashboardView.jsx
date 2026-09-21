@@ -20,6 +20,7 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Bike,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getImageUrl } from "@/lib/food-api";
@@ -643,6 +644,12 @@ function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOp
             <Clock3 className="size-3 shrink-0" />
             <span className="tabular-nums">{clockOf(order.created_at)}</span>
           </p>
+          {order.driver_name && (
+            <p className="mt-0.5 flex items-center gap-1 truncate text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+              <Bike className="size-3 shrink-0" />
+              <span className="truncate">Driver: {order.driver_name}</span>
+            </p>
+          )}
         </div>
 
         <div className="flex shrink-0 flex-col items-end gap-1.5">
@@ -773,7 +780,17 @@ function TicketCard({ order, stage, compact, showImages, targetPrepMinutes, onOp
               <>
                 <config.icon className="mr-1.5 size-3.5 shrink-0 transition-transform group-hover/btn:scale-125" />
                 <span className="truncate">
-                  {config.actionLabel || (stage === "pending" ? "Start Cooking" : stage === "preparing" ? "Mark Ready" : "Complete Order")}
+                  {config.actionLabel || (
+                    stage === "pending"
+                      ? "Start Cooking"
+                      : stage === "preparing"
+                        ? "Mark Ready"
+                        : (order.order_type === "DINE_IN" || order.order_type === "TAKEAWAY")
+                          ? "Complete Order"
+                          : order.driver_name
+                            ? `Pickup by ${order.driver_name}`
+                            : "Complete Order"
+                  )}
                 </span>
               </>
             )}

@@ -191,6 +191,14 @@ function NewDeliveryRequestCard({ order, onAccept, onSelectDetails, isActionLoad
           <h3 className="font-black text-xs sm:text-sm uppercase tracking-wider text-foreground truncate">
             New Delivery Request
           </h3>
+          <span className={cn(
+            "text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md",
+            order.status === "READY" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30" :
+            order.status === "PREPARING" ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30" :
+            "bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30"
+          )}>
+            {order.status === "READY" ? "Ready" : order.status === "PREPARING" ? "Cooking" : order.status}
+          </span>
         </div>
         <span className="text-[10px] sm:text-[11px] font-black text-red-600 dark:text-red-400 bg-red-500/15 px-2 py-0.5 rounded-lg border border-red-500/30 shrink-0 truncate max-w-[130px] sm:max-w-none">
           #{order.order_number || String(order.id).slice(-8)}
@@ -462,8 +470,11 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat
 
       {/* Progress Flow Steps */}
       <div className="grid grid-cols-3 gap-1.5 mb-4 py-2 border-y border-border/50 dark:border-white/5 text-center">
-        <div className={cn("py-1 rounded-lg text-[10px] font-black uppercase tracking-wider", order.status === "READY" || isEnRoute ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-secondary text-muted-foreground/80")}>
-          1. Ready
+        <div className={cn(
+          "py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors",
+          order.status === "READY" || isEnRoute ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/15 text-amber-600 dark:text-amber-400 animate-pulse"
+        )}>
+          {order.status === "READY" || isEnRoute ? "1. Ready" : "1. In Kitchen"}
         </div>
         <div className={cn("py-1 rounded-lg text-[10px] font-black uppercase tracking-wider", isEnRoute ? "bg-red-500/15 text-red-600 dark:text-red-400" : "bg-secondary text-muted-foreground/80")}>
           2. En Route
@@ -477,6 +488,13 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat
       <div className="space-y-2.5">
         {!isEnRoute ? (
           <>
+            {order.status !== "READY" && (
+              <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-semibold">
+                <Clock className="size-4 shrink-0 animate-spin text-amber-500" />
+                <span>Kitchen is cooking this order. Please head to restaurant.</span>
+              </div>
+            )}
+
             <a 
               href="https://www.google.com/maps/dir/?api=1&destination=11.5564,104.9282"
               target="_blank"
@@ -504,7 +522,7 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat
                 </>
               ) : (
                 <>
-                  <span>{order.status === "READY" ? "Pick Up & Start Trip" : "Waiting for Kitchen..."}</span>
+                  <span>{order.status === "READY" ? "Pick Up & Start Trip" : order.status === "PREPARING" ? "Cooking in Kitchen (Waiting...)" : "Waiting for Kitchen..."}</span>
                   <ArrowRight className="size-4.5 stroke-[3]" />
                 </>
               )}
@@ -1045,24 +1063,27 @@ export default function DriverDashboardPage() {
     if (ordersInFlightRef.current) return;
     ordersInFlightRef.current = true;
     try {
-      const allOrders = await list("orders");
+      const allOrders = await list("orders", { limit: 200, sort: "id", dir: "desc" });
       
+      const isDeliveryOrder = (o) => !o.order_type || o.order_type.toUpperCase() === "DELIVERY";
+
       const assigned = allOrders.filter(o => 
-        String(o.driver_id) === String(driver.id) && 
+        (String(o.driver_id) === String(driver.id) || String(o.driverId) === String(driver.id)) && 
         o.status !== "DELIVERED" && 
         o.status !== "CANCELLED"
       );
       
       const available = allOrders.filter(o => 
         !o.driver_id && 
+        isDeliveryOrder(o) &&
         ["PENDING", "CONFIRMED", "PREPARING", "READY"].includes(o.status)
       );
       
       const [allAddresses, allCustomers, allOrderItems, allProducts] = await Promise.all([
-        list("addresses").catch(() => []),
-        list("customers").catch(() => []),
-        list("order_items").catch(() => []),
-        list("products").catch(() => [])
+        list("addresses", { limit: -1 }).catch(() => []),
+        list("customers", { limit: -1 }).catch(() => []),
+        list("order_items", { limit: -1 }).catch(() => []),
+        list("products", { limit: -1 }).catch(() => [])
       ]);
 
       const enrich = (ordersList) => ordersList.map((o) => {
@@ -1103,7 +1124,7 @@ export default function DriverDashboardPage() {
     const interval = setInterval(() => {
       // Pause background polling while the tab is hidden to save CPU & battery
       if (driver && document.visibilityState === "visible") fetchAllData();
-    }, 10000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [driver]);
 
@@ -1157,7 +1178,6 @@ export default function DriverDashboardPage() {
       const acceptedOrder = {
         ...targetOrder,
         driver_id: driver.id,
-        status: "READY"
       };
       setAvailableOrders(prev => prev.filter(o => String(o.id) !== String(orderId)));
       setMyOrders(prev => [acceptedOrder, ...prev.filter(o => String(o.id) !== String(orderId))]);
@@ -1168,8 +1188,9 @@ export default function DriverDashboardPage() {
     setSelectedOrderDetails(null);
 
     try {
-      await update("orders", orderId, { driver_id: driver.id, status: "READY" });
-      toast.success("Delivery accepted! Ready for pickup.");
+      // Only assign driver_id — preserve the actual kitchen preparation status!
+      await update("orders", orderId, { driver_id: driver.id });
+      toast.success("Delivery accepted! Assigned to you.");
       fetchAllData();
     } catch (err) {
       toast.error("Failed to accept delivery");

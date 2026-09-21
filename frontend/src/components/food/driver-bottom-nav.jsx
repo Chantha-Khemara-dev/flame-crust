@@ -41,11 +41,11 @@ export function DriverBottomNav({
         const auth = localStorage.getItem("driverAuth");
         if (!auth) return;
         const d = JSON.parse(auth);
-        const orders = await list("orders");
+        const orders = await list("orders", { limit: 200, sort: "id", dir: "desc" });
         const count = orders.filter(
           (o) =>
             (String(o.driver_id) === String(d.id) || String(o.driverId) === String(d.id)) &&
-            (o.status === "OUT_FOR_DELIVERY" || o.status === "ON_DELIVERY" || o.status === "ACCEPTED" || o.status === "PREPARING")
+            o.status !== "DELIVERED" && o.status !== "CANCELLED"
         ).length;
         setActiveOrdersCount(count);
       } catch {}

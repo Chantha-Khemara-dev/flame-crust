@@ -60,6 +60,7 @@ export function OrderDetailsPanel({
   onClose,
   user,
   customers = [],
+  drivers = [],
   history = [],
   updateOrderStatus,
   updatingOrders = new Set(),
@@ -81,6 +82,11 @@ export function OrderDetailsPanel({
   const customer = useMemo(
     () => customers.find((c) => String(c.id) === String(order?.customer_id)) || null,
     [customers, order?.customer_id]
+  );
+
+  const driver = useMemo(
+    () => order?.driver || drivers.find((d) => String(d.id) === String(order?.driver_id || order?.driverId)) || null,
+    [order?.driver, order?.driver_id, order?.driverId, drivers]
   );
 
   const steps = useMemo(() => {
@@ -328,6 +334,37 @@ export function OrderDetailsPanel({
               )}
             </section>
 
+            {(!order.order_type || order.order_type === "DELIVERY") && (
+              <section className="overflow-hidden rounded-3xl border border-border/70 bg-card p-4 shadow-warm sm:p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="size-11 rounded-2xl bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-600 dark:text-red-400 shrink-0">
+                      <Bike className="size-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="font-serif text-sm font-bold text-foreground truncate">
+                        {driver ? `Driver: ${driver.name}` : "No Driver Assigned Yet"}
+                      </h4>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {driver
+                          ? (driver.phone ? `Phone: ${driver.phone}` : "Driver accepted delivery")
+                          : "Waiting for a driver to accept this delivery ticket"}
+                      </p>
+                    </div>
+                  </div>
+                  {driver && driver.phone && (
+                    <a
+                      href={`tel:${driver.phone}`}
+                      className="size-9 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center hover:bg-emerald-500/25 transition-colors shrink-0"
+                      title="Call Driver"
+                    >
+                      <Phone className="size-4" />
+                    </a>
+                  )}
+                </div>
+              </section>
+            )}
+
             {order.notes && (
               <section className="rounded-3xl border border-amber-500/30 bg-amber-500/10 p-4 shadow-xs sm:p-5">
                 <div className="mb-1.5 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400">
@@ -545,10 +582,43 @@ export function OrderDetailsPanel({
                 </Button>
               )}
               {!isCancelled && order.status === "READY" && (
-                <div className="flex h-11 flex-1 items-center justify-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 text-center font-serif text-[11px] font-bold text-emerald-700 sm:h-12 sm:text-sm dark:bg-emerald-500/18 dark:text-emerald-300">
-                  <CheckCircle2 className="size-4 shrink-0" />
-                  <span className="truncate">Prepared • waiting for driver</span>
-                </div>
+                order.order_type === "DINE_IN" || order.order_type === "TAKEAWAY" ? (
+                  <Button
+                    disabled={isUpdating}
+                    onClick={() => !isUpdating && updateOrderStatus(order.id, "DELIVERED")}
+                    className={cn(
+                      "h-11 flex-1 truncate rounded-full bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 font-serif text-xs font-bold text-white shadow-warm transition-all hover:brightness-105 active:scale-[0.98] sm:h-12 sm:text-base",
+                      isUpdating && "opacity-80 cursor-wait"
+                    )}
+                  >
+                    {isUpdating ? (
+                      <><Loader2 className="mr-2 size-4 shrink-0 animate-spin sm:size-5" /> Completing…</>
+                    ) : (
+                      <><CheckCircle2 className="mr-2 size-4 shrink-0 sm:size-5" /> Complete / Hand Over</>
+                    )}
+                  </Button>
+                ) : (
+                  <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+                    <div className="flex h-11 flex-1 items-center justify-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 text-center font-serif text-[11px] font-bold text-emerald-700 sm:h-12 sm:text-sm dark:bg-emerald-500/18 dark:text-emerald-300 min-w-0">
+                      <CheckCircle2 className="size-4 shrink-0" />
+                      {driver ? (
+                        <span className="truncate">Driver {driver.name} • Awaiting Pickup</span>
+                      ) : (
+                        <span className="truncate">Food Ready • Waiting for Driver</span>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isUpdating}
+                      onClick={() => !isUpdating && updateOrderStatus(order.id, "DELIVERED")}
+                      className="h-11 shrink-0 rounded-full border-border/70 text-xs font-semibold hover:bg-secondary active:scale-95"
+                      title="Mark complete if customer picked up directly"
+                    >
+                      Complete Directly
+                    </Button>
+                  </div>
+                )
               )}
               {!isCancelled && ["OUT_FOR_DELIVERY", "DELIVERED"].includes(order.status) && (
                 <div className="flex h-11 flex-1 items-center justify-center gap-2 rounded-full border border-border/70 bg-secondary/60 px-3 font-serif text-xs font-bold text-muted-foreground sm:h-12 sm:text-sm">

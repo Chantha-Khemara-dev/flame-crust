@@ -443,22 +443,43 @@ public class AdminCrudController {
                     Long orderId = ord.getId();
                     Long customerId = ord.getCustomerId();
                     String status = ord.getStatus();
+                    String orderType = ord.getOrderType();
+                    Long driverId = ord.getDriverId();
+
+                    if (orderId != null && status != null) {
+                        try {
+                            jdbc.update("INSERT INTO order_status_history (order_id, status, notes) VALUES (?, ?, ?)",
+                                    orderId, status.toUpperCase(), "Status updated to " + status.toUpperCase());
+                        } catch (Exception ex) {
+                            System.err.println("Failed to insert into order_status_history: " + ex.getMessage());
+                        }
+                    }
+
                     if (customerId != null && status != null) {
                         // Do not notify customer for PENDING status (unpaid or newly initiated orders)
-                        if ("PENDING".equalsIgnoreCase(status)) {
-                            return;
+                        if (!"PENDING".equalsIgnoreCase(status)) {
+                            String statusText = switch (status.toUpperCase()) {
+                                case "CONFIRMED" -> "ការកុម្ម៉ង់របស់អ្នកត្រូវបានទទួលយកហើយ!";
+                                case "PREPARING" -> "ចុងភៅកំពុងរៀបចំធ្វើម្ហូបរបស់អ្នកយ៉ាងយកចិត្តទុកដាក់ 🍕";
+                                case "READY" -> "ម្ហូបរបស់អ្នករួចរាល់ហើយ កំពុងរង់ចាំអ្នកដឹកជញ្ជូន 🛵";
+                                case "OUT_FOR_DELIVERY" -> "អ្នកដឹកកំពុងធ្វើដំណើរយកម្ហូបជូនអ្នកហើយ 🚀";
+                                case "DELIVERED" -> "ការកុម្ម៉ង់ត្រូវបានដឹកជញ្ជូនជោគជ័យ! សូមពិសារដោយឆ្ងាញ់មាត់ 😋";
+                                case "CANCELLED" -> "ការកុម្ម៉ង់របស់អ្នកត្រូវបានបោះបង់";
+                                default -> null;
+                            };
+                            if (statusText != null) {
+                                webPushService.sendToUser(customerId, "CUSTOMER", "🍕 បច្ចុប្បន្នភាពការកុម្ម៉ង់ #" + orderId, statusText, "/track/" + orderId);
+                            }
                         }
-                        String statusText = switch (status.toUpperCase()) {
-                            case "CONFIRMED" -> "ការកុម្ម៉ង់របស់អ្នកត្រូវបានទទួលយកហើយ!";
-                            case "PREPARING" -> "ចុងភៅកំពុងរៀបចំធ្វើម្ហូបរបស់អ្នកយ៉ាងយកចិត្តទុកដាក់ 🍕";
-                            case "READY" -> "ម្ហូបរបស់អ្នករួចរាល់ហើយ កំពុងរង់ចាំអ្នកដឹកជញ្ជូន 🛵";
-                            case "OUT_FOR_DELIVERY" -> "អ្នកដឹកកំពុងធ្វើដំណើរយកម្ហូបជូនអ្នកហើយ 🚀";
-                            case "DELIVERED" -> "ការកុម្ម៉ង់ត្រូវបានដឹកជញ្ជូនជោគជ័យ! សូមពិសារដោយឆ្ងាញ់មាត់ 😋";
-                            case "CANCELLED" -> "ការកុម្ម៉ង់របស់អ្នកត្រូវបានបោះបង់";
-                            default -> null;
-                        };
-                        if (statusText != null) {
-                            webPushService.sendToUser(customerId, "CUSTOMER", "🍕 បច្ចុប្បន្នភាពការកុម្ម៉ង់ #" + orderId, statusText, "/track/" + orderId);
+                    }
+
+                    // Push notifications for drivers
+                    boolean isDelivery = orderType == null || "DELIVERY".equalsIgnoreCase(orderType);
+                    if (isDelivery && status != null) {
+                        if (driverId == null && ("CONFIRMED".equalsIgnoreCase(status) || "PREPARING".equalsIgnoreCase(status) || "READY".equalsIgnoreCase(status))) {
+                            webPushService.sendToUserType("DRIVER", "🛵 ការកុម្ម៉ង់ថ្មី #" + orderId, "មានការកុម្ម៉ង់ថ្មីរង់ចាំការដឹកជញ្ជូន!", "/driver/dashboard");
+                        } else if (driverId != null && "READY".equalsIgnoreCase(status)) {
+                            webPushService.sendToUser(driverId, "DRIVER", "🍕 ម្ហូបរួចរាល់ហើយ #" + orderId, "ផ្ទះបាយបានរៀបចំម្ហូបរួចរាល់ហើយ! សូមមកទទួលយកម្ហូបដើម្បីដឹកជញ្ជូន 🛵", "/driver/dashboard");
                         }
                     }
                 }

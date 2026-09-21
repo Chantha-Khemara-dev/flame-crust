@@ -95,6 +95,7 @@ export default function KitchenDashboard() {
   const [customers, setCustomers] = useState([]);
   const [addresses, setAddresses] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [drivers, setDrivers] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -152,6 +153,7 @@ export default function KitchenDashboard() {
           wanted.push(["customers", list("customers", { limit: 100, sort: "id", dir: "desc" })]);
           wanted.push(["addresses", list("addresses", { limit: 200, sort: "id", dir: "desc" })]);
           wanted.push(["reviews", list("reviews", { limit: 250, sort: "id", dir: "desc" })]);
+          wanted.push(["drivers", list("drivers", { limit: -1 })]);
         }
         if (isInitial || cachedStandaloneKitchenProducts.length === 0) {
           wanted.push(["products", list("products", { limit: 100 })]);
@@ -169,6 +171,7 @@ export default function KitchenDashboard() {
         if (payload.customers) setCustomers(payload.customers);
         if (payload.addresses) setAddresses(payload.addresses);
         if (payload.reviews) setReviews(payload.reviews);
+        if (payload.drivers) setDrivers(payload.drivers);
         if (payload.products?.length > 0) {
           cachedStandaloneKitchenProducts = payload.products;
           setProducts(payload.products);
@@ -261,6 +264,7 @@ export default function KitchenDashboard() {
   const safeAddresses = useMemo(() => toArray(addresses), [addresses]);
   const safeHistory = useMemo(() => toArray(orderHistory), [orderHistory]);
   const safeReviews = useMemo(() => toArray(reviews), [reviews]);
+  const safeDrivers = useMemo(() => toArray(drivers), [drivers]);
 
   const activeOrders = useMemo(() => {
     const itemsByOrder = new Map();
@@ -272,17 +276,23 @@ export default function KitchenDashboard() {
     const productById = new Map(safeProducts.map((p) => [String(p.id), p]));
     const customerById = new Map(safeCustomers.map((c) => [String(c.id), c]));
     const addressById = new Map(safeAddresses.map((a) => [String(a.id), a]));
+    const driverById = new Map(safeDrivers.map((d) => [String(d.id), d]));
 
     return safeOrders
       .filter((o) => ["PENDING", "CONFIRMED", "PREPARING", "READY"].includes(o.status))
       .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
       .map((order) => {
         const customer = customerById.get(String(order.customer_id)) || null;
+        const driverObj = driverById.get(String(order.driver_id || order.driverId)) || null;
         return {
           ...order,
           customer_name: customer?.name || order.customer_name || null,
           customer_phone: customer?.phone || null,
           address: addressById.get(String(order.address_id)) || null,
+          driver: driverObj,
+          driver_name: driverObj?.name || null,
+          driver_phone: driverObj?.phone || null,
+          driver_photo: driverObj?.profile_photo || driverObj?.avatar || null,
           items: (itemsByOrder.get(String(order.id)) || []).map((item) => {
             const product = productById.get(String(item.product_id));
             return {
@@ -295,7 +305,7 @@ export default function KitchenDashboard() {
           }),
         };
       });
-  }, [safeOrders, safeItems, safeProducts, safeCustomers, safeAddresses]);
+  }, [safeOrders, safeItems, safeProducts, safeCustomers, safeAddresses, safeDrivers]);
 
   const historyByOrder = useMemo(() => {
     const map = new Map();
@@ -753,6 +763,7 @@ export default function KitchenDashboard() {
         onClose={() => setSelectedOrder(null)}
         user={user}
         customers={safeCustomers}
+        drivers={safeDrivers}
         history={selectedOrder ? historyByOrder.get(String(selectedOrder.id)) || [] : []}
         updateOrderStatus={updateOrderStatus}
         updatingOrders={updatingOrders}

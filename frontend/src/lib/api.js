@@ -265,9 +265,22 @@ export function list(resource, params = {}, options = {}) {
     } else {
       isExplicitPaginate = Boolean(params.paginate) || params.page !== undefined;
       const searchParams = new URLSearchParams();
-      // Default limit=-1 for order_items and products so full datasets are returned unless pagination is explicitly requested
-      if ((resource === "order_items" || resource === "products") && params.limit === undefined && params.size === undefined && params.page === undefined) {
+      // Default limit=-1 for lookup resources so full datasets are returned unless pagination is explicitly requested
+      if (
+        (resource === "order_items" || resource === "products" || resource === "addresses" || resource === "customers" || resource === "drivers") &&
+        params.limit === undefined &&
+        params.size === undefined &&
+        params.page === undefined
+      ) {
         params = { ...params, limit: -1 };
+      }
+      // For orders, default to newest first (id desc) and full dataset unless pagination is explicitly requested
+      if (resource === "orders") {
+        if (!params.sort) params = { ...params, sort: "id" };
+        if (!params.dir) params = { ...params, dir: "desc" };
+        if (params.limit === undefined && params.size === undefined && params.page === undefined) {
+          params = { ...params, limit: -1 };
+        }
       }
       Object.entries(params).forEach(([k, v]) => {
         if (v !== undefined && v !== null && v !== "") {
@@ -277,8 +290,12 @@ export function list(resource, params = {}, options = {}) {
       const qs = searchParams.toString();
       if (qs) query = `?${qs}`;
     }
-  } else if (!params && (resource === "order_items" || resource === "products")) {
-    query = "?limit=-1";
+  } else if (!params) {
+    if (resource === "order_items" || resource === "products" || resource === "addresses" || resource === "customers" || resource === "drivers") {
+      query = "?limit=-1";
+    } else if (resource === "orders") {
+      query = "?limit=-1&sort=id&dir=desc";
+    }
   }
   return request(`/admin/${encodeURIComponent(resource)}${query}`, options).then((res) => {
     if (isExplicitPaginate) return res;
