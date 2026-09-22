@@ -367,7 +367,7 @@ function Navbar() {
         mobileOpen
           ? "bg-background border-b border-border/40 shadow-xs"
           : scrolled
-            ? "bg-background/95 backdrop-blur-md border-b border-border/40 shadow-xs"
+            ? "bg-transparent md:bg-background/95 md:backdrop-blur-md border-transparent md:border-b md:border-border/40 shadow-none md:shadow-xs"
             : "bg-transparent border-transparent shadow-none"
       )}
     >
