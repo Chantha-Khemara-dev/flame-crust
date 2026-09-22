@@ -50,9 +50,17 @@ const updateSW = registerSW({
   }
 });
 
-// Immediately reload when new Service Worker takes control so phone PWA updates cleanly
+let hadController = typeof navigator !== 'undefined' && Boolean(navigator.serviceWorker?.controller);
+
+// Reload ONLY when an existing Service Worker controller is replaced by an update.
+// On initial install or when added to home screen, hadController is false,
+// so claiming clients will NOT reload the page (which previously caused an unwanted 5-second reload/spinner).
 if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController) {
+      hadController = true;
+      return;
+    }
     if (!isRefreshing) {
       isRefreshing = true;
       window.location.reload();
