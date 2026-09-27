@@ -547,7 +547,7 @@ export default function KitchenDashboard() {
       />
 
       <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="z-20 flex h-16 sm:h-[70px] shrink-0 items-center justify-between gap-2 border-b border-border/70 bg-card/85 px-3 shadow-2xs backdrop-blur-2xl transition-colors dark:bg-zinc-950/85 sm:px-5 lg:px-6">
+        <header className="z-20 flex h-[calc(env(safe-area-inset-top)+4rem)] pt-[env(safe-area-inset-top)] sm:h-[calc(env(safe-area-inset-top)+70px)] shrink-0 items-center justify-between gap-2 border-b border-border/70 bg-card/85 px-3 shadow-2xs backdrop-blur-2xl transition-colors dark:bg-zinc-950/85 sm:px-5 lg:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3.5">
             <div className="relative flex size-9 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-orange-500 to-amber-500 text-white shadow-warm ring-2 ring-primary/20 sm:size-10 lg:hidden">
               <Flame className="size-5 animate-flicker fill-white/20" />
