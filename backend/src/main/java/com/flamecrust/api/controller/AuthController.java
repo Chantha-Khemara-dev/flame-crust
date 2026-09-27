@@ -1,10 +1,13 @@
 package com.flamecrust.api.controller;
 
+import com.flamecrust.api.security.ClientIpUtil;
+import com.flamecrust.api.security.EmailSecurityValidator;
 import com.flamecrust.api.security.JwtUtil;
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
+import com.flamecrust.api.security.RateLimitService;
 import com.flamecrust.api.service.EmailService;
+import com.flamecrust.api.service.WebPushService;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -21,11 +24,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import com.flamecrust.api.service.WebPushService;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -37,44 +38,48 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final WebPushService webPushService;
+    private final EmailSecurityValidator emailSecurityValidator;
+    private final ClientIpUtil clientIpUtil;
+    private final RateLimitService rateLimitService;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    // Rate limiting buckets per IP/Email
-    private final Map<String, Bucket> otpBuckets = new ConcurrentHashMap<>();
-    private final Map<String, Bucket> loginBuckets = new ConcurrentHashMap<>();
-
-    public AuthController(JdbcTemplate jdbc, EmailService emailService, PasswordEncoder passwordEncoder, JwtUtil jwtUtil, WebPushService webPushService) {
+    public AuthController(
+            JdbcTemplate jdbc,
+            EmailService emailService,
+            PasswordEncoder passwordEncoder,
+            JwtUtil jwtUtil,
+            WebPushService webPushService,
+            EmailSecurityValidator emailSecurityValidator,
+            ClientIpUtil clientIpUtil,
+            RateLimitService rateLimitService) {
         this.jdbc = jdbc;
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.webPushService = webPushService;
-    }
-
-    private Bucket getOtpBucket(String key) {
-        return otpBuckets.computeIfAbsent(key, k -> Bucket.builder()
-                .addLimit(Bandwidth.builder().capacity(100).refillIntervally(100, Duration.ofMinutes(10)).build())
-                .build());
-    }
-
-    private Bucket getLoginBucket(String key) {
-        return loginBuckets.computeIfAbsent(key, k -> Bucket.builder()
-                .addLimit(Bandwidth.builder().capacity(100).refillIntervally(100, Duration.ofMinutes(15)).build())
-                .build());
+        this.emailSecurityValidator = emailSecurityValidator;
+        this.clientIpUtil = clientIpUtil;
+        this.rateLimitService = rateLimitService;
     }
 
     @PostMapping("/send-otp")
-    public ResponseEntity<?> sendOtp(@RequestBody Map<String, String> body) {
+    public ResponseEntity<?> sendOtp(HttpServletRequest request, @RequestBody Map<String, String> body) {
         String rawEmail = body.get("email");
-        if (rawEmail == null || rawEmail.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
+        String emailError = emailSecurityValidator.validateEmailOrError(rawEmail);
+        if (emailError != null) {
+            return ResponseEntity.badRequest().body(Map.of("error", emailError));
         }
 
         String email = rawEmail.toLowerCase().trim();
-        Bucket bucket = getOtpBucket(email);
-        if (!bucket.tryConsume(1)) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", "Too many OTP requests. Please wait."));
+        String clientIp = clientIpUtil.getClientIp(request);
+
+        RateLimitService.RateLimitResult rateCheck = rateLimitService.checkSendOtpLimit(clientIp, email);
+        if (!rateCheck.allowed()) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", rateCheck.errorMessage()));
         }
+
+        // Invalidate previous unused OTPs for this target
+        jdbc.update("UPDATE otps SET is_used = true WHERE LOWER(target) = ? AND is_used = false", email);
 
         String otp = String.format("%06d", secureRandom.nextInt(999999));
         Timestamp expiresAt = Timestamp.from(Instant.now().plusSeconds(5 * 60)); // 5 minutes expiration
@@ -82,38 +87,46 @@ public class AuthController {
         jdbc.update("INSERT INTO otps (target, otp_code, is_used, expires_at) VALUES (?, ?, ?, ?)",
                 email, otp, false, expiresAt);
 
-        log.info("Generated OTP for {}: {}", email, otp);
+        log.info("Sending OTP verification to {}", email);
         boolean emailSent = emailService.sendOtpEmail(email, otp);
 
-        Map<String, Object> resp = new HashMap<>();
         if (!emailSent) {
-            log.warn("Failed to send verification email to {}. Bypassing error for testing.", email);
-            resp.put("devOtp", otp);
-            resp.put("message", "Email delivery failed; test code provided.");
-        } else {
-            resp.put("message", "OTP sent to your email successfully");
+            log.error("Failed to send verification email to {}", email);
+            // Invalidate the OTP so it cannot be guessed
+            jdbc.update("UPDATE otps SET is_used = true WHERE LOWER(target) = ? AND otp_code = ?", email, otp);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "error", "Failed to deliver verification code. Please check your email address and try again.",
+                    "emailSent", false
+            ));
         }
 
-        resp.put("emailSent", emailSent);
-
-        return ResponseEntity.ok(resp);
+        return ResponseEntity.ok(Map.of(
+                "message", "OTP sent to your email successfully",
+                "emailSent", true
+        ));
     }
 
     @PostMapping("/verify-otp")
-    public ResponseEntity<?> verifyOtp(@RequestBody Map<String, String> body) {
+    public ResponseEntity<?> verifyOtp(HttpServletRequest request, @RequestBody Map<String, String> body) {
         String rawEmail = body.get("email");
         String rawOtp = body.get("otp");
 
-        if (rawEmail == null || rawOtp == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Email and OTP are required"));
+        if (rawEmail == null || rawOtp == null || rawOtp.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email and OTP code are required"));
+        }
+
+        String emailError = emailSecurityValidator.validateEmailOrError(rawEmail);
+        if (emailError != null) {
+            return ResponseEntity.badRequest().body(Map.of("error", emailError));
         }
 
         String email = rawEmail.toLowerCase().trim();
         String otp = rawOtp.trim();
+        String clientIp = clientIpUtil.getClientIp(request);
 
-        Bucket bucket = getLoginBucket(email);
-        if (!bucket.tryConsume(1)) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", "Too many attempts. Please wait."));
+        RateLimitService.RateLimitResult rateCheck = rateLimitService.checkVerifyOtpLimit(clientIp, email);
+        if (!rateCheck.allowed()) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", rateCheck.errorMessage()));
         }
 
         List<Map<String, Object>> rows = jdbc.queryForList(
@@ -222,7 +235,7 @@ public class AuthController {
     }
     
     @PostMapping("/customer-login")
-    public ResponseEntity<?> customerLogin(@RequestBody Map<String, String> body) {
+    public ResponseEntity<?> customerLogin(HttpServletRequest request, @RequestBody Map<String, String> body) {
         String email = body.get("email");
         String password = body.get("password");
 
@@ -230,9 +243,10 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("error", "Email and password are required"));
         }
 
-        Bucket bucket = getLoginBucket(email);
-        if (!bucket.tryConsume(1)) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", "Too many attempts. Please wait."));
+        String clientIp = clientIpUtil.getClientIp(request);
+        RateLimitService.RateLimitResult rateCheck = rateLimitService.checkLoginLimit(clientIp, email);
+        if (!rateCheck.allowed()) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", rateCheck.errorMessage()));
         }
 
         List<Map<String, Object>> customers = jdbc.queryForList(
@@ -283,27 +297,36 @@ public class AuthController {
     }
 
     @PostMapping("/customer-register")
-    public ResponseEntity<?> customerRegister(@RequestBody Map<String, String> body) {
+    public ResponseEntity<?> customerRegister(HttpServletRequest request, @RequestBody Map<String, String> body) {
         String name = body.get("name");
-        String email = body.get("email");
+        String rawEmail = body.get("email");
         String phone = body.get("phone");
         String password = body.get("password");
         String otp = body.get("otp");
 
-        if (email == null || email.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
+        String clientIp = clientIpUtil.getClientIp(request);
+        RateLimitService.RateLimitResult rateCheck = rateLimitService.checkRegisterLimit(clientIp);
+        if (!rateCheck.allowed()) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", rateCheck.errorMessage()));
         }
+
+        String emailError = emailSecurityValidator.validateEmailOrError(rawEmail);
+        if (emailError != null) {
+            return ResponseEntity.badRequest().body(Map.of("error", emailError));
+        }
+
         if (password == null || password.length() < 6) {
             return ResponseEntity.badRequest().body(Map.of("error", "Password must be at least 6 characters"));
         }
         if (otp == null || otp.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "OTP code is required"));
         }
+
+        String email = rawEmail.toLowerCase().trim();
         if (name == null || name.isBlank()) {
             name = email.contains("@") ? email.substring(0, email.indexOf("@")) : "Customer";
         }
 
-        email = email.toLowerCase().trim();
         otp = otp.trim();
 
         // Check if account already exists (customers, users, or drivers)
@@ -349,19 +372,18 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> unifiedLogin(@RequestBody Map<String, String> body) {
+    public ResponseEntity<?> unifiedLogin(HttpServletRequest request, @RequestBody Map<String, String> body) {
         String email = body.get("email");
         String password = body.get("password");
-
-        System.out.println("unifiedLogin attempt for: " + email);
 
         if (email == null || password == null || email.isBlank() || password.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Email and password are required"));
         }
 
-        Bucket bucket = getLoginBucket(email);
-        if (!bucket.tryConsume(1)) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", "Too many attempts. Please wait."));
+        String clientIp = clientIpUtil.getClientIp(request);
+        RateLimitService.RateLimitResult rateCheck = rateLimitService.checkLoginLimit(clientIp, email);
+        if (!rateCheck.allowed()) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", rateCheck.errorMessage()));
         }
 
         // 1. Check users (Staff / Admin / Manager)
@@ -480,7 +502,7 @@ public class AuthController {
     }
 
     @PostMapping("/google-login")
-    public ResponseEntity<?> googleLogin(@RequestBody Map<String, String> body) {
+    public ResponseEntity<?> googleLogin(HttpServletRequest request, @RequestBody Map<String, String> body) {
         String email = body.get("email");
         String name = body.get("name");
         String avatar = body.get("avatar");
@@ -489,9 +511,10 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
         }
 
-        Bucket bucket = getLoginBucket(email);
-        if (!bucket.tryConsume(1)) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", "Too many attempts. Please wait."));
+        String clientIp = clientIpUtil.getClientIp(request);
+        RateLimitService.RateLimitResult rateCheck = rateLimitService.checkLoginLimit(clientIp, email);
+        if (!rateCheck.allowed()) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", rateCheck.errorMessage()));
         }
 
         List<Map<String, Object>> customers = jdbc.queryForList("SELECT * FROM customers WHERE email = ? LIMIT 1", email);
@@ -523,7 +546,7 @@ public class AuthController {
     }
 
     @PostMapping("/admin-login")
-    public ResponseEntity<?> adminLogin(@RequestBody Map<String, String> body) {
+    public ResponseEntity<?> adminLogin(HttpServletRequest request, @RequestBody Map<String, String> body) {
         String email = body.get("email");
         String password = body.get("password");
 
@@ -531,9 +554,10 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("error", "Email and password are required"));
         }
 
-        Bucket bucket = getLoginBucket(email);
-        if (!bucket.tryConsume(1)) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", "Too many attempts. Please wait."));
+        String clientIp = clientIpUtil.getClientIp(request);
+        RateLimitService.RateLimitResult rateCheck = rateLimitService.checkLoginLimit(clientIp, email);
+        if (!rateCheck.allowed()) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", rateCheck.errorMessage()));
         }
 
         List<Map<String, Object>> users = jdbc.queryForList(
@@ -565,7 +589,7 @@ public class AuthController {
     }
     
     @PostMapping("/driver-login")
-    public ResponseEntity<?> driverLogin(@RequestBody Map<String, String> body) {
+    public ResponseEntity<?> driverLogin(HttpServletRequest request, @RequestBody Map<String, String> body) {
         String email = body.get("email");
         String password = body.get("password");
 
@@ -573,9 +597,10 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("error", "Email and password are required"));
         }
 
-        Bucket bucket = getLoginBucket("driver:" + email);
-        if (!bucket.tryConsume(1)) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", "Too many attempts. Please wait."));
+        String clientIp = clientIpUtil.getClientIp(request);
+        RateLimitService.RateLimitResult rateCheck = rateLimitService.checkLoginLimit(clientIp, "driver:" + email);
+        if (!rateCheck.allowed()) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", rateCheck.errorMessage()));
         }
 
         List<Map<String, Object>> drivers = jdbc.queryForList(
@@ -610,7 +635,7 @@ public class AuthController {
     }
 
     @PostMapping("/kitchen-login")
-    public ResponseEntity<?> kitchenLogin(@RequestBody Map<String, String> body) {
+    public ResponseEntity<?> kitchenLogin(HttpServletRequest request, @RequestBody Map<String, String> body) {
         String email = body.get("email");
         String password = body.get("password");
 
@@ -618,9 +643,10 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("error", "Email and password are required"));
         }
 
-        Bucket bucket = getLoginBucket("kitchen:" + email);
-        if (!bucket.tryConsume(1)) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", "Too many attempts. Please wait."));
+        String clientIp = clientIpUtil.getClientIp(request);
+        RateLimitService.RateLimitResult rateCheck = rateLimitService.checkLoginLimit(clientIp, "kitchen:" + email);
+        if (!rateCheck.allowed()) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", rateCheck.errorMessage()));
         }
 
         List<Map<String, Object>> staffList = jdbc.queryForList(
@@ -654,20 +680,33 @@ public class AuthController {
     }
 
     @PostMapping("/driver-register")
-    public ResponseEntity<?> driverRegister(@RequestBody Map<String, String> body) {
+    public ResponseEntity<?> driverRegister(HttpServletRequest request, @RequestBody Map<String, String> body) {
         String name = body.get("name");
-        String email = body.get("email");
+        String rawEmail = body.get("email");
         String phone = body.get("phone");
         String password = body.get("password");
 
-        if (name == null || email == null || phone == null || password == null
-                || name.isBlank() || email.isBlank() || phone.isBlank() || password.isBlank()) {
+        String clientIp = clientIpUtil.getClientIp(request);
+        RateLimitService.RateLimitResult rateCheck = rateLimitService.checkRegisterLimit(clientIp);
+        if (!rateCheck.allowed()) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", rateCheck.errorMessage()));
+        }
+
+        String emailError = emailSecurityValidator.validateEmailOrError(rawEmail);
+        if (emailError != null) {
+            return ResponseEntity.badRequest().body(Map.of("error", emailError));
+        }
+
+        if (name == null || phone == null || password == null
+                || name.isBlank() || phone.isBlank() || password.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Name, email, phone, and password are all required"));
         }
 
         if (password.length() < 6) {
             return ResponseEntity.badRequest().body(Map.of("error", "Password must be at least 6 characters"));
         }
+
+        String email = rawEmail.toLowerCase().trim();
 
         // Check if email or phone already exists
         List<Map<String, Object>> existing = jdbc.queryForList(
