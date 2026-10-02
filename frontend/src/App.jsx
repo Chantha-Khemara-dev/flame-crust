@@ -96,9 +96,32 @@ function RoleRedirectGuard({ children }) {
     }
   }
 
-  // If admin is logged in and visits /login, redirect to admin dashboard
+  // If admin is logged in and visits /login, redirect based on role
   if (adminAuth && location.pathname === "/login") {
+    try {
+      const adminData = JSON.parse(adminAuth);
+      const role = adminData?.role || adminData?.user?.role || "";
+      if (role === "CASHIER") {
+        return <Navigate to="/admin/pos" replace />;
+      } else if (role === "INVENTORY_STAFF") {
+        return <Navigate to="/admin/inventory_dashboard" replace />;
+      }
+    } catch (e) {}
     return <Navigate to="/admin/dashboard" replace />;
+  }
+
+  // Restrict access inside /admin/* based on role
+  if (adminAuth && location.pathname.startsWith("/admin")) {
+    try {
+      const adminData = JSON.parse(adminAuth);
+      const role = adminData?.role || adminData?.user?.role || "";
+      if (role === "CASHIER" && !location.pathname.startsWith("/admin/pos")) {
+        return <Navigate to="/admin/pos" replace />;
+      }
+      if (role === "INVENTORY_STAFF" && !location.pathname.startsWith("/admin/inventory_dashboard")) {
+        return <Navigate to="/admin/inventory_dashboard" replace />;
+      }
+    } catch (e) {}
   }
 
   // If kitchen staff is logged in and visits /login, redirect to kitchen dashboard

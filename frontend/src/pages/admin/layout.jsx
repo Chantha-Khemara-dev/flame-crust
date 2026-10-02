@@ -9,6 +9,8 @@ import AdminResourcePage from "./resource-page.jsx";
 import AdminDashboard from "./dashboard.jsx";
 import KitchenDashboard from "./kitchen-dashboard.jsx";
 import AdminChangePasswordDialog from "./change-password-dialog.jsx";
+import InventoryDashboard from "./inventory-dashboard.jsx";
+import PosDashboard from "./pos-dashboard.jsx";
 
 const adminResources = [
   "products",
@@ -55,7 +57,8 @@ function AdminLayout() {
     }
   });
 
-  const isAuthorized = adminAuth && (adminAuth.role || "").toUpperCase() === "ADMIN";
+  const role = adminAuth ? (adminAuth.role || adminAuth?.user?.role || "").toUpperCase() : "";
+  const isAuthorized = role === "ADMIN" || role === "INVENTORY_STAFF" || role === "CASHIER";
 
   const currentPath = location.pathname.replace("/admin/", "").replace("/admin", "") || "dashboard";
 
@@ -169,6 +172,8 @@ function AdminLayout() {
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="kitchen" element={<KitchenDashboard />} />
+              <Route path="inventory_dashboard" element={<InventoryDashboard />} />
+              <Route path="pos" element={<PosDashboard />} />
               {adminResources.map((key) => (
                 <Route
                   key={key}

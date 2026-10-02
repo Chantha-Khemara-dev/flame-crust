@@ -244,10 +244,40 @@ public class AdminCrudController {
             if ("order_items".equalsIgnoreCase(resource) && mutableBody.containsKey("product_id") && mutableBody.containsKey("quantity")) {
                 try {
                     Long productId = Long.valueOf(mutableBody.get("product_id").toString());
-                    int quantity = Integer.parseInt(mutableBody.get("quantity").toString());
-                    jdbc.update("UPDATE products SET sales_count = sales_count + ? WHERE id = ?", quantity, productId);
+                    java.math.BigDecimal quantity = new java.math.BigDecimal(mutableBody.get("quantity").toString());
+                    
+                    jdbc.update("UPDATE products SET sales_count = sales_count + ? WHERE id = ?", quantity.intValue(), productId);
+                    
+                    // Auto-deduct inventory
+                    Object orderIdObj = mutableBody.get("order_id");
+                    if (orderIdObj != null) {
+                        Long orderId = Long.valueOf(orderIdObj.toString());
+                        List<Map<String, Object>> orderRes = jdbc.queryForList("SELECT branch_id FROM orders WHERE id = ?", orderId);
+                        Long branchId = orderRes.isEmpty() || orderRes.get(0).get("branch_id") == null ? 1L : ((Number) orderRes.get(0).get("branch_id")).longValue();
+                        
+                        // Find first variant for this product
+                        List<Map<String, Object>> variants = jdbc.queryForList(
+                            "SELECT v.id FROM product_variants v JOIN product_options o ON v.option_id = o.id WHERE o.product_id = ? LIMIT 1", productId);
+                        
+                        if (!variants.isEmpty()) {
+                            Long variantId = ((Number) variants.get(0).get("id")).longValue();
+                            List<Map<String, Object>> recipes = jdbc.queryForList("SELECT ingredient_id, quantity_needed FROM product_recipes WHERE variant_id = ?", variantId);
+                            
+                            for (Map<String, Object> recipe : recipes) {
+                                Long ingredientId = ((Number) recipe.get("ingredient_id")).longValue();
+                                java.math.BigDecimal qtyNeeded = new java.math.BigDecimal(recipe.get("quantity_needed").toString());
+                                java.math.BigDecimal totalToDeduct = qtyNeeded.multiply(quantity);
+                                
+                                jdbc.update("UPDATE ingredient_stock SET stock_quantity = stock_quantity - ? WHERE ingredient_id = ? AND branch_id = ?",
+                                    totalToDeduct, ingredientId, branchId);
+                                    
+                                jdbc.update("INSERT INTO inventory_transactions (ingredient_id, branch_id, transaction_type, quantity, note, reference_id) VALUES (?, ?, 'ORDER_USAGE', ?, ?, ?)",
+                                    ingredientId, branchId, totalToDeduct, "Used for Order #" + orderId, String.valueOf(orderId));
+                            }
+                        }
+                    }
                 } catch (Exception ex) {
-                    System.err.println("Failed to increment product sales count: " + ex.getMessage());
+                    System.err.println("Failed to increment product sales count or deduct inventory: " + ex.getMessage());
                 }
             }
 

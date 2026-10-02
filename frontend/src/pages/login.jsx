@@ -189,7 +189,7 @@ export default function LoginPage() {
       const data = await response.json();
       const roleType = (data.type || data.role || "").toUpperCase();
 
-      if (roleType === "ADMIN") {
+      if (roleType === "ADMIN" || roleType === "INVENTORY_STAFF" || roleType === "CASHIER") {
         const user = data.user || data;
         const seedName = user.name || email.split("@")[0] || "Admin";
         const avatarUrl = user.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${seedName}&backgroundColor=cbd5e1&textColor=334155`;
@@ -207,8 +207,14 @@ export default function LoginPage() {
           })
         );
         window.dispatchEvent(new Event("authChanged"));
-        toast.success(`Welcome Admin, ${user.name || seedName}!`);
-        navigate("/admin/dashboard", { replace: true });
+        toast.success(`Welcome ${roleType.replace('_', ' ')}, ${user.name || seedName}!`);
+        if (roleType === "CASHIER") {
+          navigate("/admin/pos", { replace: true });
+        } else if (roleType === "INVENTORY_STAFF") {
+          navigate("/admin/inventory_dashboard", { replace: true });
+        } else {
+          navigate("/admin/dashboard", { replace: true });
+        }
       } else if (roleType === "DRIVER") {
         const driver = data.driver || data.user || data;
         const seedName = driver.name || email.split("@")[0] || "Driver";
